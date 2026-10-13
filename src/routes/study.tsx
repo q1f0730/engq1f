@@ -3,7 +3,7 @@ import { Spinner } from "@/components/app/shell";
 import { Study, type StudyMode } from "@/components/app/study";
 import { useWords } from "@/lib/data";
 
-const MODES: StudyMode[] = ["new", "review", "ahead", "practice", "star", "wrong", "mastered", "hard"];
+const MODES: StudyMode[] = ["new", "review", "ahead", "practice", "star", "wrong", "mastered", "hard", "speed"];
 
 export const Route = createFileRoute("/study")({
   validateSearch: (s: Record<string, unknown>): { mode: StudyMode; t?: number; words?: string } => ({

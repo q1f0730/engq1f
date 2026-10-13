@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, Star, Swords, Undo2, Volume2 } from "lucide-react";
+import { ChevronLeft, Play, Star, Swords, Undo2, Volume2 } from "lucide-react";
 import { confusables } from "@/lib/confusables";
-import { speak } from "@/lib/audio";
+import { sayEnglish, speak } from "@/lib/audio";
 import { useExamples } from "@/lib/examples";
 import { getWordsSync, posLabel, shortMeaning, type Word, type WordIndex } from "@/lib/data";
 import { diffDays, isLeech, type Card } from "@/lib/srs";
-import { killWord, resetWord, toggleStar, unkillWord, useApp } from "@/lib/store";
+import { getState, killWord, resetWord, toggleStar, unkillWord, useApp } from "@/lib/store";
 import { today } from "@/lib/clock";
 import { cn } from "@/lib/utils";
 import { BottomSheet } from "./sheet";
@@ -92,8 +92,23 @@ export function Examples({ word, enabled = true }: { word: Word; enabled?: boole
       <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">例句</div>
       <ul className="space-y-2">
         {list.map((s) => (
-          <li key={s} className="border-l-2 border-primary/30 pl-3 text-[14px] leading-relaxed text-foreground/85" data-testid="example">
-            {highlight(s, word.w)}
+          <li key={s} className="flex items-start gap-2">
+            <span className="min-w-0 flex-1 border-l-2 border-primary/30 pl-3 text-[14px] leading-relaxed text-foreground/85" data-testid="example">
+              {highlight(s, word.w)}
+            </span>
+            <button
+              type="button"
+              aria-label="朗读例句"
+              title="朗读例句"
+              data-testid="example-play"
+              onClick={(e) => {
+                e.stopPropagation();
+                void sayEnglish(s, getState().settings.accent);
+              }}
+              className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft text-primary transition active:scale-90"
+            >
+              <Play className="ml-px size-3 fill-current" />
+            </button>
           </li>
         ))}
       </ul>

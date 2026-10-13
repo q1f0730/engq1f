@@ -13,6 +13,7 @@ import { summarize } from "@/lib/plan";
 import {
   DAILY_OPTIONS,
   REVIEW_CAP_OPTIONS,
+  RATE_OPTIONS,
   exportBackup,
   importBackup,
   markBackedUp,
@@ -134,6 +135,15 @@ function MePage() {
                 ]}
               />
             </Row>
+            <Row label="发音语速" hint="含例句、磁带">
+              <Segmented<number>
+                className="w-52 shrink-0"
+                value={s.rate ?? 1}
+                onChange={(v) => setSettings({ rate: v })}
+                testid="rate"
+                options={RATE_OPTIONS.map((v) => ({ value: v, label: `${v}×` }))}
+              />
+            </Row>
             <Row label="自动发音" hint="出现新卡片时自动朗读">
               <Switch checked={s.autoplay} onCheckedChange={(v) => setSettings({ autoplay: v })} aria-label="自动发音" />
             </Row>
@@ -142,6 +152,9 @@ function MePage() {
             </Row>
             <Row label="震动反馈" hint="答对轻震，答错双震">
               <Switch checked={s.haptics ?? true} onCheckedChange={(v) => setSettings({ haptics: v })} aria-label="震动反馈" data-testid="haptics" />
+            </Row>
+            <Row label="屏幕常亮" hint="学习和磁带模式时不自动熄屏">
+              <Switch checked={s.wakeLock ?? true} onCheckedChange={(v) => setSettings({ wakeLock: v })} aria-label="屏幕常亮" data-testid="wake-lock" />
             </Row>
             <Row label="外观">
               <Segmented<Theme>

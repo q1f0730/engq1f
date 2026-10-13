@@ -239,6 +239,20 @@
   .card-in {
     animation: card-in 340ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
+  /* 速刷：更快的入场，没有翻转 */
+  @keyframes speed-in {
+    from {
+      opacity: 0.4;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .speed-in {
+    animation: speed-in 140ms ease-out both;
+  }
   @keyframes pop {
     0% {
       transform: scale(0.6);
@@ -291,6 +305,7 @@
 @media (prefers-reduced-motion: reduce) {
   .flip-inner,
   .card-in,
+  .speed-in,
   .pop,
   .shake {
     transition: none !important;

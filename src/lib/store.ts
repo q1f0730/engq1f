@@ -18,6 +18,12 @@ export interface Settings {
   reviewCap: number;
   /** 震动反馈 */
   haptics: boolean;
+  /** 发音语速（有道音频与系统语音）：0.75 / 1 / 1.25 */
+  rate: number;
+  /** 磁带模式每词朗读遍数 */
+  tapeRepeat: number;
+  /** 学习页与磁带模式保持屏幕常亮 */
+  wakeLock: boolean;
 }
 
 export interface AppState {
@@ -40,6 +46,10 @@ export interface AppState {
 
 export const DAILY_OPTIONS = [10, 20, 30, 50, 80, 100];
 export const REVIEW_CAP_OPTIONS = [0, 50, 100, 200];
+export const RATE_OPTIONS = [0.75, 1, 1.25];
+export const REPEAT_OPTIONS = [1, 2, 3];
+/** 磁带模式定时停止（分钟），0 = 不定时 */
+export const SLEEP_OPTIONS = [0, 10, 20, 30];
 const KEY = "cet4v-state-v1";
 export const THEME_KEY = "cet4v-theme";
 
@@ -53,6 +63,9 @@ export const defaultSettings = (): Settings => ({
   theme: "system",
   reviewCap: 0,
   haptics: true,
+  rate: 1,
+  tapeRepeat: 1,
+  wakeLock: true,
 });
 
 export function initialState(): AppState {
@@ -69,6 +82,17 @@ export function initialState(): AppState {
   };
 }
 
+/** 越界的设置值回到默认（导入旧备份或手改数据时） */
+export function cleanSettings(s: Settings): Settings {
+  const d = defaultSettings();
+  return {
+    ...s,
+    rate: RATE_OPTIONS.includes(s.rate) ? s.rate : d.rate,
+    tapeRepeat: REPEAT_OPTIONS.includes(s.tapeRepeat) ? s.tapeRepeat : d.tapeRepeat,
+    wakeLock: typeof s.wakeLock === "boolean" ? s.wakeLock : d.wakeLock,
+  };
+}
+
 /** 校验并补全（导入备份/读取旧数据） */
 export function normalize(raw: unknown): AppState {
   if (!raw || typeof raw !== "object") throw new Error("备份格式不对");
@@ -79,7 +103,7 @@ export function normalize(raw: unknown): AppState {
     ...base,
     ...r,
     v: 1,
-    settings: { ...base.settings, ...(r.settings ?? {}) },
+    settings: cleanSettings({ ...base.settings, ...(r.settings ?? {}) }),
     cards: r.cards ?? {},
     star: r.star ?? {},
     log: r.log ?? {},

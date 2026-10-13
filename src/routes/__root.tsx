@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 import { requestPersist } from "@/lib/persist";
 
-const BARE = ["/study", "/welcome", "/test"];
+const BARE = ["/study", "/welcome", "/test", "/tape"];
 
 function NotFound() {
   return <Navigate to="/" replace />;
@@ -30,7 +30,7 @@ function ErrorView({ error }: { error: unknown }) {
 
 export const Route = createRootRoute({
   beforeLoad: ({ location }) => {
-    if (!getState().onboarded && !BARE.slice(1).some((p) => location.pathname.startsWith(p))) {
+    if (!getState().onboarded && !["/welcome", "/test"].some((p) => location.pathname.startsWith(p))) {
       throw redirect({ to: "/welcome" });
     }
   },

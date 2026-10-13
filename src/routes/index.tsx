@@ -7,6 +7,7 @@ import {
   FastForward,
   Flame,
   HardDriveDownload,
+  Headphones,
   Play,
   Repeat2,
   Share2,
@@ -15,6 +16,7 @@ import {
   Swords,
   TriangleAlert,
   Volume2,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -259,6 +261,42 @@ function Today() {
             <NbLink tab="star" icon={<Star className="size-4" />} label="生词本" n={nb.star} tone="text-vague bg-vague-soft" />
             <NbLink tab="wrong" icon={<TriangleAlert className="size-4" />} label="错词本" n={nb.wrong} tone="text-forget bg-forget-soft" />
             <NbLink tab="mastered" icon={<Swords className="size-4" />} label="熟词" n={nb.mastered} tone="text-know bg-know-soft" />
+          </div>
+
+          {/* 碎片时间 */}
+          <div className="grid grid-cols-2 gap-2.5" data-testid="snack">
+            <Link
+              to="/tape"
+              data-testid="tape-entry"
+              className="flex items-center gap-3 rounded-3xl border border-border/70 bg-card p-3.5 transition hover:border-primary/40 active:scale-[0.99]"
+            >
+              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
+                <Headphones className="size-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-bold leading-tight">磁带模式</span>
+                <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">通勤免手听</span>
+              </span>
+            </Link>
+            <Link
+              to="/study"
+              search={{ mode: "speed" }}
+              data-testid="speed-entry"
+              className={cn(
+                "flex items-center gap-3 rounded-3xl border border-border/70 bg-card p-3.5 transition hover:border-primary/40 active:scale-[0.99]",
+                sum.due === 0 && "opacity-70",
+              )}
+            >
+              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-know-soft text-know">
+                <Zap className="size-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-bold leading-tight">速刷</span>
+                <span className="mt-0.5 block truncate text-[12px] text-muted-foreground" data-testid="speed-sub">
+                  {sum.due > 0 ? `左右滑清 ${sum.due} 词` : "暂无到期复习"}
+                </span>
+              </span>
+            </Link>
           </div>
         </div>
 

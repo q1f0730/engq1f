@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as StudyRouteImport } from './routes/study'
+import { Route as TapeRouteImport } from './routes/tape'
 import { Route as TestRouteImport } from './routes/test'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as WordsRouteImport } from './routes/words'
@@ -37,6 +38,11 @@ const StudyRoute = StudyRouteImport.update({
   path: '/study',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TapeRoute = TapeRouteImport.update({
+  id: '/tape',
+  path: '/tape',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TestRoute = TestRouteImport.update({
   id: '/test',
   path: '/test',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/me': typeof MeRoute
   '/stats': typeof StatsRoute
   '/study': typeof StudyRoute
+  '/tape': typeof TapeRoute
   '/test': typeof TestRoute
   '/welcome': typeof WelcomeRoute
   '/words': typeof WordsRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/me': typeof MeRoute
   '/stats': typeof StatsRoute
   '/study': typeof StudyRoute
+  '/tape': typeof TapeRoute
   '/test': typeof TestRoute
   '/welcome': typeof WelcomeRoute
   '/words': typeof WordsRoute
@@ -77,21 +85,39 @@ export interface FileRoutesById {
   '/me': typeof MeRoute
   '/stats': typeof StatsRoute
   '/study': typeof StudyRoute
+  '/tape': typeof TapeRoute
   '/test': typeof TestRoute
   '/welcome': typeof WelcomeRoute
   '/words': typeof WordsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/me' | '/stats' | '/study' | '/test' | '/welcome' | '/words'
+  fullPaths:
+    | '/'
+    | '/me'
+    | '/stats'
+    | '/study'
+    | '/tape'
+    | '/test'
+    | '/welcome'
+    | '/words'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/me' | '/stats' | '/study' | '/test' | '/welcome' | '/words'
+  to:
+    | '/'
+    | '/me'
+    | '/stats'
+    | '/study'
+    | '/tape'
+    | '/test'
+    | '/welcome'
+    | '/words'
   id:
     | '__root__'
     | '/'
     | '/me'
     | '/stats'
     | '/study'
+    | '/tape'
     | '/test'
     | '/welcome'
     | '/words'
@@ -102,6 +128,7 @@ export interface RootRouteChildren {
   MeRoute: typeof MeRoute
   StatsRoute: typeof StatsRoute
   StudyRoute: typeof StudyRoute
+  TapeRoute: typeof TapeRoute
   TestRoute: typeof TestRoute
   WelcomeRoute: typeof WelcomeRoute
   WordsRoute: typeof WordsRoute
@@ -137,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tape': {
+      id: '/tape'
+      path: '/tape'
+      fullPath: '/tape'
+      preLoaderRoute: typeof TapeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/test': {
       id: '/test'
       path: '/test'
@@ -166,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   MeRoute: MeRoute,
   StatsRoute: StatsRoute,
   StudyRoute: StudyRoute,
+  TapeRoute: TapeRoute,
   TestRoute: TestRoute,
   WelcomeRoute: WelcomeRoute,
   WordsRoute: WordsRoute,

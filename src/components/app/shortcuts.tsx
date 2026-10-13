@@ -9,6 +9,7 @@ const ROWS: [string, string][] = [
   ["S", "加入 / 移出生词本"],
   ["D", "斩（已掌握，不再出现）"],
   ["B", "明天再说（不计对错）"],
+  ["← / →", "速刷：不认识 / 认识；磁带：上一个 / 下一个"],
   ["Esc", "退出学习"],
   ["?", "打开这个帮助"],
 ];
@@ -37,7 +38,7 @@ export function ShortcutsSheet({ open, onOpenChange }: { open: boolean; onOpenCh
         ))}
       </div>
       <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-        手机上：卡片向右滑 = 认识，向左滑 = 不认识，向上滑 = 模糊。
+        手机上：卡片向右滑 = 认识，向左滑 = 不认识，向上滑 = 模糊；速刷只有左右滑。磁带模式里空格 = 播放 / 暂停。
       </p>
     </BottomSheet>
   );

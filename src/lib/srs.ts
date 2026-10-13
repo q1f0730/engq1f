@@ -281,7 +281,7 @@ export function finishDate(today: string, remaining: number, perDay: number): st
 
 // ---------------------------------------------------------------- session (group study)
 
-export type QuizMode = "recall" | "en2cn" | "cn2en" | "audio" | "phrase";
+export type QuizMode = "recall" | "en2cn" | "cn2en" | "audio" | "phrase" | "listen";
 
 export interface SessionItem {
   w: string;
@@ -447,9 +447,11 @@ export function hashStr(s: string): number {
   return h >>> 0;
 }
 
-/** 复习题型：按词+日期稳定分配；有短语的词多一种「短语选义」 */
-export function pickMode(w: string, today: string, cnFirst = false, hasPhrase = false): QuizMode {
-  const modes: QuizMode[] = hasPhrase ? ["en2cn", "cn2en", "audio", "recall", "phrase"] : ["en2cn", "cn2en", "audio", "recall"];
+/** 复习题型：按词+日期稳定分配；有短语的词多一种「短语选义」，有形近词的词多一种「听音辨词」 */
+export function pickMode(w: string, today: string, cnFirst = false, hasPhrase = false, hasListen = false): QuizMode {
+  const modes: QuizMode[] = ["en2cn", "cn2en", "audio", "recall"];
+  if (hasPhrase) modes.push("phrase");
+  if (hasListen) modes.push("listen");
   const m = modes[hashStr(w + today) % modes.length];
   return cnFirst && m === "recall" ? "cn2en" : m;
 }

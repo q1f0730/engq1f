@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Play, Search, Star, X } from "lucide-react";
+import { Headphones, Play, Search, Star, X } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Segmented, Spinner } from "@/components/app/shell";
 import { StateBadge, WordSheet } from "@/components/app/word-bits";
@@ -166,15 +166,29 @@ function WordsPage() {
       </div>
 
       {nbMode && results.length > 0 && (
-        <Link
-          to="/study"
-          search={{ mode: nbMode }}
-          data-testid="nb-review"
-          className="mb-3 flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20"
-        >
-          <Play className="size-4 fill-current" />
-          {nbMode === "star" ? "复习生词本" : nbMode === "wrong" ? "复习错词本" : nbMode === "hard" ? "顽固词专项" : "回顾熟词"}（{Math.min(20, results.length)} 词）
-        </Link>
+        <div className="mb-3 flex gap-2">
+          <Link
+            to="/study"
+            search={{ mode: nbMode }}
+            data-testid="nb-review"
+            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20"
+          >
+            <Play className="size-4 fill-current" />
+            {nbMode === "star" ? "复习生词本" : nbMode === "wrong" ? "复习错词本" : nbMode === "hard" ? "顽固词专项" : "回顾熟词"}（{Math.min(20, results.length)} 词）
+          </Link>
+          {nbMode !== "mastered" && (
+            <Link
+              to="/tape"
+              search={{ src: nbMode }}
+              data-testid="nb-tape"
+              aria-label="磁带模式听这个词本"
+              title="磁带模式听这个词本"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary"
+            >
+              <Headphones className="size-5" />
+            </Link>
+          )}
+        </div>
       )}
 
       <div className="text-[12px] text-muted-foreground" data-testid="result-count">

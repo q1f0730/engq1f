@@ -1,5 +1,6 @@
 import type { WordIndex, Word } from "./data";
 import { posOf } from "./data";
+import { confusables, editDistance, isInflection } from "./confusables";
 import type { AppState, Settings } from "./store";
 import {
   addDays,
@@ -116,8 +117,14 @@ export function cappedDue(st: AppState, day: string, dueAll: number): number {
 /** 只有「适合出题的短语」才出短语选义题 */
 const hasPhrase = (index: WordIndex, w: string) => hasGoodPhrase(index.map.get(w));
 
+/** 有形近词的词才出「听音辨词」 */
+const hasListen = (index: WordIndex, w: string) => {
+  const word = index.map.get(w);
+  return !!word && confusables(index, word).length > 0;
+};
+
 function modeFor(index: WordIndex, st: AppState, w: string, day: string): SessionItem["mode"] {
-  return pickMode(w, day, st.settings.cnFirst, hasPhrase(index, w));
+  return pickMode(w, day, st.settings.cnFirst, hasPhrase(index, w), hasListen(index, w));
 }
 
 export function reviewGroup(index: WordIndex, st: AppState, day: string): SessionItem[] {
@@ -146,7 +153,7 @@ export function practiceGroup(index: WordIndex, st: AppState, words: string[], d
   return words
     .filter((w) => index.map.has(w))
     .map((w) => {
-      let mode = pickMode(w, day + "practice", false, hasPhrase(index, w));
+      let mode = pickMode(w, day + "practice", false, hasPhrase(index, w), hasListen(index, w));
       if (mode === "recall") mode = "en2cn";
       return { w, kind: "review" as const, mode };
     });
@@ -250,4 +257,86 @@ export function phraseOptions(index: WordIndex, word: Word, seed: number): Word[
     out.push(c);
   }
   return shuffle([word, ...out], hashStr(word.w) ^ seed);
+}
+
+// ---------------------------------------------------------------- v3 · 听音辨词
+
+const listenCache = new Map<string, Word[]>();
+
+/** 同音词（site / cite）：音标相同的词在听音辨词里分不出来，不能当干扰项 */
+export function samePron(a: Word, b: Word): boolean {
+  const norm = (p?: string) => (p ?? "").replace(/[ˈˌ'.\s]/g, "");
+  if (!a.p || !b.p) return false;
+  return (!!norm(a.p[0]) && norm(a.p[0]) === norm(b.p[0])) || (!!norm(a.p[1]) && norm(a.p[1]) === norm(b.p[1]));
+}
+
+/** 听音辨词的三个干扰项：先取形近词，不够时补拼写最接近的词（同首字母、长度差 ≤2、排除同族变形） */
+export function listenDistractors(index: WordIndex, word: Word): Word[] {
+  const hit = listenCache.get(word.w);
+  if (hit) return hit;
+  const w = word.w.toLowerCase();
+  const out: Word[] = [];
+  const seen = new Set([w]);
+  for (const c of confusables(index, word)) {
+    if (out.length >= 3) break;
+    if (samePron(word, c)) continue;
+    seen.add(c.w.toLowerCase());
+    out.push(c);
+  }
+  if (out.length < 3) {
+    const scored: [Word, number][] = [];
+    for (const c of index.list) {
+      const cw = c.w.toLowerCase();
+      if (seen.has(cw) || /[\s.]/.test(cw) || cw[0] !== w[0] || Math.abs(cw.length - w.length) > 2 || isInflection(w, cw) || samePron(word, c)) continue;
+      const d = editDistance(w, cw, 4);
+      if (d > 4) continue;
+      scored.push([c, d * 10 + Math.abs(cw.length - w.length) * 2 + (cw[1] === w[1] ? 0 : 3) + (c.c ? 0 : 1)]);
+    }
+    scored.sort((a, b) => a[1] - b[1] || a[0].w.localeCompare(b[0].w));
+    for (const [c] of scored) {
+      if (out.length >= 3) break;
+      seen.add(c.w.toLowerCase());
+      out.push(c);
+    }
+  }
+  // 极端情况（词库太小）：随便补
+  for (const c of index.list) {
+    if (out.length >= 3) break;
+    if (seen.has(c.w.toLowerCase()) || samePron(word, c)) continue;
+    seen.add(c.w.toLowerCase());
+    out.push(c);
+  }
+  listenCache.set(word.w, out);
+  return out;
+}
+
+/** 听音辨词四选一：正确答案 + 三个拼写相近的词，按种子打乱 */
+export function listenOptions(index: WordIndex, word: Word, seed: number): Word[] {
+  return shuffle([word, ...listenDistractors(index, word)], (hashStr(word.w + "ls") ^ seed) >>> 0);
+}
+
+// ---------------------------------------------------------------- v3 · 磁带模式播放列表
+
+export type TapeSource = "new" | "due" | "star" | "wrong" | "hard";
+export const TAPE_SOURCES: TapeSource[] = ["new", "due", "star", "wrong", "hard"];
+
+/** 今日新词：今天第一次学的词；今天还没学时，预习接下来要学的一天份新词 */
+export function todayNewWords(index: WordIndex, st: AppState, day: string): { words: string[]; preview: boolean } {
+  const learned = Object.keys(st.cards).filter((w) => st.cards[w].f === day && !st.cards[w].k && index.map.has(w));
+  if (learned.length) return { words: learned, preview: false };
+  return { words: newWordsLeft(index, st, day).slice(0, st.settings.daily), preview: true };
+}
+
+/** 磁带播放列表（只含词库里有的词） */
+export function tapeList(index: WordIndex, st: AppState, src: TapeSource, day: string): string[] {
+  let list: string[];
+  if (src === "new") list = todayNewWords(index, st, day).words;
+  else if (src === "due") list = dueWords(st.cards, day);
+  else list = notebookWords(st, src);
+  return list.filter((w) => index.map.has(w));
+}
+
+/** 速刷：到期复习，全部用「一屏一词」的回想卡 */
+export function speedGroup(index: WordIndex, st: AppState, day: string): SessionItem[] {
+  return reviewGroup(index, st, day).map((it) => ({ ...it, mode: "recall" as const }));
 }
