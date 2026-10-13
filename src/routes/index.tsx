@@ -556,7 +556,7 @@ function Today() {
             <div className="grid grid-cols-2 gap-2" data-testid="snack">
               <SnackTile to="/tape" testid="tape-entry" icon={<Headphones className="size-[18px]" />} tone="bg-brand-soft text-primary" title="磁带模式" sub="通勤免手听" />
               {/* 11.2 · 没有到期复习时不放一个点了没用的速刷入口 */}
-              {sum.due > 0 && (
+              {sum.due > 0 && !overFirst && (
                 <SnackTile
                   to="/study"
                   search={{ mode: "speed" }}
@@ -576,7 +576,7 @@ function Today() {
                 type="button"
                 onClick={() => setSheet(true)}
                 data-testid="wod"
-                className={cn("flex min-w-0 items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3 text-left transition hover:border-primary/40", (3 + (sum.due > 0 ? 1 : 0) + (quizOpen && advice?.kind !== "quiz" ? 1 : 0)) % 2 === 0 && "col-span-2")}
+                className={cn("flex min-w-0 items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3 text-left transition hover:border-primary/40", (3 + (sum.due > 0 && !overFirst ? 1 : 0) + (quizOpen && advice?.kind !== "quiz" ? 1 : 0)) % 2 === 0 && "col-span-2")}
               >
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-[11px] font-bold text-muted-foreground">一词</span>
                 <span className="min-w-0 flex-1">
@@ -1188,7 +1188,7 @@ function ExamCard({
               ? `冲刺：考前还能学 ${reach} 个，剩 ${plan.newLeft - reach} 个来不及`
               : sum.finish > exam
               ? quiet
-                ? `每天 ${daily} 个，${fmtDate(sum.finish, true)} 学完`
+                ? `${quiet === "pace" ? "按你选的节奏，" : ""}每天 ${daily} 个，${fmtDate(sum.finish, true)} 学完`
                 : `按现在的节奏 ${fmtDate(sum.finish, true)} 学完，赶不上考试`
               : `按计划 ${fmtDate(sum.finish, true)} 学完 · 考前 ${spare} 天`}
         </p>
