@@ -4,17 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { speak } from "@/lib/audio";
 import { now, today } from "@/lib/clock";
-import { optionMeaning, shortMeaning, type Word, type WordIndex } from "@/lib/data";
+import { shortMeaning, type Word, type WordIndex } from "@/lib/data";
+import { MODE_HINT, MODE_LABEL, choicesFor, clozeFor, coreGroupWords, type Choice } from "@/lib/exam";
 import {
   aheadGroup,
-  listenOptions,
   nextNewGroup,
   notebookGroup,
   phraseFor,
-  phraseOptions,
   practiceGroup,
-  quizOptions,
   reviewGroup,
+  reviewItems,
   speedGroup,
   summarize,
   type Notebook,
@@ -48,7 +47,7 @@ import { ShareSheet } from "./share-sheet";
 import { useShareInfo } from "@/lib/use-share";
 import { useWakeLock } from "@/lib/wakelock";
 
-export type StudyMode = "new" | "review" | "ahead" | "practice" | "speed" | Notebook;
+export type StudyMode = "new" | "review" | "ahead" | "practice" | "speed" | "core" | Notebook;
 
 const MODE_TITLE: Record<StudyMode, string> = {
   new: "学新词",
@@ -56,6 +55,7 @@ const MODE_TITLE: Record<StudyMode, string> = {
   ahead: "提前复习",
   practice: "错词再练",
   speed: "速刷",
+  core: "核心未掌握",
   star: "生词本复习",
   wrong: "错词本复习",
   mastered: "熟词回顾",
@@ -70,6 +70,10 @@ function buildItems(index: WordIndex, mode: StudyMode, words: string[]): Session
   if (mode === "ahead") return aheadGroup(index, st, day);
   if (mode === "practice") return practiceGroup(index, st, words, day);
   if (mode === "speed") return speedGroup(index, st, day);
+  if (mode === "core") {
+    const g = coreGroupWords(index, st, day);
+    return g.kind === "new" ? g.words.map((w) => ({ w, kind: "new" as const, mode: "recall" as const })) : reviewItems(index, st, g.words, day);
+  }
   return notebookGroup(index, st, mode, day);
 }
 
@@ -124,14 +128,7 @@ export function Study({ index, mode, words = [] }: { index: WordIndex; mode: Stu
 
   const seed = (hashStr(today()) ^ turn) >>> 0;
   const options = useMemo(
-    () =>
-      word && isQuiz
-        ? shownItem?.mode === "phrase"
-          ? phraseOptions(index, word, seed)
-          : shownItem?.mode === "listen"
-            ? listenOptions(index, word, seed)
-            : quizOptions(index, word, seed)
-        : [],
+    () => (word && isQuiz && shownItem ? choicesFor(index, word, shownItem.mode, seed) : []),
     // 选项只随当前题变化
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [word?.w, isQuiz, turn],
@@ -144,7 +141,7 @@ export function Study({ index, mode, words = [] }: { index: WordIndex; mode: Stu
     shownAt.current = now();
     setReveal(false);
     const m = shownItem.repeat ? "recall" : shownItem.mode;
-    if (m === "audio" || m === "listen" || (st.settings.autoplay && (m === "en2cn" || (m === "recall" && !cnFirst)))) speak(shownItem.w, accent);
+    if (m === "audio" || m === "listen" || (st.settings.autoplay && (m === "en2cn" || m === "poly" || m === "pos" || (m === "recall" && !cnFirst)))) speak(shownItem.w, accent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardKey, phase]);
 
@@ -189,13 +186,13 @@ export function Study({ index, mode, words = [] }: { index: WordIndex; mode: Stu
       if (!head || !isQuiz || phase !== "front" || !word) return;
       const opt = options[k];
       if (!opt) return;
-      const ok = opt.w === word.w;
+      const ok = opt.correct;
       const r = doAnswer(ok ? "know" : "forget", "quiz", k);
       if (!r) return;
       if (!ok) setShake((x) => x + 1);
       setLast({ item: r.it, rating: ok ? "know" : "forget", pick: k, via: "quiz" });
       setPhase("back");
-      if (shownItem?.mode === "cn2en" || shownItem?.mode === "audio" || shownItem?.mode === "listen") speak(word.w, accent);
+      if (shownItem?.mode === "cn2en" || shownItem?.mode === "audio" || shownItem?.mode === "listen" || shownItem?.mode === "cloze") speak(word.w, accent);
     },
     [head, isQuiz, phase, word, options, doAnswer, shownItem, accent],
   );
@@ -409,7 +406,7 @@ export function Study({ index, mode, words = [] }: { index: WordIndex; mode: Stu
       <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-[12px] font-medium text-muted-foreground">
         <span>{MODE_TITLE[mode]}</span>
         {relearn && <span className="rounded-full bg-forget-soft px-2 py-px text-forget" data-testid="relearn-tag">再来一遍</span>}
-        {isQuiz && <span className="rounded-full bg-secondary px-2 py-px">{QUIZ_LABEL[shownItem.mode]}</span>}
+        {isQuiz && <span className="rounded-full bg-secondary px-2 py-px">{MODE_LABEL[shownItem.mode]}</span>}
         {word.c && <span className="rounded-full bg-brand-soft px-2 py-px text-primary">核心</span>}
         {leech && (
           <span className="rounded-full bg-forget px-2 py-px text-white" data-testid="leech-tag">
@@ -509,7 +506,6 @@ export function Study({ index, mode, words = [] }: { index: WordIndex; mode: Stu
   );
 }
 
-const QUIZ_LABEL: Record<string, string> = { en2cn: "英选中", cn2en: "中选英", audio: "听音选义", recall: "回想", phrase: "短语选义", listen: "听音辨词" };
 
 /** 速刷按钮：左不认识、右认识，下面带下次复习时间 */
 function SpeedBtn({ tone, label, hint, onClick }: { tone: "know" | "forget"; label: string; hint?: string; onClick: () => void }) {
@@ -922,7 +918,7 @@ function QuizView({
   word: Word;
   mode: SessionItem["mode"];
   accent: "us" | "uk";
-  options: Word[];
+  options: Choice[];
   answered: Last | null;
   onPick: (k: number) => void;
   onGiveUp: () => void;
@@ -932,117 +928,10 @@ function QuizView({
   seed: number;
 }) {
   const done = !!answered;
-  const correctIdx = options.findIndex((o) => o.w === word.w);
-  const revealWord = mode === "en2cn" || done;
-  const wordOpts = mode === "cn2en" || mode === "listen";
-  const phrase = mode === "phrase" ? phraseFor(word, seed) : undefined;
-  const optText = (o: Word) => (mode === "cn2en" || mode === "listen" ? o.w : mode === "phrase" ? (phraseFor(o, seed)?.[1] ?? optionMeaning(o)) : optionMeaning(o));
   return (
     <div className="flex min-h-0 flex-1 flex-col card-in" data-testid="quiz" data-quiz-mode={mode}>
-      <div className="relative flex min-h-[150px] flex-1 flex-col items-center justify-center overflow-y-auto rounded-[32px] border border-border/70 bg-card px-6 py-6 text-center shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]">
-        {mode === "cn2en" && !done && (
-          <div className="w-full max-w-md text-left">
-            <Meanings word={word} size="lg" />
-          </div>
-        )}
-        {(mode === "audio" || mode === "listen") && !done && (
-          <button
-            type="button"
-            onClick={() => speak(word.w, accent)}
-            className="grid size-24 place-items-center rounded-full bg-brand-soft text-primary transition active:scale-95"
-            aria-label="再听一遍"
-            data-testid="quiz-audio"
-          >
-            <Volume2 className="size-10" />
-          </button>
-        )}
-        {mode === "phrase" && phrase && (
-          <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3 text-left" : "")} data-testid="quiz-phrase">
-            <div className={cn("font-display font-bold leading-snug tracking-tight", done ? "text-[16px]" : "text-[30px]")}>
-              <PhraseText phrase={phrase[0]} word={word.w} />
-            </div>
-            {done ? <div className="mt-0.5 text-[14px] text-muted-foreground">{phrase[1]}</div> : null}
-          </div>
-        )}
-        {revealWord && (
-          <>
-            <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", done ? "text-[38px]" : wordSize(word.w))} data-testid="quiz-word">
-              {word.w}
-            </h2>
-            <div className="mt-2 flex items-center gap-2 text-[16px] text-muted-foreground">
-              <Phonetic word={word} accent={accent} />
-              <button type="button" aria-label="播放发音" onClick={() => speak(word.w, accent)} className="grid size-9 place-items-center rounded-full bg-brand-soft text-primary">
-                <Volume2 className="size-[18px]" />
-              </button>
-            </div>
-          </>
-        )}
-        {done && (
-          <div className="mt-4 w-full max-w-md text-left">
-            <Meanings word={word} />
-          </div>
-        )}
-        {done && word.ph?.length ? (
-          <div className="mt-4 w-full max-w-md text-left">
-            <Phrases word={word} max={3} />
-          </div>
-        ) : null}
-        {!done && (
-          <p className="mt-5 text-[13px] text-muted-foreground">
-            {mode === "cn2en"
-              ? "选出对应的英文"
-              : mode === "audio"
-                ? "听发音，选出意思"
-                : mode === "listen"
-                  ? "听发音，选出你听到的单词"
-                  : mode === "phrase"
-                    ? "选出这个短语的意思"
-                    : "选出正确的意思"}
-          </p>
-        )}
-      </div>
-
-      <div key={shake} className={cn("mt-3 grid shrink-0 gap-2", done && answered?.rating === "forget" && answered.pick !== -1 && "shake")} data-testid="quiz-options">
-        {options.map((o, k) => {
-          const isCorrect = k === correctIdx;
-          const picked = answered?.pick === k;
-          return (
-            <button
-              key={o.w}
-              type="button"
-              disabled={done}
-              onClick={() => onPick(k)}
-              data-testid={`opt-${k + 1}`}
-              data-correct={isCorrect ? 1 : 0}
-              className={cn(
-                "flex min-h-[52px] items-center gap-3 rounded-2xl border px-4 py-2.5 text-left text-[15px] transition active:scale-[0.99]",
-                !done && "border-border/80 bg-card hover:border-primary/50",
-                done && isCorrect && "border-know bg-know-soft text-foreground",
-                done && picked && !isCorrect && "border-forget bg-forget-soft",
-                done && !isCorrect && !picked && "border-border/60 bg-card opacity-55",
-              )}
-            >
-              <span
-                className={cn(
-                  "grid size-6 shrink-0 place-items-center rounded-lg bg-secondary text-[12px] font-bold text-muted-foreground",
-                  done && isCorrect && "bg-know text-white",
-                  done && picked && !isCorrect && "bg-forget text-white",
-                )}
-              >
-                {done && isCorrect ? <Check className="size-3.5" /> : done && picked ? <X className="size-3.5" /> : k + 1}
-              </span>
-              <span className={cn("min-w-0", wordOpts ? "font-display text-[17px] font-semibold" : "line-clamp-2")}>
-                {optText(o)}
-                {mode === "listen" && done && (
-                  <span className="mt-0.5 block truncate font-sans text-[12px] font-normal text-muted-foreground" data-testid="listen-meaning">
-                    {shortMeaning(o, 1)}
-                  </span>
-                )}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <QuizPrompt word={word} mode={mode} accent={accent} seed={seed} done={done} />
+      <ChoiceList choices={options} done={done} pick={answered?.pick} wrong={done && answered?.rating === "forget" && answered.pick !== -1} shakeKey={shake} onPick={onPick} subTestId={mode === "listen" ? "listen-meaning" : undefined} />
       <div className="shrink-0 pb-4 pt-3">
         {done ? (
           <div className="flex gap-2.5">
@@ -1072,6 +961,158 @@ function QuizView({
   );
 }
 
+/** 题干：复习与模拟小测共用 */
+export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: Word; mode: SessionItem["mode"]; accent: "us" | "uk"; seed: number; done: boolean; compact?: boolean }) {
+  const revealWord = mode === "en2cn" || mode === "poly" || mode === "pos" || done;
+  const phrase = mode === "phrase" ? phraseFor(word, seed) : undefined;
+  const cloze = mode === "cloze" ? clozeFor(word, seed) : null;
+  return (
+    <div
+      className={cn(
+        "relative flex flex-1 flex-col items-center justify-center overflow-y-auto rounded-[32px] border border-border/70 bg-card px-6 py-6 text-center shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]",
+        compact ? "min-h-[120px]" : "min-h-[150px]",
+      )}
+      data-testid="quiz-prompt"
+    >
+      {mode === "cn2en" && !done && (
+        <div className="w-full max-w-md text-left">
+          <Meanings word={word} size="lg" />
+        </div>
+      )}
+      {(mode === "audio" || mode === "listen") && !done && (
+        <button
+          type="button"
+          onClick={() => speak(word.w, accent)}
+          className="grid size-24 place-items-center rounded-full bg-brand-soft text-primary transition active:scale-95"
+          aria-label="再听一遍"
+          data-testid="quiz-audio"
+        >
+          <Volume2 className="size-10" />
+        </button>
+      )}
+      {mode === "phrase" && phrase && (
+        <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3 text-left" : "")} data-testid="quiz-phrase">
+          <div className={cn("font-display font-bold leading-snug tracking-tight", done ? "text-[16px]" : "text-[30px]")}>
+            <PhraseText phrase={phrase[0]} word={word.w} />
+          </div>
+          {done ? <div className="mt-0.5 text-[14px] text-muted-foreground">{phrase[1]}</div> : null}
+        </div>
+      )}
+      {cloze && (
+        <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3 text-left" : "")} data-testid="quiz-cloze">
+          <div className={cn("font-display font-bold leading-snug tracking-tight", done ? "text-[16px]" : "text-[30px]")}>
+            {done ? <PhraseText phrase={cloze.phrase} word={word.w} /> : <ClozeText text={cloze.blanked} />}
+          </div>
+          <div className={cn("text-muted-foreground", done ? "mt-0.5 text-[14px]" : "mt-2 text-[15px]")} data-testid="cloze-cn">
+            {cloze.cn}
+          </div>
+        </div>
+      )}
+      {revealWord && (
+        <>
+          <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", done ? "text-[38px]" : wordSize(word.w))} data-testid="quiz-word">
+            {word.w}
+          </h2>
+          <div className="mt-2 flex items-center gap-2 text-[16px] text-muted-foreground">
+            <Phonetic word={word} accent={accent} />
+            <button type="button" aria-label="播放发音" onClick={() => speak(word.w, accent)} className="grid size-9 place-items-center rounded-full bg-brand-soft text-primary">
+              <Volume2 className="size-[18px]" />
+            </button>
+          </div>
+        </>
+      )}
+      {done && (
+        <div className="mt-4 w-full max-w-md text-left">
+          <Meanings word={word} />
+        </div>
+      )}
+      {done && !compact && word.ph?.length && mode !== "cloze" ? (
+        <div className="mt-4 w-full max-w-md text-left">
+          <Phrases word={word} max={3} />
+        </div>
+      ) : null}
+      {!done && <p className="mt-5 text-[13px] text-muted-foreground" data-testid="quiz-hint">{MODE_HINT[mode] ?? "选出正确的意思"}</p>}
+    </div>
+  );
+}
+
+/** 四个选项：答完标出对错（复习与模拟小测共用） */
+export function ChoiceList({
+  choices,
+  done,
+  pick,
+  wrong,
+  shakeKey,
+  onPick,
+  subTestId = "choice-sub",
+}: {
+  subTestId?: string;
+  choices: Choice[];
+  done: boolean;
+  pick?: number;
+  wrong?: boolean;
+  shakeKey?: number;
+  onPick: (k: number) => void;
+}) {
+  return (
+    <div key={shakeKey} className={cn("mt-3 grid shrink-0 gap-2", wrong && "shake")} data-testid="quiz-options">
+      {choices.map((o, k) => {
+        const isCorrect = o.correct;
+        const picked = pick === k;
+        return (
+          <button
+            key={`${k}-${o.text}`}
+            type="button"
+            disabled={done}
+            onClick={() => onPick(k)}
+            data-testid={`opt-${k + 1}`}
+            data-correct={isCorrect ? 1 : 0}
+            className={cn(
+              "flex min-h-[52px] items-center gap-3 rounded-2xl border px-4 py-2.5 text-left text-[15px] transition active:scale-[0.99]",
+              !done && "border-border/80 bg-card hover:border-primary/50",
+              done && isCorrect && "border-know bg-know-soft text-foreground",
+              done && picked && !isCorrect && "border-forget bg-forget-soft",
+              done && !isCorrect && !picked && "border-border/60 bg-card opacity-55",
+            )}
+          >
+            <span
+              className={cn(
+                "grid size-6 shrink-0 place-items-center rounded-lg bg-secondary text-[12px] font-bold text-muted-foreground",
+                done && isCorrect && "bg-know text-white",
+                done && picked && !isCorrect && "bg-forget text-white",
+              )}
+            >
+              {done && isCorrect ? <Check className="size-3.5" /> : done && picked ? <X className="size-3.5" /> : k + 1}
+            </span>
+            <span className={cn("min-w-0", o.en ? "font-display text-[17px] font-semibold" : "line-clamp-2")}>
+              {o.text}
+              {done && o.sub && (
+                <span className="mt-0.5 block truncate font-sans text-[12px] font-normal text-muted-foreground" data-testid={subTestId}>
+                  {o.sub}
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ClozeText({ text }: { text: string }) {
+  const parts = text.split("____");
+  return (
+    <>
+      {parts.map((p, k) => (
+        <span key={k}>
+          {p}
+          {k < parts.length - 1 && <span className="mx-1 inline-block w-20 border-b-[3px] border-primary align-baseline" data-testid="cloze-blank" />}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function PhraseText({ phrase, word }: { phrase: string; word: string }) {
   const i = phrase.toLowerCase().indexOf(word.toLowerCase());
   if (i < 0) return <>{phrase}</>;
@@ -1091,6 +1132,7 @@ function Empty({ mode }: { mode: StudyMode }) {
     ahead: ["明天没有要复习的词", "今天的任务已经全部完成，休息一下吧。"],
     practice: ["没有需要再练的词", "这一组全部一次答对，太强了。"],
     speed: ["没有要速刷的词", "到期复习的词会出现在这里，先去学点新词吧。"],
+    core: ["核心词全部掌握了", "2607 个核心词都已掌握，四级稳了。"],
     hard: ["没有顽固词", "遗忘 3 次以上的词会出现在这里。"],
     star: ["生词本是空的", "学习时按 S 或点星标收藏生词。"],
     wrong: ["错词本是空的", "选择题答错或点「不认识」的词会自动进来。"],

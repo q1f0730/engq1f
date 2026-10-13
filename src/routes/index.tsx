@@ -4,6 +4,9 @@ import {
   CalendarCheck,
   Check,
   ChevronRight,
+  ClipboardCheck,
+  GraduationCap,
+  Target,
   FastForward,
   Flame,
   HardDriveDownload,
@@ -29,7 +32,8 @@ import { now, today } from "@/lib/clock";
 import { shortMeaning, useWords } from "@/lib/data";
 import { notebookWords, summarize, wordOfDay } from "@/lib/plan";
 import { addDays, forecast, streak } from "@/lib/srs";
-import { checkIn, snoozeBackup, useApp } from "@/lib/store";
+import { checkIn, setSettings, snoozeBackup, useApp } from "@/lib/store";
+import { coreUnmastered, effectiveExam, quizDoneOn, sprintPlan, upcomingExams } from "@/lib/exam";
 import { backupDue } from "@/lib/persist";
 import { useShareInfo } from "@/lib/use-share";
 import { cn } from "@/lib/utils";
@@ -71,6 +75,12 @@ function Today() {
     hard: notebookWords(st, "hard").length,
   };
   const backupDays = backupDue(st, day);
+  const exam = effectiveExam(day, st.settings.examDate);
+  const official = upcomingExams(day, 3).find((e) => e.day === exam.day)?.official ?? false;
+  const plan = sprintPlan(day, exam.day, sum.newLeft);
+  const core = coreUnmastered(index, st);
+  const coreLeft = core.unlearned.length + core.learning.length;
+  const quizDone = quizDoneOn(st, day);
   const dateLine = `${fmtDate(day)} ${WEEK[new Date(day + "T12:00:00").getDay()]}`;
 
   const doCheckIn = () => {
@@ -157,6 +167,31 @@ function Today() {
               </Link>
             </div>
           </section>
+
+          <ExamCard
+            day={day}
+            exam={exam.day}
+            official={official}
+            custom={exam.custom}
+            plan={plan}
+            daily={st.settings.daily}
+            coreLeft={coreLeft}
+          />
+
+          {!quizDone && (
+            <Notice
+              testid="quiz-reminder"
+              icon={<ClipboardCheck className="size-5" />}
+              tone="bg-brand-soft text-primary"
+              title="今日小测"
+              sub="20 题混合题型 · 限时 5 分钟"
+              action={
+                <Link to="/quiz" data-testid="quiz-entry" className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-[13px] font-bold text-primary-foreground">
+                  开始
+                </Link>
+              }
+            />
+          )}
 
           {sum.dueList.length === 0 && sum.aheadCount > 0 && (
             <Notice
@@ -368,6 +403,99 @@ function Today() {
       <ShareSheet open={share} onOpenChange={setShare} info={info} />
       <WordSheet word={wod} open={sheet} onOpenChange={setSheet} />
     </div>
+  );
+}
+
+/** 备考冲刺：考试倒计时 + 冲刺计划 + 核心未掌握入口 */
+function ExamCard({
+  day,
+  exam,
+  official,
+  custom,
+  plan,
+  daily,
+  coreLeft,
+}: {
+  day: string;
+  exam: string;
+  official: boolean;
+  custom: boolean;
+  plan: ReturnType<typeof sprintPlan>;
+  daily: number;
+  coreLeft: number;
+}) {
+  const applied = plan.newLeft === 0 || daily >= plan.daily;
+  const wd = WEEK[new Date(exam + "T12:00:00").getDay()];
+  return (
+    <section className="rounded-3xl border border-border/70 bg-card p-4" data-testid="exam-card" data-days={plan.daysLeft}>
+      <div className="flex items-center gap-3.5">
+        <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-foreground px-3 py-2 text-background" data-testid="exam-days">
+          <span className="tnum font-display text-[28px] font-extrabold leading-none">{plan.daysLeft}</span>
+          <span className="mt-0.5 text-[11px] font-bold opacity-75">天</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 text-[15px] font-bold">
+            <GraduationCap className="size-4 text-primary" />
+            {plan.daysLeft === 0 ? "今天就是四级考试，加油！" : "距四级考试"}
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[12px] text-muted-foreground" data-testid="exam-date">
+            {fmtDate(exam, true)} {wd}
+            <span className={cn("rounded px-1 text-[10px] font-bold", official ? "bg-know-soft text-know" : "bg-secondary")}>
+              {custom ? "自定" : official ? "官方" : "预估"}
+            </span>
+          </div>
+        </div>
+        <Link to="/me" aria-label="设置考试日期" className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+          <ChevronRight className="size-5" />
+        </Link>
+      </div>
+
+      <div className="mt-3 flex items-center gap-3 rounded-2xl bg-secondary/70 p-3" data-testid="sprint">
+        <Target className="size-5 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1 leading-snug">
+          {plan.newLeft === 0 ? (
+            <div className="text-[14px] font-bold">新词已学完，专心复习</div>
+          ) : (
+            <>
+              <div className="text-[14px] font-bold" data-testid="sprint-daily" data-daily={plan.daily}>
+                冲刺计划：每天 {plan.daily} 词
+              </div>
+              <div className="text-[12px] text-muted-foreground" data-testid="sprint-sub">
+                {plan.tooMany
+                  ? `每天要 ${plan.need} 词才学得完，建议改学核心词`
+                  : `剩 ${plan.newLeft} 词 · ${fmtDate(plan.finish)}学完${plan.reserve ? ` · 留 ${plan.reserve} 天复习` : ""}`}
+              </div>
+            </>
+          )}
+        </div>
+        {plan.newLeft > 0 &&
+          (applied ? (
+            <span className="flex shrink-0 items-center gap-1 text-[12px] font-bold text-know" data-testid="sprint-ok">
+              <Check className="size-4" strokeWidth={3} /> 已达标
+            </span>
+          ) : (
+            <button
+              type="button"
+              data-testid="sprint-apply"
+              onClick={() => {
+                setSettings({ daily: plan.daily });
+                toast.success(`每日新词改为 ${plan.daily}`);
+              }}
+              className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-[13px] font-bold text-primary-foreground"
+            >
+              应用
+            </button>
+          ))}
+      </div>
+
+      {coreLeft > 0 && (
+        <Link to="/words" search={{ tab: "core" }} data-testid="core-entry" className="mt-2 flex items-center gap-2 rounded-2xl px-1 pt-1 text-[13px] text-muted-foreground hover:text-foreground">
+          <span className="size-1.5 rounded-full bg-primary" />
+          核心词还有 <b className="tnum text-foreground">{coreLeft}</b> 个没掌握
+          <ChevronRight className="ml-auto size-4" />
+        </Link>
+      )}
+    </section>
   );
 }
 

@@ -123,8 +123,14 @@ const hasListen = (index: WordIndex, w: string) => {
   return !!word && confusables(index, word).length > 0;
 };
 
+/** v4 新题型的资格由 exam.ts 注入（避免循环依赖） */
+let v4Modes: (index: WordIndex, w: string) => SessionItem["mode"][] = () => [];
+export function registerV4Modes(fn: typeof v4Modes) {
+  v4Modes = fn;
+}
+
 function modeFor(index: WordIndex, st: AppState, w: string, day: string): SessionItem["mode"] {
-  return pickMode(w, day, st.settings.cnFirst, hasPhrase(index, w), hasListen(index, w));
+  return pickMode(w, day, st.settings.cnFirst, hasPhrase(index, w), hasListen(index, w), v4Modes(index, w));
 }
 
 export function reviewGroup(index: WordIndex, st: AppState, day: string): SessionItem[] {
@@ -132,6 +138,11 @@ export function reviewGroup(index: WordIndex, st: AppState, day: string): Sessio
   return list
     .slice(0, Math.min(REVIEW_GROUP, cappedDue(st, day, list.length)))
     .map((w) => ({ w, kind: "review" as const, mode: modeFor(index, st, w, day) }));
+}
+
+/** 任意一组词按复习题型出题（核心未掌握等） */
+export function reviewItems(index: WordIndex, st: AppState, words: string[], day: string): SessionItem[] {
+  return words.filter((w) => index.map.has(w)).map((w) => ({ w, kind: "review" as const, mode: modeFor(index, st, w, day) }));
 }
 
 /** 明天到期的词（提前复习用），间隔短的优先 */

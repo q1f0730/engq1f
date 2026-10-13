@@ -281,7 +281,7 @@ export function finishDate(today: string, remaining: number, perDay: number): st
 
 // ---------------------------------------------------------------- session (group study)
 
-export type QuizMode = "recall" | "en2cn" | "cn2en" | "audio" | "phrase" | "listen";
+export type QuizMode = "recall" | "en2cn" | "cn2en" | "audio" | "phrase" | "listen" | "poly" | "pos" | "cloze";
 
 export interface SessionItem {
   w: string;
@@ -448,10 +448,16 @@ export function hashStr(s: string): number {
 }
 
 /** 复习题型：按词+日期稳定分配；有短语的词多一种「短语选义」，有形近词的词多一种「听音辨词」 */
-export function pickMode(w: string, today: string, cnFirst = false, hasPhrase = false, hasListen = false): QuizMode {
+export function pickMode(w: string, today: string, cnFirst = false, hasPhrase = false, hasListen = false, v4: QuizMode[] = []): QuizMode {
   const modes: QuizMode[] = ["en2cn", "cn2en", "audio", "recall"];
   if (hasPhrase) modes.push("phrase");
   if (hasListen) modes.push("listen");
   const m = modes[hashStr(w + today) % modes.length];
+  // v4：落在「回想」的词有一半换成一词多义 / 词性判断 / 短语挖空（只给能出这种题的词）
+  if (m === "recall" && v4.length) {
+    // FNV 的最低位只取决于字符奇偶，取高位
+    const h = hashStr(w + today + "v4");
+    if ((h >>> 16) & 1) return v4[(h >>> 8) % v4.length];
+  }
   return cnFirst && m === "recall" ? "cn2en" : m;
 }

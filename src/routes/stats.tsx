@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Clock3, Flame, Repeat2, Sparkles, Target } from "lucide-react";
-import { Bars, Curve, Heatmap } from "@/components/app/charts";
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { ClipboardCheck, Clock3, Flame, Repeat2, Sparkles, Target } from "lucide-react";
+import { Bars, Curve, Heatmap, ScoreLine } from "@/components/app/charts";
+import { fmtClock, quizStats, scoreOf } from "@/lib/exam";
 import { PageHeader, Panel, PanelTitle, Spinner } from "@/components/app/shell";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
@@ -83,11 +84,63 @@ function StatsPage() {
           <Heatmap logs={st.log} checkins={st.checkins} today={day} />
         </Panel>
 
+        <QuizPanel quizzes={st.quizzes ?? []} />
+
         <Panel className="md:col-span-2">
           <PanelTitle right={<span className="text-[12px] text-muted-foreground">累计用时 {fmtMinutes(all.ms)}</span>}>30 天学习曲线</PanelTitle>
           <Curve logs={st.log} firstDays={firstDays} today={day} />
         </Panel>
       </div>
+    </div>
+  );
+}
+
+function QuizPanel({ quizzes }: { quizzes: import("@/lib/exam").QuizRecord[] }) {
+  const qs = quizStats(quizzes);
+  const recent = quizzes.slice(-20);
+  const last = quizzes[quizzes.length - 1];
+  return (
+    <Panel className="md:col-span-2" data-testid="quiz-history">
+      <PanelTitle
+        right={
+          <Link to="/quiz" className="flex items-center gap-1 rounded-full bg-brand-soft px-3 py-1 text-[12px] font-bold text-primary" data-testid="stats-quiz-start">
+            <ClipboardCheck className="size-3.5" /> 做一套
+          </Link>
+        }
+      >
+        模拟小测成绩
+      </PanelTitle>
+      {qs.count === 0 ? (
+        <div className="rounded-2xl bg-secondary/60 px-4 py-6 text-center text-[13px] text-muted-foreground" data-testid="quiz-history-empty">
+          还没做过模拟小测。20 题 5 分钟，做完这里会出现成绩曲线。
+        </div>
+      ) : (
+        <>
+          <div className="mb-3 grid grid-cols-4 gap-2 text-center">
+            <QStat label="最近" value={qs.last} testid="q-last" />
+            <QStat label="平均" value={qs.avg} testid="q-avg" />
+            <QStat label="最高" value={qs.best} testid="q-best" />
+            <QStat label="次数" value={qs.count} unit="次" testid="q-count" />
+          </div>
+          <ScoreLine testid="score-line" scores={recent.map((q) => scoreOf(q.ok, q.n))} labels={recent.map((q) => q.at.slice(5).replace("-", "/"))} />
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            最近一次 {last.ok}/{last.n} 题 · 用时 {fmtClock(last.ms)}
+            {qs.count > 1 ? ` · 比上次 ${qs.trend >= 0 ? "+" : ""}${qs.trend} 分` : ""}。虚线是 60 分。
+          </p>
+        </>
+      )}
+    </Panel>
+  );
+}
+
+function QStat({ label, value, unit, testid }: { label: string; value: number; unit?: string; testid?: string }) {
+  return (
+    <div className="rounded-2xl bg-secondary/70 py-2.5" data-testid={testid} data-value={value}>
+      <div className="tnum text-[20px] font-extrabold">
+        {value}
+        {unit && <span className="ml-0.5 text-[12px] font-semibold text-muted-foreground">{unit}</span>}
+      </div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
     </div>
   );
 }

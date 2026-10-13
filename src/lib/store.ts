@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { kill, unkill, type Card, type DayLog } from "./srs";
 import { today } from "./clock";
+import type { QuizRecord } from "./exam";
 
 export type Book = "all" | "core";
 export type Order = "core" | "alpha" | "random";
@@ -24,6 +25,8 @@ export interface Settings {
   tapeRepeat: number;
   /** 学习页与磁带模式保持屏幕常亮 */
   wakeLock: boolean;
+  /** 四级考试日期 YYYY-MM-DD；空 = 自动取下一场 */
+  examDate: string;
 }
 
 export interface AppState {
@@ -42,6 +45,8 @@ export interface AppState {
   lastBackup?: string;
   /** 备份提醒稍后再说：这天之前不提醒 */
   backupSnooze?: string;
+  /** 模拟小测成绩（旧 → 新） */
+  quizzes: QuizRecord[];
 }
 
 export const DAILY_OPTIONS = [10, 20, 30, 50, 80, 100];
@@ -66,6 +71,7 @@ export const defaultSettings = (): Settings => ({
   rate: 1,
   tapeRepeat: 1,
   wakeLock: true,
+  examDate: "",
 });
 
 export function initialState(): AppState {
@@ -79,6 +85,7 @@ export function initialState(): AppState {
     log: {},
     checkins: [],
     bury: {},
+    quizzes: [],
   };
 }
 
@@ -90,6 +97,7 @@ export function cleanSettings(s: Settings): Settings {
     rate: RATE_OPTIONS.includes(s.rate) ? s.rate : d.rate,
     tapeRepeat: REPEAT_OPTIONS.includes(s.tapeRepeat) ? s.tapeRepeat : d.tapeRepeat,
     wakeLock: typeof s.wakeLock === "boolean" ? s.wakeLock : d.wakeLock,
+    examDate: typeof s.examDate === "string" && (s.examDate === "" || /^\d{4}-\d{2}-\d{2}$/.test(s.examDate)) ? s.examDate : d.examDate,
   };
 }
 
@@ -109,6 +117,7 @@ export function normalize(raw: unknown): AppState {
     log: r.log ?? {},
     checkins: Array.isArray(r.checkins) ? r.checkins : [],
     bury: r.bury && typeof r.bury === "object" ? r.bury : {},
+    quizzes: Array.isArray(r.quizzes) ? r.quizzes.filter((q) => q && typeof q.ok === "number" && typeof q.n === "number" && typeof q.at === "string") : [],
     seed: typeof r.seed === "number" ? r.seed : base.seed,
   };
 }
@@ -240,6 +249,18 @@ export function snoozeBackup(until: string) {
 export function checkIn(day: string) {
   if (state.checkins.includes(day)) return;
   commit({ ...state, checkins: [...state.checkins, day].sort() });
+}
+
+/** 保存一次模拟小测成绩（最多保留 60 次） */
+export function saveQuiz(rec: QuizRecord) {
+  commit({ ...state, quizzes: [...(state.quizzes ?? []), rec].slice(-60) });
+}
+
+/** 批量加入生词本（小测错题） */
+export function starWords(words: string[]) {
+  const star = { ...state.star };
+  for (const w of words) star[w] = 1;
+  commit({ ...state, star });
 }
 
 export function saveTest(est: number) {

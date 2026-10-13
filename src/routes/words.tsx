@@ -1,16 +1,17 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Headphones, Play, Search, Star, X } from "lucide-react";
+import { GraduationCap, Headphones, Play, Search, Star, X } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Segmented, Spinner } from "@/components/app/shell";
 import { StateBadge, WordSheet } from "@/components/app/word-bits";
 import { shortMeaning, useWords, type Word } from "@/lib/data";
 import { notebookWords, orderedWords } from "@/lib/plan";
+import { coreUnmastered } from "@/lib/exam";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-type Tab = "all" | "star" | "wrong" | "hard" | "mastered";
+type Tab = "all" | "core" | "star" | "wrong" | "hard" | "mastered";
 type Filter = "any" | "new" | "learning" | "mastered";
-const TABS: Tab[] = ["all", "star", "wrong", "hard", "mastered"];
+const TABS: Tab[] = ["all", "core", "star", "wrong", "hard", "mastered"];
 
 export const Route = createFileRoute("/words")({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } => ({
@@ -38,6 +39,10 @@ function WordsPage() {
     if (!index) return [];
     let base: Word[];
     if (tab === "all") base = orderedWords(index, st.settings, st.seed).map((w) => index.map.get(w)!);
+    else if (tab === "core") {
+      const cu = coreUnmastered(index, st);
+      base = [...cu.unlearned, ...cu.learning].map((w) => index.map.get(w)!);
+    }
     else base = notebookWords(st, tab).map((w) => index.map.get(w)).filter(Boolean) as Word[];
     if (filter !== "any") {
       base = base.filter((w) => {
@@ -103,7 +108,9 @@ function WordsPage() {
     mastered: notebookWords(st, "mastered").length,
     hard: notebookWords(st, "hard").length,
   };
-  const nbMode = tab === "all" ? null : tab;
+  const cu = coreUnmastered(index, st);
+  const coreCount = cu.unlearned.length + cu.learning.length;
+  const nbMode = tab === "all" || tab === "core" ? null : tab;
 
   return (
     <div data-testid="words">
@@ -131,6 +138,7 @@ function WordsPage() {
           {(
             [
               ["all", "全部"],
+              ["core", `核心未掌握 ${coreCount}`],
               ["star", `生词本 ${counts.star}`],
               ["wrong", `错词本 ${counts.wrong}`],
               ["hard", `顽固词 ${counts.hard}`],
@@ -191,13 +199,42 @@ function WordsPage() {
         </div>
       )}
 
+      {tab === "core" && coreCount > 0 && (
+        <div className="mb-3 rounded-3xl border border-border/70 bg-card p-4" data-testid="core-panel">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
+              <GraduationCap className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[15px] font-bold">四级核心词还差 {coreCount} 个</div>
+              <div className="text-[12px] text-muted-foreground" data-testid="core-split">
+                未学 {cu.unlearned.length} · 学习中 {cu.learning.length} · 已掌握 {index.coreCount - coreCount}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-secondary">
+            <div className="h-full bg-know" style={{ width: `${((index.coreCount - coreCount) / index.coreCount) * 100}%` }} />
+            <div className="h-full bg-vague" style={{ width: `${(cu.learning.length / index.coreCount) * 100}%` }} />
+          </div>
+          <Link
+            to="/study"
+            search={{ mode: "core" }}
+            data-testid="core-study"
+            className="mt-3 flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20"
+          >
+            <Play className="size-4 fill-current" />
+            {cu.unlearned.length ? "学 10 个未学核心词" : "复习 10 个学习中的核心词"}
+          </Link>
+        </div>
+      )}
+
       <div className="text-[12px] text-muted-foreground" data-testid="result-count">
         {dq ? `找到 ${results.length} 个结果` : `${results.length} 个词`}
       </div>
 
       {results.length === 0 ? (
         <div className="py-16 text-center text-sm text-muted-foreground" data-testid="no-results">
-          {dq ? "没有找到匹配的词" : tab === "star" ? "生词本还是空的，学习时按 S 收藏" : tab === "wrong" ? "错词本是空的，继续保持" : tab === "hard" ? "没有顽固词：遗忘 3 次以上的词会出现在这里" : tab === "mastered" ? "还没有斩掉的词" : "没有词"}
+          {dq ? "没有找到匹配的词" : tab === "star" ? "生词本还是空的，学习时按 S 收藏" : tab === "wrong" ? "错词本是空的，继续保持" : tab === "hard" ? "没有顽固词：遗忘 3 次以上的词会出现在这里" : tab === "mastered" ? "还没有斩掉的词" : tab === "core" ? "核心词全部掌握了 🎉" : "没有词"}
         </div>
       ) : (
         <ul className="mt-2 divide-y divide-border/60 overflow-hidden rounded-3xl border border-border/70 bg-card" data-testid="word-list">

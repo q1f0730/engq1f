@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
+import { CalendarDays, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
@@ -25,6 +25,7 @@ import {
   type Theme,
 } from "@/lib/store";
 import { usePersist } from "@/lib/persist";
+import { daysUntil, effectiveExam, sprintPlan, upcomingExams } from "@/lib/exam";
 
 const APP_VERSION = __APP_VERSION__;
 import { cn } from "@/lib/utils";
@@ -42,6 +43,10 @@ function MePage() {
   const s = st.settings;
   const day = today();
   const sum = summarize(index, st, day);
+  const exams = upcomingExams(day, 2);
+  const exam = effectiveExam(day, s.examDate);
+  const examPick = !exam.custom || s.examDate === exams[0].day ? 0 : s.examDate === exams[1].day ? 1 : 2;
+  const plan = sprintPlan(day, exam.day, sum.newLeft);
 
   const onImport = async (f: File | undefined) => {
     if (!f) return;
@@ -120,6 +125,76 @@ function MePage() {
               还剩 {sum.newLeft} 个新词，{sum.newLeft ? `预计 ${fmtDate(sum.finish, true)} 学完` : "已经全部学过"}；今天要复习 {sum.due} 个
               {sum.deferred > 0 ? `，另有 ${sum.deferred} 个顺延` : ""}。复习上限只是把超出的词往后排，不会丢。
             </p>
+          </Panel>
+
+          <Panel data-testid="exam-settings">
+            <PanelTitle right={<span className="tnum text-[13px] font-bold text-primary" data-testid="me-exam-days">还有 {daysUntil(day, exam.day)} 天</span>}>四级考试</PanelTitle>
+            <div className="grid grid-cols-3 gap-1.5" data-testid="exam-options">
+              {exams.map((e, k) => (
+                <button
+                  key={e.day}
+                  type="button"
+                  data-testid={`exam-opt-${k}`}
+                  onClick={() => setSettings({ examDate: k === 0 ? "" : e.day })}
+                  className={cn(
+                    "rounded-xl px-1 py-2 text-center transition",
+                    examPick === k ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <span className="tnum block text-[14px] font-bold">{fmtDate(e.day)}</span>
+                  <span className="block text-[11px] opacity-80">{e.day.slice(0, 4)} · {e.official ? "官方" : "预估"}</span>
+                </button>
+              ))}
+              <label
+                className={cn(
+                  "relative flex cursor-pointer flex-col items-center justify-center rounded-xl px-1 py-2 text-center transition",
+                  examPick === 2 ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span className="flex items-center gap-1 text-[14px] font-bold">
+                  <CalendarDays className="size-3.5" />
+                  {examPick === 2 ? fmtDate(exam.day) : "自定义"}
+                </span>
+                <span className="block text-[11px] opacity-80">{examPick === 2 ? exam.day.slice(0, 4) : "选日期"}</span>
+                <input
+                  type="date"
+                  data-testid="exam-custom"
+                  min={day}
+                  value={examPick === 2 ? exam.day : ""}
+                  onChange={(e) => e.target.value && setSettings({ examDate: e.target.value })}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                  aria-label="自定义考试日期"
+                />
+              </label>
+            </div>
+            <div className="mt-3 flex items-center gap-3 rounded-2xl bg-secondary/70 p-3" data-testid="me-sprint">
+              <div className="min-w-0 flex-1 text-[13px] leading-snug text-muted-foreground">
+                {plan.newLeft === 0 ? (
+                  "新词已经全部学过，考前专心复习。"
+                ) : (
+                  <>
+                    <b className="text-[14px] text-foreground">冲刺计划：每天 {plan.daily} 词</b>
+                    <br />
+                    {plan.tooMany ? `需要每天 ${plan.need} 词，超过最高档，建议换核心词书` : `${fmtDate(plan.finish)}学完 ${plan.newLeft} 个新词${plan.reserve ? `，最后 ${plan.reserve} 天只复习` : ""}`}
+                  </>
+                )}
+              </div>
+              {plan.newLeft > 0 && (
+                <button
+                  type="button"
+                  data-testid="me-sprint-apply"
+                  disabled={s.daily === plan.daily}
+                  onClick={() => {
+                    setSettings({ daily: plan.daily });
+                    toast.success(`每日新词改为 ${plan.daily}`);
+                  }}
+                  className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-[13px] font-bold text-primary-foreground disabled:bg-know-soft disabled:text-know"
+                >
+                  {s.daily === plan.daily ? "已应用" : "一键应用"}
+                </button>
+              )}
+            </div>
+            <p className="mt-2 text-[12px] text-muted-foreground">未公布的场次按往年规律（6 月 / 12 月第二个周六）预估，以准考证为准。考试过后自动切到下一场。</p>
           </Panel>
 
           <Panel>

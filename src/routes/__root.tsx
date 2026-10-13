@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 import { requestPersist } from "@/lib/persist";
 
-const BARE = ["/study", "/welcome", "/test", "/tape"];
+const BARE = ["/study", "/welcome", "/test", "/tape", "/quiz"];
 
 function NotFound() {
   return <Navigate to="/" replace />;

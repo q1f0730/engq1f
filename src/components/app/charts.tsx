@@ -278,3 +278,61 @@ export function WeekStrip({ checkins, logs, today }: { checkins: string[]; logs:
     </div>
   );
 }
+
+/** 模拟小测成绩曲线：0~100 分，虚线 = 60 分 */
+export function ScoreLine({ scores, labels, testid }: { scores: number[]; labels: string[]; testid?: string }) {
+  const W = 600;
+  const H = 170;
+  const L = 30;
+  const R = 14;
+  const T = 26;
+  const B = 24;
+  const PAD = 14;
+  const n = scores.length;
+  const x = (k: number) => (n === 1 ? (L + W - R) / 2 : L + PAD + ((W - L - R - PAD * 2) * k) / (n - 1));
+  const y = (v: number) => T + (H - T - B) * (1 - v / 100);
+  const line = scores.map((v, k) => `${k ? "L" : "M"}${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const area = n > 1 ? `${line} L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z` : "";
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="小测成绩曲线" data-testid={testid} data-points={n}>
+      <defs>
+        <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="var(--primary)" stopOpacity="0.22" />
+          <stop offset="1" stopColor="var(--primary)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[0, 60, 100].map((g) => (
+        <g key={g}>
+          <line x1={L} x2={W - R} y1={y(g)} y2={y(g)} stroke="var(--border)" strokeDasharray={g === 60 ? "6 6" : undefined} />
+          <text x={L - 6} y={y(g) + 4} fontSize={12} textAnchor="end" fill="var(--muted-foreground)">
+            {g}
+          </text>
+        </g>
+      ))}
+      {area && <path d={area} fill="url(#scoreFill)" />}
+      {n > 1 && <path d={line} fill="none" stroke="var(--primary)" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />}
+      {scores.map((v, k) => (
+        <g key={k}>
+          <circle cx={x(k)} cy={y(v)} r={k === n - 1 ? 6 : 4} fill={k === n - 1 ? "var(--primary)" : "var(--card)"} stroke="var(--primary)" strokeWidth={2.5} data-score={v} />
+          {(k === n - 1 || n <= 8) && (
+            <text x={x(k)} y={y(v) - 11} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--foreground)">
+              {v}
+            </text>
+          )}
+        </g>
+      ))}
+      {n > 0 && (
+        <>
+          <text x={x(0)} y={H - 4} fontSize={12} textAnchor={n === 1 ? "middle" : "start"} fill="var(--muted-foreground)">
+            {labels[0]}
+          </text>
+          {n > 1 && (
+            <text x={x(n - 1)} y={H - 4} fontSize={12} textAnchor="end" fill="var(--muted-foreground)">
+              {labels[n - 1]}
+            </text>
+          )}
+        </>
+      )}
+    </svg>
+  );
+}
