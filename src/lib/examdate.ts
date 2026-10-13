@@ -74,7 +74,8 @@ export function passedExam(today: string, setting: string | undefined, done: str
   const y = Number(today.slice(0, 4));
   const cands = [examOf(y - 1, 12), examOf(y, 6), examOf(y, 12)].map((e) => e.day).filter((d) => d < today);
   const last = cands.sort().pop();
-  if (!last || last === done) return null;
+  // 11.5 · 确认过的是这一场或者更晚的一场（例如自定的 12-19）：不再冒出更早的官方场次
+  if (!last || (!!done && done >= last)) return null;
   // 11.3 · 考前半年里用过就算在备考这一场（不再要求「考前一个月在学」）；
   // 考后 30 天内问；更久才回来、考后一次都没打开过的也问（不静默换成下一场）
   if (!activeIn(addDays(last, -EXAM_PREP_DAYS), last)) return null;

@@ -4,6 +4,7 @@ import {
   BookMarked,
   CalendarCheck,
   Check,
+  ChevronLeft,
   ChevronRight,
   ClipboardCheck,
   Coffee,
@@ -38,7 +39,8 @@ import { speak } from "@/lib/audio";
 import { now, today } from "@/lib/clock";
 import { getWordsSync, shortMeaning, useWords, type WordIndex } from "@/lib/data";
 import { PAUSE_CAP, dayRuleOf, newWordsLeft, notebookWords, summarize, wordOfDay } from "@/lib/plan";
-import { addDays, diffDays, dueWords } from "@/lib/srs";
+import { addDays, diffDays, dueWords, finishDate } from "@/lib/srs";
+import { useBackClose } from "@/lib/back-stack";
 import {
   ackExam,
   checkIn,
@@ -49,8 +51,10 @@ import {
   dismissWeekReport,
   endPause,
   endRecover,
+  examActiveIn,
   getState,
   markGoalMet,
+  markPaceOk,
   patchYesterday,
   respreadRecover,
   setNewCut,
@@ -62,7 +66,7 @@ import {
   useApp,
   type AppState,
 } from "@/lib/store";
-import { MAKEUP_EVERY, MAKEUP_MAX, STREAK_WARN_MIN, WEEKDAY_CN, brokenStreak, canPatch, curStreak, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf, skipKind } from "@/lib/habit";
+import { MAKEUP_EVERY, MAKEUP_MAX, STREAK_WARN_MIN, WEEKDAY_CN, brokenStreak, canPatch, curStreak, examDayOn, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf, skipKind } from "@/lib/habit";
 import { celebrate } from "@/lib/celebrate";
 import { SPRINT_MAX, capReach, coreUnmastered, daysUntil, effectiveExam, examAdvice, nextExamDate, passedExam, quizDoneOn, recommendPlan, sprintPlan, upcomingExams, type ExamAdvice, type SprintPlan } from "@/lib/exam";
 import { QUIZ_MIN_LEARNED, RECOVER_RESTART_GAP, homeAdvice, lastActive, recoverGap, recoverPerDay, recoverTick, recoveryPlan, type Advice } from "@/lib/coach";
@@ -144,7 +148,9 @@ function Today() {
   const coreNewLeft = st.settings.book === "core" ? sum.newLeft : newWordsLeft(index, { ...st, settings: { ...st.settings, book: "core" } }, day).length;
   const examAdv = st.examPause ? null : examAdvice(day, exam.day, { book: st.settings.book, daily: st.settings.daily, newLeft: sum.newLeft, coreNewLeft });
   // 11.2 · 考完了：用户选了才换计划
-  const over = passedExam(day, st.settings.examDate, st.examDone, (from, to) => Object.entries(st.log).some(([d, l]) => d >= from && d <= to && l.n + l.r + l.a > 0) || st.checkins.some((d) => d >= from && d <= to));
+  // 11.5 · 自定的日期只有真的是考试日（按当时的快照，提前设好的）才问「考完了吗」；当天才改成今天的不算
+  const over0 = passedExam(day, st.settings.examDate, st.examDone, examActiveIn(st));
+  const over = over0 && over0.custom && !examDayOn(st, over0.day) ? null : over0;
   const examOver = over ? { ...over, next: nextExamDate(day) } : null;
   const paceQuiet = (!!st.paceOk && diffDays(st.paceOk, day) < PACE_QUIET_DAYS) || (!!st.sprintSnooze && st.sprintSnooze > day);
   const core = coreUnmastered(index, st);
@@ -204,6 +210,8 @@ function Today() {
   const urgent = advice && (advice.kind === "recover-offer" || advice.kind === "recovering" || advice.kind === "exam-over" || advice.kind === "makeup");
   // 11.4 · 考完了、还没选：首屏只有「考完了」这一件事（不排新词目标，也不报复习量）
   const overFirst = advice?.kind === "exam-over" ? advice : null;
+  // 「今日一词」单独占一行（前面的小卡是偶数个）时用宽版
+  const wodWide = (3 + (sum.due > 0 && !overFirst ? 1 : 0) + (quizOpen && advice?.kind !== "quiz" ? 1 : 0)) % 2 === 0;
   // 11.4 · 连续 3 天以上才说「要断了」
   const lateOn = late && s >= STREAK_WARN_MIN && !sum.ready && !sum.checked && advice?.kind !== "recover-offer" && advice?.kind !== "recovering";
   // 11.3 · 连续 0 天不显示补卡说明；昨天刚断（又没补卡可用）时说一句，不悄悄清零
@@ -576,11 +584,14 @@ function Today() {
                 type="button"
                 onClick={() => setSheet(true)}
                 data-testid="wod"
-                className={cn("flex min-w-0 items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3 text-left transition hover:border-primary/40", (3 + (sum.due > 0 && !overFirst ? 1 : 0) + (quizOpen && advice?.kind !== "quiz" ? 1 : 0)) % 2 === 0 && "col-span-2")}
+                data-wide={wodWide ? 1 : 0}
+                className={cn("flex min-w-0 items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3 text-left transition hover:border-primary/40", wodWide && "col-span-2", !wodWide && "gap-1.5 pr-2")}
               >
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-[11px] font-bold text-muted-foreground">一词</span>
+                {/* 11.5 · 半宽时不放「一词」方块，把位置让给单词（9 个字母的词也放得下） */}
+                {wodWide && <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-[11px] font-bold text-muted-foreground">一词</span>}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-display text-[15px] font-extrabold leading-tight">{wod.w}</span>
+                  {!wodWide && <span className="block text-[10px] font-bold leading-none text-muted-foreground">今日一词</span>}
+                  <span className={cn("block truncate font-display font-extrabold leading-tight", wodWide ? "text-[15px]" : "mt-1 text-[14px]")} data-testid="wod-word">{wod.w}</span>
                   <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">{shortMeaning(wod, 1)}</span>
                 </span>
                 <span
@@ -922,18 +933,47 @@ function nextPlanOf(index: WordIndex, st: AppState, day: string, next: string) {
       : rec.plan.tooMany
         ? `${bookName}每天 ${SPRINT_MAX} 个，考前能学 ${capReach(day, next, left)} / ${left} 个`
         : `${bookName}，每天 ${recDaily} 个，考前 ${rec.plan.spare} 天学完`;
-  return { rec, left, recDaily, bookName, recLine };
+  // 11.5 · 「保持现在的」：按现在的词书和每日新词什么时候学完；在考试之后就先说清楚
+  const curLeft = st.settings.book === "all" ? allLeft : coreLeft;
+  const keepFinish = curLeft > 0 ? finishDate(day, curLeft, st.settings.daily) : null;
+  const keepLate = !!keepFinish && keepFinish > next;
+  return { rec, left, recDaily, bookName, recLine, keepFinish, keepLate };
+}
+
+/** 11.5 · 计划这一步：保持现在的节奏要考后才学完时，先写明一句 */
+function KeepNote({ daily, finish, late, testid }: { daily: number; finish: string | null; late: boolean; testid: string }) {
+  if (!late || !finish) return null;
+  return (
+    <span className="mt-1 block text-[12px]" data-testid={testid}>
+      保持每天 {daily} 个：<span className="whitespace-nowrap">{fmtDate(finish, true)}</span> 学完，在考试之后
+    </span>
+  );
+}
+
+/** 11.5 · 计划这一步的「返回」：回到上一步（系统返回键同样只回上一步，不退出 app） */
+function StepBack({ onBack, testid }: { onBack: () => void; testid: string }) {
+  return (
+    <button type="button" data-testid={testid} onClick={onBack} aria-label="返回上一步" className="-ml-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+      <ChevronLeft className="size-5" />
+    </button>
+  );
 }
 
 function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advice, { kind: "exam-over" }>; index: WordIndex; st: AppState; day: string; streak: number }) {
   const [step, setStep] = useState<"ask" | "plan">("ask");
-  const { rec, left, recDaily, bookName, recLine } = nextPlanOf(index, st, day, advice.next);
+  const { rec, left, recDaily, bookName, recLine, keepFinish, keepLate } = nextPlanOf(index, st, day, advice.next);
+  // 11.5 · 系统返回：先回到「考完了」这一步，不退出 app
+  useBackClose(step === "plan", () => setStep("ask"));
   return (
     <section className="rounded-[32px] border border-primary/30 bg-card p-5 shadow-[0_24px_60px_-34px_rgba(200,60,30,0.55)]" data-testid="exam-over" data-exam={advice.exam} data-step={step}>
       <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
-          <GraduationCap className="size-5" />
-        </span>
+        {step === "plan" ? (
+          <StepBack onBack={() => setStep("ask")} testid="exam-plan-back" />
+        ) : (
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
+            <GraduationCap className="size-5" />
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <div className="text-[16px] font-extrabold leading-tight">{step === "ask" ? "四级考完了，辛苦了" : `备考 ${fmtDate(advice.next, true)}`}</div>
           <div className="mt-1 text-[13px] leading-snug text-muted-foreground" data-testid="exam-over-sub">
@@ -941,7 +981,7 @@ function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advi
               <>
                 {streak >= STREAK_WARN_MIN && (
                   <b className="mb-1 block text-[14px] text-primary" data-testid="exam-over-streak" data-n={streak}>
-                    连续 {streak} 天备考，辛苦了
+                    连续 {streak} 天备考，一天没落下
                   </b>
                 )}
                 {advice.custom ? `你设的考试日 ${fmtDate(advice.exam)} 已经过了。` : `${fmtDate(advice.exam)} 那场已经考完。`}考试那天不算断签。接下来怎么安排？
@@ -949,6 +989,7 @@ function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advi
             ) : (
               <>
                 还有 {daysUntil(day, advice.next)} 天。按新日期重新算了一下：<b className="text-foreground" data-testid="exam-next-plan" data-book={rec.book} data-daily={recDaily}>{recLine}</b>
+                <KeepNote daily={st.settings.daily} finish={keepFinish} late={keepLate} testid="exam-keep-note" />
               </>
             )}
           </div>
@@ -988,7 +1029,8 @@ function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advi
             type="button"
             data-testid="exam-next-keep"
             onClick={() => {
-              ackExam(advice.exam, "next", day);
+              // 11.5 · 知情选了考后才学完的节奏：记 paceOk，7 天内不说「赶不上」
+              ackExam(advice.exam, "next", day, undefined, keepLate);
               toast.success(`改为备考 ${fmtDate(advice.next, true)}`, { description: `保持每天 ${st.settings.daily} 个，可以在「我的」调整` });
             }}
             className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold"
@@ -1155,15 +1197,18 @@ function ExamCard({
             {plan.daysLeft === 0 ? "今天就是四级考试，加油！" : plan.daysLeft === 1 ? "明天就考四级了" : "距四级考试"}
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[12px] text-muted-foreground" data-testid="exam-date">
-            {fmtDate(exam, true)} {wd}
+            {/* 11.5 · 窄屏只在日期和「周X」之间换行，「周六」两个字不拆开 */}
+            <span className="whitespace-nowrap" data-testid="exam-date-day">{fmtDate(exam, true)}</span>
+            <span className="whitespace-nowrap" data-testid="exam-date-wd">{wd}</span>
             <span className={cn("rounded px-1 text-[10px] font-bold", official ? "bg-know-soft text-know" : "bg-secondary")}>{custom ? "自定" : official ? "官方" : "预估"}</span>
+            {/* 11.5 · 「来得及」放进日期这一行（窄屏 / 大字号时整体换行，不再把标题和日期挤断） */}
+            {onTrack && plan.newLeft > 0 && (
+              <span className="flex shrink-0 items-center gap-0.5 whitespace-nowrap text-[12px] font-bold text-know" data-testid="sprint-ok">
+                <Check className="size-3.5" strokeWidth={3} /> 来得及
+              </span>
+            )}
           </div>
         </div>
-        {onTrack && plan.newLeft > 0 && (
-          <span className="flex shrink-0 items-center gap-1 text-[12px] font-bold text-know" data-testid="sprint-ok">
-            <Check className="size-4" strokeWidth={3} /> 来得及
-          </span>
-        )}
         <Link to="/me" aria-label="调整计划" className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
           <ChevronRight className="size-5" />
         </Link>
@@ -1210,15 +1255,18 @@ function ExamCard({
  */
 function PauseCard({ day, exam, index, st, resting }: { day: string; exam: string; index: WordIndex; st: AppState; resting: boolean }) {
   const [step, setStep] = useState<"ask" | "plan">("ask");
-  const { left, recDaily, rec, bookName, recLine } = nextPlanOf(index, st, day, exam);
+  const { left, recDaily, rec, bookName, recLine, keepFinish, keepLate } = nextPlanOf(index, st, day, exam);
+  // 11.5 · 系统返回：先回到休息这一步
+  useBackClose(step === "plan", () => setStep("ask"));
   return (
     <section className="rounded-3xl border border-border/70 bg-card p-4" data-testid="exam-card" data-paused="1" data-step={step}>
       <div className="flex items-start gap-3">
-        <Coffee className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+        {step === "plan" ? <StepBack onBack={() => setStep("ask")} testid="pause-plan-back" /> : <Coffee className="mt-0.5 size-5 shrink-0 text-muted-foreground" />}
         <span className="min-w-0 flex-1 text-[13px] leading-snug text-muted-foreground" data-testid="pause-sub">
           {step === "plan" ? (
             <>
               备考 {fmtDate(exam, true)}，还有 {daysUntil(day, exam)} 天。按新日期重新算了一下：<b className="text-foreground" data-testid="pause-next-plan" data-book={rec.book} data-daily={recDaily}>{recLine}</b>
+              <KeepNote daily={st.settings.daily} finish={keepFinish} late={keepLate} testid="pause-keep-note" />
             </>
           ) : resting ? (
             `休息中：不排新词，每天最多 ${PAUSE_CAP} 个维持复习，不算断签`
@@ -1241,7 +1289,7 @@ function PauseCard({ day, exam, index, st, resting }: { day: string; exam: strin
           >
             应用这个计划
           </button>
-          <button type="button" data-testid="pause-plan-keep" onClick={() => resumeFromPause(day)} className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold">
+          <button type="button" data-testid="pause-plan-keep" onClick={() => resumeFromPause(day, undefined, undefined, keepLate)} className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold">
             保持现在的
           </button>
         </div>
@@ -1251,8 +1299,10 @@ function PauseCard({ day, exam, index, st, resting }: { day: string; exam: strin
 }
 
 /** 11.3 · 结束休息：攒下的复习从今天起摊开（每天额度以内），不弹「积压 N 个」；11.4 · plan = 应用新推荐的词书和每日新词 */
-function resumeFromPause(day: string, plan?: { book: AppState["settings"]["book"]; daily: number }, bookName?: string) {
+function resumeFromPause(day: string, plan?: { book: AppState["settings"]["book"]; daily: number }, bookName?: string, paceOk?: boolean) {
   if (plan) setSettings({ book: plan.book, daily: plan.daily });
+  // 11.5 · 知情保持考后才学完的节奏：7 天内不说「赶不上」
+  if (paceOk) markPaceOk(day);
   const s0 = getState();
   const per = recoverPerDay(s0.settings.reviewCap ?? 0);
   const backlog = dueWords(s0.cards, day).length;

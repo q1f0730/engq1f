@@ -67,7 +67,8 @@ describe("R4-1 每天的任务快照", () => {
     const st = st0();
     st.settings = { ...st.settings, daily: 20 };
     const r = dayRuleOf(summarize(index, st, T));
-    expect(r).toEqual({ g: 20, r: 0 });
+    // 11.5 · 快照里还记着当天生效的考试日（e）
+    expect(r).toEqual({ g: 20, r: 0, e: "2026-12-12" });
     st.settings = { ...st.settings, goalMode: "time", goalMin: 10 };
     expect(dayRuleOf(summarize(index, st, T)).t).toBe(10);
   });
@@ -141,7 +142,8 @@ describe("R4-6 备份带备份日期", () => {
     expect(parseBackup(exportBackup()).lastBackup).toBeUndefined();
   });
   it("备份里的日期比存档里的新：用备份的", () => {
-    const text = JSON.stringify({ app: "cet4-vocab", version: 1, backupDay: T, state: { ...st0(), lastBackup: "2026-09-01" } });
-    expect(parseBackup(text).lastBackup).toBe(T);
+    // 11.5 · 用一个确定在过去的日期（备份日期晚于今天会被按今天算，见 v11_5）
+    const text = JSON.stringify({ app: "cet4-vocab", version: 1, backupDay: "2026-09-20", state: { ...st0(), lastBackup: "2026-09-01" } });
+    expect(parseBackup(text).lastBackup).toBe("2026-09-20");
   });
 });

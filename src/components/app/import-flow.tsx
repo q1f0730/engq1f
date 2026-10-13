@@ -16,20 +16,27 @@ import { cn } from "@/lib/utils";
 type Phase = { k: "idle" } | { k: "pass"; enc: EncEnvelope; at?: string } | { k: "choose"; remote: AppState; at?: string; rep: CleanReport };
 
 /** 11.1 · 逐条校验备份：词库里没有的词、坏掉的记录丢掉，能修的修好；返回丢掉 / 修正的条数 */
-export function parseChecked(plain: string): { remote: AppState; rep: CleanReport } {
+export function parseChecked(plain: string, at?: string): { remote: AppState; rep: CleanReport } {
   const idx = getWordsSync();
   const rep = emptyReport();
   const remote = parseBackup(plain, idx ? (w) => idx.map.has(w) : undefined, rep);
-  // 11.4 · 老版本导出的备份文件没写备份日期：用导出时间（本地日期）算「上次备份」（救援原始数据不算）
-  if (!remote.lastBackup) {
-    try {
-      const o = JSON.parse(plain) as { exportedAt?: unknown; raw?: unknown };
-      const t = typeof o.exportedAt === "string" && o.raw === undefined ? Date.parse(o.exportedAt) : NaN;
-      if (Number.isFinite(t)) remote.lastBackup = dayKey(new Date(t));
-    } catch {
-      /* 解析过了，不会到这里 */
+  // 11.4 / 11.5 · 用户导出的备份文件：「上次备份」= max(文件里的 lastBackup、backupDay、导出时间的本地日期)，不晚于今天。
+  // 11.3 导出的文件里 lastBackup 是「上一次」备份，所以不能只在它为空时才看导出时间。救援原始数据不算备份。
+  try {
+    const o = JSON.parse(plain) as { exportedAt?: unknown; raw?: unknown };
+    if (o.raw === undefined) {
+      const iso = typeof o.exportedAt === "string" ? o.exportedAt : at;
+      const t = typeof iso === "string" ? Date.parse(iso) : NaN;
+      if (Number.isFinite(t)) {
+        const d = dayKey(new Date(t));
+        if (!remote.lastBackup || remote.lastBackup < d) remote.lastBackup = d;
+      }
     }
+  } catch {
+    /* 解析过了，不会到这里 */
   }
+  // 导出时间比手机日期还晚（手机时间被调过 / 另一台手机的时间快）：按今天算，不显示「-N 天前」
+  if (remote.lastBackup && remote.lastBackup > today()) remote.lastBackup = today();
   return { remote, rep };
 }
 
@@ -87,7 +94,7 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
 
   const [sure, setSure] = useState(false);
   const gotPlain = async (plain: string, at?: string) => {
-    const { remote, rep } = parseChecked(plain);
+    const { remote, rep } = parseChecked(plain, at);
     const bad = repText(rep);
     if (hasProgress(getState())) setPhase({ k: "choose", remote, at, rep });
     else {

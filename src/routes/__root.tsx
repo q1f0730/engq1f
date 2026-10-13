@@ -20,7 +20,16 @@ import { useAppBadge, useReminder } from "@/lib/nudge";
 import { MilestoneOverlay } from "@/components/app/milestone";
 import { LoadFailed, Rescue, clearRetry, isChunkError } from "@/components/app/rescue";
 import { useSheetOpen } from "@/lib/back-stack";
-import { onExternalChange } from "@/lib/store";
+import { onExternalChange, setDayRuleSource } from "@/lib/store";
+import { dayRuleOf, summarize } from "@/lib/plan";
+
+// 11.5 · 当天中途改设置时，store 按改完的设置重算今天的快照（需要词库）
+setDayRuleSource((st, d) => {
+  const idx = getWordsSync();
+  if (!idx) return null;
+  const s = summarize(idx, st, d);
+  return { rule: dayRuleOf(s), ready: s.ready, checked: s.checked };
+});
 
 const BARE = ["/study", "/welcome", "/test", "/tape", "/quiz", "/match", "/judge"];
 /** 11.1 · 二级页：不显示底部标签栏（只用左上角返回一种导航） */

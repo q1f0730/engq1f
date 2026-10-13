@@ -217,7 +217,8 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const rollDay = useCallback(() => {
     const t = today();
     const at = now();
-    if (t !== dayRef.current && (at - lastAct.current > ROLL_IDLE_MS || new Date(at).getHours() >= ROLL_HOUR)) {
+    // 11.5 · 只往后滚：会话中途换时区、本地日期往回跳时，这一组还记在开始的那一天（不会记到更早、已经打过卡的日子）
+    if (t > dayRef.current && (at - lastAct.current > ROLL_IDLE_MS || new Date(at).getHours() >= ROLL_HOUR)) {
       dayRef.current = t;
       setDay(t);
     }
@@ -874,7 +875,7 @@ function SpeedCard({
         <div className="paper-grain absolute inset-0 opacity-60" />
         <div className="relative flex h-full flex-col items-center px-6 pb-14 pt-8 text-center">
           <div className="fs-card flex flex-1 flex-col items-center justify-center">
-            <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} data-testid="card-word">
+            <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} data-testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties}>
               {word.w}
             </h2>
             <div className="mt-3 flex items-center gap-2.5 text-[16px] text-muted-foreground">
@@ -1050,7 +1051,7 @@ function FlipCard({
   };
 
   const front = (
-    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+    <div className="flex h-full flex-col items-center justify-center px-6 text-center" data-testid="card-front">
       {cnFirst ? (
         <div className="fs-card w-full max-w-md text-left">
           <Meanings word={word} size="lg" />
@@ -1075,7 +1076,7 @@ function FlipCard({
               <Volume2 className="size-5" />
             </button>
           </div>
-          <p className="mt-10 text-[13px] text-muted-foreground/80">{frontIpa ? "认识这个词吗？点卡片可以先看释义" : "先认词形 · 音标在背面"}</p>
+          <p className="mt-10 text-[13px] text-muted-foreground/80" data-testid="front-hint">{frontIpa ? "认识这个词吗？点卡片可以先看释义" : "先认词形 · 音标在背面"}</p>
         </div>
       )}
     </div>
@@ -1168,7 +1169,7 @@ function FlipCard({
                 onKill();
               }}
               data-testid="kill"
-              className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-secondary/90 px-3.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:text-know"
+              className="card-kill absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-secondary/90 px-3.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:text-know"
             >
               <Swords className="size-3.5" /> 斩 · 我本来就会
             </button>}

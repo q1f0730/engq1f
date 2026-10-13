@@ -87,6 +87,8 @@ export interface TodaySummary {
   examDay: boolean;
   /** 11.3 · 考后「先休息」中：不排新词，复习只留维持量 */
   paused: boolean;
+  /** 11.5 · 今天生效的考试日（休息中没有）：记进当天的快照 */
+  examAt?: string;
 }
 
 /** 11.3 · 考前一天最多复习多少（最容易忘的先来）；考试当天只给一组热身；休息期间的维持量 */
@@ -154,6 +156,7 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
     timeMode,
     ms: log.ms,
     goalMin,
+    examAt: st.examPause ? undefined : effectiveExam(day, st.settings.examDate).day,
   };
 }
 
@@ -168,6 +171,7 @@ export function dayRuleOf(sum: TodaySummary): DayRule {
     ...(sum.timeMode ? { t: sum.goalMin } : {}),
     ...(sum.examDay ? { x: 2 as const } : sum.examMode ? { x: 1 as const } : {}),
     ...(sum.paused ? { p: 1 as const } : {}),
+    ...(sum.examAt ? { e: sum.examAt } : {}),
   };
 }
 

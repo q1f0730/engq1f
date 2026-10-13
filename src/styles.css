@@ -682,3 +682,31 @@ html[data-motion="reduce"] .checkin-burst {
     display: none;
   }
 }
+
+/* 11.5 · 手机横屏（高度 < 500）：学新词正面卡。单词字号随高度和词长缩小（不再用 md: 的 64px），
+   音标行收紧、去掉提示句，「斩」挪到卡片右上角——单词不顶出卡片、音标 / 发音 / 斩互不遮挡 */
+@media (max-height: 500px) {
+  [data-testid="card-front"] [data-testid="card-word"] {
+    font-size: max(22px, min(9.5vh, 44px, calc(220px / (0.6 * var(--wl, 8))))) !important;
+  }
+  [data-testid="card-front"] [data-testid="front-ipa"] {
+    margin-top: 6px;
+    font-size: 15px;
+  }
+  [data-testid="card-front"] [data-testid="front-ipa"] button {
+    width: 32px;
+    height: 32px;
+  }
+  [data-testid="card-front"] [data-testid="front-hint"] {
+    display: none;
+  }
+  .card-kill {
+    top: 10px;
+    right: 12px;
+    bottom: auto;
+    left: auto;
+    --tw-translate-x: 0;
+    translate: none;
+    transform: none;
+  }
+}

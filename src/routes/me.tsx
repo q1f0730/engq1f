@@ -34,7 +34,7 @@ import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 import { BASE_MODES, REVIEW_MODES, TIER_LONG, TIER_SHORT, toggleMode } from "@/lib/modes";
 import { MODE_LABEL } from "@/lib/exam";
 import { FIT_MIN, RETENTION_OPTIONS, balanceAll, fitInitialEase } from "@/lib/algo";
-import { diffDays, finishDate, retentionScale } from "@/lib/srs";
+import { addDays, diffDays, finishDate, retentionScale } from "@/lib/srs";
 import { getState, replaceCards } from "@/lib/store";
 import { ImportFlow } from "@/components/app/import-flow";
 import { ACTIVE_PROFILE, readRegistry } from "@/lib/profiles";
@@ -84,7 +84,8 @@ function MePage() {
   };
 
   const dailyOpts = [...new Set([...DAILY_OPTIONS, s.daily])].sort((x, y) => x - y);
-  const backupLine = st.lastBackup ? (diffDays(st.lastBackup, day) === 0 ? "今天" : `${diffDays(st.lastBackup, day)} 天前`) : null;
+  // 11.5 · 日期在未来（手机时间被调过）也写「今天」，不出现「-N 天前」
+  const backupLine = st.lastBackup ? (diffDays(st.lastBackup, day) <= 0 ? "今天" : `${diffDays(st.lastBackup, day)} 天前`) : null;
 
   return (
     <div data-testid="me">
@@ -125,7 +126,7 @@ function MePage() {
                 <input
                   type="date"
                   data-testid="exam-custom"
-                  min={day}
+                  min={addDays(day, 1)}
                   value={examPick === 2 ? exam.day : ""}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -133,6 +134,11 @@ function MePage() {
                     // 11.2 · 过去的日期不收（不再静默存进去、界面却显示另一场）
                     if (v < day) {
                       toast.error("考试日期不能早于今天", { id: "exam-past" });
+                      return;
+                    }
+                    // 11.5 · 考试日最早选明天：当天才设成今天，不能让今天变成「不用打卡」的考试日
+                    if (v === day) {
+                      toast.error("考试日期最早选明天", { id: "exam-past", description: "今天就考的话，祝你顺利；今天的打卡照常算" });
                       return;
                     }
                     setSettings({ examDate: v });

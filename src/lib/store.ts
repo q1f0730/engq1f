@@ -6,7 +6,8 @@ import { today } from "./clock";
 import type { QuizRecord } from "./exam";
 import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
 import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
-import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, autoCredit, parseHM, type CheckInResult, type DayRule, type GoalMode, type PatchResult } from "./habit";
+import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, autoCredit, harvestExamDays, parseHM, type CheckInResult, type DayRule, type GoalMode, type PatchResult } from "./habit";
+import { passedExam } from "./examdate";
 import type { ShareTpl } from "./share";
 import { cleanFontSize, cleanMotion, motionReduced, type FontSize, type Motion } from "./ux";
 import { ACTIVE_PROFILE, revKeyOf, stateKeyOf } from "./profiles";
@@ -144,6 +145,8 @@ export interface AppState {
   pause?: { from: string; until?: string };
   /** 11.4 · 每天的任务快照（当天第一次打开 / 第一次作答时按当天的设置记下，最近 21 天）：自动补记只按它判断 */
   dayRule?: Record<string, DayRule>;
+  /** 11.5 · 记下来的考试日（考试日过去、或者考完改了日期时写进来）：改考试日期不影响已经过去的日子 */
+  examDays?: string[];
   /** 11.4 · 用户在引导 / 设置里知情选了「考后才学完」的量：这一天起 7 天内不弹冲刺卡 */
   paceOk?: string;
   /** 11.4 · 冲刺卡点了「知道了」：这天之前不再出现 */
@@ -343,10 +346,18 @@ export function normalize(raw: unknown, has?: (w: string) => boolean, rep: Clean
     goalMet: Array.isArray(r.goalMet) ? r.goalMet.filter(isDay).slice(-14) : undefined,
     pause: r.pause && typeof r.pause === "object" && isDay(r.pause.from) ? { from: r.pause.from, ...(isDay(r.pause.until) ? { until: r.pause.until } : {}) } : undefined,
     dayRule: cleanDayRules(r.dayRule),
+    examDays: cleanExamDays(r.examDays),
     paceOk: optDay(r.paceOk),
     sprintSnooze: optDay(r.sprintSnooze),
     epoch: str(r.epoch),
   };
+}
+
+/** 11.5 · 记下来的考试日：日期列表，去重排序，最多 12 个 */
+function cleanExamDays(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const list = [...new Set(raw.filter((d): d is string => isDay(d)))].sort().slice(-12);
+  return list.length ? list : undefined;
 }
 
 /** 11.4 · 每天的任务快照：日期 → { g, r, t?, x?, p? }，只留格式对的、最近 21 天 */
@@ -364,6 +375,7 @@ function cleanDayRules(raw: unknown): Record<string, DayRule> | undefined {
       ...(nat(o.t) && (o.t as number) > 0 ? { t: o.t as number } : {}),
       ...(o.x === 1 || o.x === 2 ? { x: o.x } : {}),
       ...(o.p === 1 ? { p: 1 as const } : {}),
+      ...(isDay(o.e) ? { e: o.e as string } : {}),
     };
   }
   return Object.keys(out).length ? out : undefined;
@@ -587,8 +599,59 @@ if (typeof window !== "undefined" && typeof window.addEventListener === "functio
   if (bc) bc.onmessage = (e) => (e.data as { key?: string })?.key === KEY && syncFromStorage();
 }
 
+/**
+ * 11.5 · 今天的规则从哪来（需要词库，由 __root 注册 plan.summarize）：返回今天的快照、今天按现在的设置算不算完成、打没打卡。
+ * 词库还没加载时返回 null。
+ */
+type RuleSource = (st: AppState, day: string) => { rule: DayRule; ready: boolean; checked: boolean } | null;
+let ruleSource: RuleSource | null = null;
+export function setDayRuleSource(fn: RuleSource | null) {
+  ruleSource = fn;
+}
+
+/** 11.5 · 影响「今天的任务是什么」的状态变了吗（设置、自适应减量、恢复期、休息、考完） */
+const ruleInputsChanged = (a: AppState, b: AppState) =>
+  a.settings !== b.settings || a.newCut !== b.newCut || a.recover !== b.recover || a.examPause !== b.examPause || a.pause !== b.pause || a.examDone !== b.examDone;
+
+/**
+ * 11.5 · 当天中途改了设置：**覆盖**今天的快照（只改今天，过去的日子不动），快照 = 当天最后生效的规则；
+ * 「任务完成」也按改完的规则重算（没打卡时：达标就记、不达标就撤）——今天卡片上的说法和明天的自动补记永远一致。
+ * 例外：考前 / 考试当天的「不打卡」标记（x）只认当天第一份快照里就有的，当天才改出来的不算（不能临时把今天变成免打卡）。
+ */
+function withTodayRule(prev: AppState, next: AppState): AppState {
+  if (!next.onboarded || !ruleInputsChanged(prev, next)) return next;
+  const d = today();
+  const src = ruleSource?.(next, d) ?? null;
+  const old = next.dayRule?.[d];
+  if (!src) {
+    // 词库还没加载：先把今天的快照和「任务完成」作废，回到首页时按改完的设置重新记
+    if (!old && !next.goalMet?.includes(d)) return next;
+    const rules = { ...(next.dayRule ?? {}) };
+    delete rules[d];
+    const checked = next.checkins.includes(d);
+    return { ...next, dayRule: Object.keys(rules).length ? rules : undefined, goalMet: checked ? next.goalMet : next.goalMet?.filter((x) => x !== d) };
+  }
+  const rule: DayRule = { ...src.rule };
+  if (old && !(old.x && rule.x)) delete rule.x;
+  else if (old?.x && rule.x) rule.x = old.x;
+  const all = { ...(next.dayRule ?? {}), [d]: rule };
+  const keep = Object.keys(all).sort().slice(-DAY_RULE_KEEP);
+  let goalMet = next.goalMet;
+  if (!src.checked) {
+    const has = !!goalMet?.includes(d);
+    if (src.ready && !has) goalMet = [...(goalMet ?? []), d].sort().slice(-14);
+    else if (!src.ready && has) goalMet = goalMet!.filter((x) => x !== d);
+  }
+  return { ...next, dayRule: Object.fromEntries(keep.map((k) => [k, all[k]])), goalMet };
+}
+
 function commit(next: AppState) {
   const prev = state;
+  next = withTodayRule(prev, next);
+  if (next.dayRule !== prev.dayRule) {
+    const ed = harvestExamDays(next.dayRule, next.examDays, today());
+    if (ed !== next.examDays) next = { ...next, examDays: ed };
+  }
   state = next;
   persist(prev);
   applyTheme(state.settings.theme);
@@ -643,9 +706,23 @@ export function applyLook(s: Pick<Settings, "fontSize" | "motion">) {
 
 // ---------------------------------------------------------------- actions
 
+/** 11.5 · 这段时间里用过 app 吗（考完了那张卡判断「是不是在备考这一场」） */
+export const examActiveIn = (st: Pick<AppState, "log" | "checkins">) => (from: string, to: string) =>
+  Object.entries(st.log).some(([d, l]) => d >= from && d <= to && !!l && l.n + l.r + l.a > 0) || st.checkins.some((d) => d >= from && d <= to);
+
+const addExamDay = (list: string[] | undefined, d: string) => [...new Set([...(list ?? []), d])].sort().slice(-12);
+
 export function setSettings(patch: Partial<Settings>) {
-  // 11.2 · 重新选了考试日期 = 结束「先休息」
-  commit({ ...state, ...("examDate" in patch ? { examPause: undefined, ...(state.pause && !state.pause.until ? { pause: { ...state.pause, until: today() } } : {}) } : {}), settings: { ...state.settings, ...patch } });
+  let extra: Partial<AppState> = {};
+  if ("examDate" in patch && patch.examDate !== state.settings.examDate) {
+    const d = today();
+    // 11.2 · 重新选了考试日期 = 结束「先休息」
+    extra = { examPause: undefined, ...(state.pause && !state.pause.until ? { pause: { ...state.pause, until: d } } : {}) };
+    // 11.5 · 考完还没选、直接在「我的」改了日期 = 选了「备考下一场」：刚考完的那一场记下来（不算断签、不再问、不冒出另一场）
+    const over = passedExam(d, state.settings.examDate, state.examDone, examActiveIn(state));
+    if (over) extra = { ...extra, examDone: over.day, examDays: addExamDay(state.examDays, over.day), sprintSeen: d };
+  }
+  commit({ ...state, ...extra, settings: { ...state.settings, ...patch } });
 }
 
 /** extra：引导里已经看过的计划提示（当天不再弹冲刺卡等） */
@@ -897,10 +974,13 @@ export function dismissSprint(day: string, offExam?: string, snoozeUntil?: strin
  * 11.2 · 考完了：next = 备考下一场（examDate 清空 = 自动下一场；plan = 按新日期重新推荐的词书和每日新词）；
  * 11.3 · rest = 真的休息：不排新词、复习只留维持量、休息期间不算断签（pause）
  */
-export function ackExam(passed: string, choice: "next" | "rest", day = today(), plan?: { book: Book; daily: number }) {
+export function ackExam(passed: string, choice: "next" | "rest", day = today(), plan?: { book: Book; daily: number }, paceOk?: boolean) {
   commit({
     ...state,
     examDone: passed,
+    examDays: addExamDay(state.examDays, passed),
+    // 11.5 · 「保持现在的」而且要考后才学完：知情选择，7 天内不说「赶不上」
+    ...(paceOk ? { paceOk: day } : {}),
     examPause: choice === "rest" ? true : undefined,
     pause: choice === "rest" ? { from: day } : state.pause,
     sprintSeen: choice === "next" ? day : state.sprintSeen,
@@ -978,6 +1058,8 @@ export function parseBackup(text: string, has?: (w: string) => boolean, rep: Cle
   const next = normalize(p.state, has, rep);
   // 11.4 · 用户导出的备份：恢复后按这份备份的日期算「上次备份」
   if (isDay(p.backupDay) && (!next.lastBackup || next.lastBackup < (p.backupDay as string))) next.lastBackup = p.backupDay as string;
+  // 11.5 · 日期在未来（手机时间被调过）：按今天算
+  if (next.lastBackup && next.lastBackup > today()) next.lastBackup = today();
   return next;
 }
 

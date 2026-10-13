@@ -38,6 +38,8 @@ export interface DayRule {
   x?: 1 | 2;
   /** 休息中（考后「先休息」） */
   p?: 1;
+  /** 11.5 · 这一天生效的考试日（当天最后一次设置；休息中没有）。以后判断「哪天是考试日」读它，不读现在的设置 */
+  e?: string;
 }
 
 interface HabitState {
@@ -52,15 +54,55 @@ interface HabitState {
   examDone?: string;
   /** 11.4 · 每天的任务快照 */
   dayRule?: Record<string, DayRule>;
+  /** 11.5 · 记下来的考试日（考试日一过、或者考完改了日期时写进来，永久保留） */
+  examDays?: string[];
 }
 
-/** 11.4 · 这一天是四级考试日：官方 / 预估的场次、用户自定的日期、确认过考完的那一场、快照里记下的考试当天 */
-export function examDayOn(st: Pick<HabitState, "settings" | "examDone" | "dayRule">, d: string): boolean {
-  if (d === st.examDone || (!!st.settings.examDate && d === st.settings.examDate) || st.dayRule?.[d]?.x === 2) return true;
+/**
+ * 11.5 · 按快照看 d 是不是考试日：d 之前最近的一份快照里，当时生效的考试日就是 d。
+ * 当天才把考试日改成今天，不会让今天变成考试日（今天之前的快照里不是它）；之后再改日期也改不了已经过去的快照。
+ * 11.4 的快照没有 e：前一天的快照是「考前一天」（x = 1）就算。
+ */
+export function snapExamOn(rules: Record<string, DayRule> | undefined, d: string): boolean {
+  if (!rules) return false;
+  let best: string | undefined;
+  for (const k of Object.keys(rules)) if (k < d && (!best || k > best)) best = k;
+  if (!best) return false;
+  const r = rules[best];
+  if (r.e) return r.e === d;
+  return r.x === 1 && addDays(best, 1) === d;
+}
+
+/** 11.5 · 快照里能确认、已经过去（早于 today）的考试日：写进 examDays，快照只留 21 天也不丢 */
+export function harvestExamDays(rules: Record<string, DayRule> | undefined, prev: string[] | undefined, today: string): string[] | undefined {
+  const out = new Set(prev ?? []);
+  for (const [k, r] of Object.entries(rules ?? {})) {
+    const cand = r.e ?? (r.x === 1 ? addDays(k, 1) : undefined);
+    if (cand && cand > k && cand < today && snapExamOn(rules, cand)) out.add(cand);
+  }
+  if (!out.size) return prev;
+  const list = [...out].sort().slice(-EXAM_DAYS_KEEP);
+  return prev && list.length === prev.length && list.every((d, i) => d === prev[i]) ? prev : list;
+}
+export const EXAM_DAYS_KEEP = 12;
+
+/**
+ * 11.4 / 11.5 · 这一天是四级考试日：官方 / 预估的场次、记下来的考试日（examDays）、确认过考完的那一场、
+ * 按快照当时生效的考试日（snapExamOn）。不读现在的设置——改考试日期不会回头改已经过去的日子。
+ * 没有任何快照的老数据（d 和它之前 21 天都没有快照）才退回去看设置里的日期。
+ */
+export function examDayOn(st: Pick<HabitState, "settings" | "examDone" | "dayRule" | "examDays">, d: string): boolean {
+  if (d === st.examDone || st.examDays?.includes(d) || snapExamOn(st.dayRule, d)) return true;
+  if (st.settings.examDate && d === st.settings.examDate && !hasSnapNear(st.dayRule, d)) return true;
   const m = d.slice(5, 7);
   if (m !== "06" && m !== "12") return false;
   return examOf(Number(d.slice(0, 4)), m === "06" ? 6 : 12).day === d;
 }
+
+const hasSnapNear = (rules: Record<string, DayRule> | undefined, d: string) => {
+  const from = addDays(d, -21);
+  return Object.keys(rules ?? {}).some((k) => k >= from && k <= d);
+};
 
 /**
  * 11.4 · 不打卡也不断连续的日子（周休息日之外）：考后「先休息」期间、考试当天、
@@ -69,7 +111,8 @@ export function examDayOn(st: Pick<HabitState, "settings" | "examDone" | "dayRul
 export function skipDay(st: HabitState, d: string): boolean {
   if (pausedOn(st, d) || examDayOn(st, d)) return true;
   const r = st.dayRule?.[d];
-  return !!r && (!!r.p || (!!r.x && r.g === 0 && r.r === 0));
+  // 11.5 · 只认「考前一天」（x = 1，当天第一份快照里就有）；考试当天由 examDayOn 按快照判断，快照自己的 x = 2 不算
+  return !!r && (!!r.p || (r.x === 1 && r.g === 0 && r.r === 0));
 }
 
 /** 11.4 · 周历上的「考」/「休」 */
