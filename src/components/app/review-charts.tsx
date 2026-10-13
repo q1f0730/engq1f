@@ -170,6 +170,9 @@ export function MonthCalendar({
   today,
   onShift,
   canNext,
+  onPick,
+  rest = -1,
+  patched = [],
 }: {
   ym: string;
   logs: Record<string, DayLog>;
@@ -177,8 +180,13 @@ export function MonthCalendar({
   today: string;
   onShift: (n: number) => void;
   canNext: boolean;
+  /** 点某天（当日回看） */
+  onPick?: (day: string) => void;
+  rest?: number;
+  patched?: string[];
 }) {
   const set = new Set(checkins);
+  const patchSet = new Set(patched);
   const rows = monthGrid(ym);
   const [y, m] = ym.split("-").map(Number);
   return (
@@ -216,22 +224,33 @@ export function MonthCalendar({
               const v = (logs[d]?.n ?? 0) + (logs[d]?.r ?? 0);
               const checked = set.has(d);
               const future = diffDays(today, d) > 0;
+              const isPatch = checked && patchSet.has(d);
+              const isRest = !checked && !v && rest >= 0 && new Date(d + "T12:00:00").getDay() === rest && !future;
               return (
-                <div
+                <button
+                  type="button"
                   key={d}
                   data-day={d}
                   data-checked={checked ? 1 : 0}
+                  data-patched={isPatch ? 1 : 0}
                   data-count={v}
+                  disabled={future || !onPick}
+                  onClick={() => onPick?.(d)}
+                  aria-label={`${Number(d.slice(5, 7))}月${Number(d.slice(8))}日${checked ? (isPatch ? " 补卡" : " 已打卡") : ""}${v ? ` ${v} 词` : ""}`}
                   className={cn(
-                    "flex aspect-square min-w-0 flex-col items-center justify-center rounded-xl",
-                    checked ? "bg-primary text-primary-foreground" : v ? "bg-brand-soft text-primary" : "bg-secondary/60",
+                    "flex aspect-square min-w-0 flex-col items-center justify-center rounded-xl transition enabled:active:scale-95",
+                    isPatch ? "bg-primary/60 text-primary-foreground" : checked ? "bg-primary text-primary-foreground" : v ? "bg-brand-soft text-primary" : "bg-secondary/60",
+                    isRest && "bg-know-soft",
                     future && "opacity-40",
+                    onPick && !future && "enabled:hover:ring-2 enabled:hover:ring-primary/40",
                     d === today && "ring-2 ring-foreground/70 ring-offset-1 ring-offset-card",
                   )}
                 >
-                  <span className={cn("tnum text-[13px] font-bold leading-none", !checked && !v && "text-muted-foreground")}>{Number(d.slice(8))}</span>
-                  <span className={cn("tnum mt-0.5 h-3 text-[9.5px] font-semibold leading-3", checked ? "text-primary-foreground/85" : "text-primary/80")}>{v ? v : ""}</span>
-                </div>
+                  <span className={cn("tnum text-[13px] font-bold leading-none", !checked && !v && (isRest ? "text-know" : "text-muted-foreground"))}>{Number(d.slice(8))}</span>
+                  <span className={cn("tnum mt-0.5 h-3 text-[9.5px] font-semibold leading-3", checked ? "text-primary-foreground/85" : isRest ? "text-know" : "text-primary/80")}>
+                    {v ? v : isPatch ? "补" : isRest ? "休" : ""}
+                  </span>
+                </button>
               );
             })}
           </div>

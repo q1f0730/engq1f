@@ -301,6 +301,80 @@
       linear-gradient(135deg, oklch(0.64 0.2 38), oklch(0.52 0.19 25));
     box-shadow: 0 8px 18px -10px oklch(0.5 0.19 30 / 0.8), inset 0 0 0 3px oklch(1 0 0 / 0.22);
   }
+  /* v7 · 里程碑庆祝 */
+  .milestone-bg {
+    background:
+      radial-gradient(80% 60% at 50% 38%, oklch(0.72 0.17 55 / 0.95), transparent 70%),
+      linear-gradient(160deg, oklch(0.6 0.2 33), oklch(0.42 0.17 25));
+  }
+  .milestone-in {
+    animation: milestone-in 320ms ease-out both;
+  }
+  @keyframes milestone-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .milestone-medal {
+    background:
+      radial-gradient(90% 90% at 30% 20%, oklch(0.84 0.14 75 / 0.95), transparent 60%),
+      linear-gradient(135deg, oklch(0.66 0.2 40), oklch(0.5 0.19 25));
+    box-shadow: 0 24px 60px -18px rgba(80, 20, 0, 0.6), inset 0 0 0 6px oklch(1 0 0 / 0.25);
+    animation: medal-pop 700ms cubic-bezier(0.2, 0.9, 0.25, 1.25) 120ms both;
+  }
+  @keyframes medal-pop {
+    0% {
+      transform: scale(0.3) rotate(-25deg);
+      opacity: 0;
+    }
+    70% {
+      transform: scale(1.08) rotate(4deg);
+      opacity: 1;
+    }
+    100% {
+      transform: none;
+    }
+  }
+  .confetti {
+    position: absolute;
+    top: -24px;
+    display: block;
+    opacity: 0.95;
+    animation-name: confetti-fall;
+    animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+    animation-iteration-count: infinite;
+  }
+  @keyframes confetti-fall {
+    0% {
+      transform: translate3d(0, 0, 0) rotate(0);
+    }
+    100% {
+      transform: translate3d(var(--drift), 110vh, 0) rotate(var(--spin));
+    }
+  }
+  /* 断签预警：深浅色都用实色红，白字对比度够 */
+  .late-banner {
+    background: linear-gradient(135deg, oklch(0.58 0.21 24), oklch(0.5 0.2 16));
+  }
+  .dark .late-banner {
+    background: linear-gradient(135deg, oklch(0.5 0.18 24), oklch(0.42 0.16 16));
+  }
+  /* 断签预警的呼吸光 */
+  .late-pulse {
+    animation: late-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes late-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 oklch(0.6 0.2 25 / 0.35);
+    }
+    50% {
+      box-shadow: 0 0 0 8px oklch(0.6 0.2 25 / 0);
+    }
+  }
   .dark .hero-gradient {
     background:
       radial-gradient(120% 90% at 100% 0%, oklch(0.6 0.14 55 / 0.7), transparent 60%),
@@ -313,9 +387,15 @@
   .card-in,
   .speed-in,
   .pop,
-  .shake {
+  .shake,
+  .milestone-in,
+  .milestone-medal,
+  .late-pulse {
     transition: none !important;
     animation: none !important;
+  }
+  .confetti {
+    display: none;
   }
 }
 

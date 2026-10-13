@@ -2,6 +2,7 @@ import type { WordIndex, Word } from "./data";
 import { posOf } from "./data";
 import { confusables, editDistance, isInflection } from "./confusables";
 import type { AppState, Settings } from "./store";
+import { timeReached } from "./habit";
 import {
   addDays,
   canCheckIn,
@@ -68,6 +69,12 @@ export interface TodaySummary {
   ready: boolean;
   finish: string;
   remainingGoal: number;
+  /** 按学习时长打卡 */
+  timeMode: boolean;
+  /** 今日学习时长（ms） */
+  ms: number;
+  /** 时长目标（分钟） */
+  goalMin: number;
 }
 
 export function summarize(index: WordIndex, st: AppState, day: string): TodaySummary {
@@ -78,6 +85,8 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
   const bookTotal = bookSize(index, st.settings.book);
   const goal = st.settings.daily;
   const remainingGoal = Math.max(0, goal - log.n);
+  const timeMode = st.settings.goalMode === "time";
+  const goalMin = st.settings.goalMin || 20;
   return {
     day,
     learned: log.n,
@@ -91,9 +100,12 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
     bookTotal,
     started: bookTotal - left,
     checked: st.checkins.includes(day),
-    ready: canCheckIn({ learnedToday: log.n, goal, newLeft: left, due }),
+    ready: timeMode ? timeReached(log.ms, goalMin) : canCheckIn({ learnedToday: log.n, goal, newLeft: left, due }),
     finish: remainingGoal > 0 ? finishDate(day, left, goal) : finishDate(addDays(day, 1), left, goal),
     remainingGoal,
+    timeMode,
+    ms: log.ms,
+    goalMin,
   };
 }
 

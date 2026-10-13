@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { CalendarDays, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
+import { BellRing, CalendarDays, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
@@ -26,6 +26,8 @@ import {
 } from "@/lib/store";
 import { usePersist } from "@/lib/persist";
 import { daysUntil, effectiveExam, sprintPlan, upcomingExams } from "@/lib/exam";
+import { MAKEUP_EVERY, MAKEUP_MAX, REST_OPTIONS, TIME_GOALS, WEEKDAY_CN, type GoalMode } from "@/lib/habit";
+import { askNotify, badgeSupported, notifyPermission, notifySupported } from "@/lib/nudge";
 
 const APP_VERSION = __APP_VERSION__;
 import { cn } from "@/lib/utils";
@@ -197,6 +199,8 @@ function MePage() {
             <p className="mt-2 text-[12px] text-muted-foreground">未公布的场次按往年规律（6 月 / 12 月第二个周六）预估，以准考证为准。考试过后自动切到下一场。</p>
           </Panel>
 
+          <HabitPanel />
+
           <Panel>
             <PanelTitle>学习偏好</PanelTitle>
             <Row label="发音">
@@ -355,6 +359,123 @@ function MePage() {
         </div>
       </BottomSheet>
     </div>
+  );
+}
+
+/** v7 · 坚持与打卡：打卡标准、休息日、学习提醒、图标角标、补卡 */
+function HabitPanel() {
+  const st = useApp();
+  const s = st.settings;
+  const [perm, setPerm] = useState(notifyPermission());
+  const remindOn = !!s.remindAt;
+  const toggleRemind = async (on: boolean) => {
+    if (!on) {
+      setSettings({ remindAt: "" });
+      return;
+    }
+    if (!notifySupported()) {
+      toast.error("这个浏览器不支持通知");
+      return;
+    }
+    const ok = await askNotify();
+    setPerm(notifyPermission());
+    if (!ok) {
+      toast.error("没有通知权限，请在浏览器设置里允许通知");
+      return;
+    }
+    setSettings({ remindAt: "20:00" });
+    toast.success("每天 20:00 提醒你背单词");
+  };
+  return (
+    <Panel data-testid="habit-settings" id="habit">
+      <PanelTitle
+        right={
+          <span className="flex items-center gap-1 rounded-full bg-vague-soft px-2.5 py-1 text-[12px] font-bold text-vague" data-testid="me-makeup" data-n={st.makeup ?? 0}>
+            <Ticket className="size-3.5" /> 补卡 {st.makeup ?? 0}/{MAKEUP_MAX}
+          </span>
+        }
+      >
+        坚持与打卡
+      </PanelTitle>
+      <Label>打卡标准</Label>
+      <Segmented<GoalMode>
+        value={s.goalMode ?? "words"}
+        onChange={(v) => setSettings({ goalMode: v })}
+        testid="goal-mode"
+        options={[
+          { value: "words", label: "完成新词和复习" },
+          { value: "time", label: "学够时长" },
+        ]}
+      />
+      {s.goalMode === "time" && (
+        <div className="mt-2 grid grid-cols-3 gap-1.5" data-testid="goal-min">
+          {TIME_GOALS.map((m) => (
+            <button
+              key={m}
+              type="button"
+              data-testid={`goal-min-${m}`}
+              onClick={() => setSettings({ goalMin: m })}
+              className={cn(
+                "tnum rounded-xl py-2 text-[14px] font-bold transition",
+                s.goalMin === m ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {m} 分钟
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-[12px] text-muted-foreground">
+        {s.goalMode === "time" ? `当天作答累计满 ${s.goalMin} 分钟即可打卡（每题最多计 1 分钟）。` : "当天新词达标、到期复习清零即可打卡。"}
+      </p>
+
+      <Label>每周休息日</Label>
+      <div className="grid grid-cols-8 gap-1" data-testid="rest-day">
+        {REST_OPTIONS.map((d) => (
+          <button
+            key={d}
+            type="button"
+            data-testid={`rest-${d}`}
+            aria-pressed={(s.restDay ?? -1) === d}
+            onClick={() => setSettings({ restDay: d })}
+            className={cn(
+              "rounded-xl py-2 text-[13px] font-bold transition",
+              (s.restDay ?? -1) === d ? (d < 0 ? "bg-foreground text-background" : "bg-know text-white dark:text-[oklch(0.2_0.02_170)]") : "bg-secondary text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {d < 0 ? "无" : WEEKDAY_CN[d]}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-[12px] text-muted-foreground">
+        休息日不打卡也不断连续；每连续打卡 {MAKEUP_EVERY} 天得 1 张补卡（最多 {MAKEUP_MAX} 张），漏了昨天可以在今日页补上。
+      </p>
+
+      <div className="mt-3 border-t border-border/60 pt-1">
+        <Row label="学习提醒" hint={perm === "denied" ? "通知被禁止了，需在浏览器设置里打开" : "应用开着或在后台时到点发通知"}>
+          <div className="flex shrink-0 items-center gap-2">
+            {remindOn && (
+              <label className="relative flex items-center gap-1 rounded-xl bg-secondary px-2.5 py-1.5 text-[14px] font-bold tnum">
+                <BellRing className="size-3.5 text-primary" />
+                {s.remindAt}
+                <input
+                  type="time"
+                  data-testid="remind-time"
+                  value={s.remindAt}
+                  onChange={(e) => e.target.value && setSettings({ remindAt: e.target.value })}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                  aria-label="提醒时间"
+                />
+              </label>
+            )}
+            <Switch checked={remindOn} onCheckedChange={(v) => void toggleRemind(v)} aria-label="学习提醒" data-testid="remind-switch" />
+          </div>
+        </Row>
+        <Row label="图标角标" hint={badgeSupported() ? "桌面图标上显示待复习数" : "这个浏览器不支持角标"}>
+          <Switch checked={s.appBadge !== false} disabled={!badgeSupported()} onCheckedChange={(v) => setSettings({ appBadge: v })} aria-label="图标角标" data-testid="app-badge" />
+        </Row>
+      </div>
+    </Panel>
   );
 }
 

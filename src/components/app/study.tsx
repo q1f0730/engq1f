@@ -32,7 +32,6 @@ import {
   killCurrent,
   previewIntervals,
   sessionAccuracy,
-  streak,
   undo,
   type Card,
   type DayLog,
@@ -41,6 +40,8 @@ import {
   type SessionItem,
 } from "@/lib/srs";
 import { applyAnswer, checkIn, getState, setBury, toggleStar, useApp } from "@/lib/store";
+import { curStreak } from "@/lib/habit";
+import { celebrate } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
 import { Confusables, Examples, Meanings, Phonetic, Phrases } from "./word-bits";
 import { ShortcutsSheet } from "./shortcuts";
@@ -1187,7 +1188,7 @@ function Summary({ session, index, mode, ms, listId }: { session: Session; index
   const words = Object.entries(session.firsts);
   const [share, setShare] = useState(false);
   const info = useShareInfo(index);
-  const s = streak(st.checkins, day);
+  const s = curStreak(st, day);
 
   const restart = (m: StudyMode) => navigate({ to: "/study", search: { mode: m, t: Date.now() } });
   const missed = words.filter(([, r]) => r !== "know").map(([w]) => w);
@@ -1210,7 +1211,11 @@ function Summary({ session, index, mode, ms, listId }: { session: Session; index
       </div>
 
       <div className="mt-6 grid grid-cols-3 gap-2.5 text-center">
-        <MiniStat label="今日新学" value={`${sum.learned}/${sum.goal}`} />
+        {sum.timeMode ? (
+          <MiniStat label="今日用时" value={`${Math.floor(sum.ms / 60000)}/${sum.goalMin}分`} />
+        ) : (
+          <MiniStat label="今日新学" value={`${sum.learned}/${sum.goal}`} />
+        )}
         <MiniStat label="待复习" value={String(sum.due)} />
         <MiniStat label="连续打卡" value={`${s} 天`} />
       </div>
@@ -1220,9 +1225,9 @@ function Summary({ session, index, mode, ms, listId }: { session: Session; index
           type="button"
           data-testid="summary-checkin"
           onClick={() => {
-            checkIn(day);
-            setShare(true);
-            toast.success("打卡成功！");
+            const r = checkIn(day);
+            toast.success(`打卡成功！连续 ${r.streak} 天`, r.earned ? { description: `奖励 1 张补卡（共 ${r.makeup} 张）` } : undefined);
+            celebrate(r.milestone, () => setShare(true));
           }}
           className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25"
         >

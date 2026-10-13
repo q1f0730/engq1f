@@ -4,6 +4,8 @@ import { today } from "./clock";
 import type { QuizRecord } from "./exam";
 import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
 import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
+import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, parseHM, type CheckInResult, type GoalMode, type PatchResult } from "./habit";
+import type { ShareTpl } from "./share";
 
 export type Book = "all" | "core";
 export type Order = "core" | "alpha" | "random";
@@ -29,6 +31,18 @@ export interface Settings {
   wakeLock: boolean;
   /** 四级考试日期 YYYY-MM-DD；空 = 自动取下一场 */
   examDate: string;
+  /** 打卡标准：按任务（新词 + 复习）或按学习时长 */
+  goalMode: GoalMode;
+  /** 时长目标（分钟） */
+  goalMin: number;
+  /** 每周休息日：0 = 周日 … 6 = 周六，-1 = 不设 */
+  restDay: number;
+  /** 学习提醒 "HH:MM"，空 = 关 */
+  remindAt: string;
+  /** 图标角标显示待复习数 */
+  appBadge: boolean;
+  /** 分享图样式 */
+  shareTpl: ShareTpl;
 }
 
 export interface AppState {
@@ -57,6 +71,12 @@ export interface AppState {
   badges: Record<string, string>;
   /** 周报已读：哪个周一关掉的 */
   weekSeen?: string;
+  /** 补卡张数（0–3） */
+  makeup: number;
+  /** 上次发补卡的日期（同一天不重复发） */
+  makeupEarned?: string;
+  /** 用补卡补上的日期（也在 checkins 里） */
+  patched: string[];
 }
 
 export const DAILY_OPTIONS = [10, 20, 30, 50, 80, 100];
@@ -83,6 +103,12 @@ export const defaultSettings = (): Settings => ({
   tapeRepeat: 1,
   wakeLock: true,
   examDate: "",
+  goalMode: "words",
+  goalMin: 20,
+  restDay: -1,
+  remindAt: "",
+  appBadge: true,
+  shareTpl: "classic",
 });
 
 export function initialState(): AppState {
@@ -100,6 +126,8 @@ export function initialState(): AppState {
     lists: [],
     revlog: [],
     badges: {},
+    makeup: 0,
+    patched: [],
   };
 }
 
@@ -111,6 +139,12 @@ export function cleanSettings(s: Settings): Settings {
     rate: RATE_OPTIONS.includes(s.rate) ? s.rate : d.rate,
     tapeRepeat: REPEAT_OPTIONS.includes(s.tapeRepeat) ? s.tapeRepeat : d.tapeRepeat,
     wakeLock: typeof s.wakeLock === "boolean" ? s.wakeLock : d.wakeLock,
+    goalMode: s.goalMode === "time" ? "time" : "words",
+    goalMin: (TIME_GOALS as readonly number[]).includes(s.goalMin) ? s.goalMin : d.goalMin,
+    restDay: Number.isInteger(s.restDay) && s.restDay >= -1 && s.restDay <= 6 ? s.restDay : d.restDay,
+    remindAt: parseHM(s.remindAt) !== null ? s.remindAt : "",
+    appBadge: typeof s.appBadge === "boolean" ? s.appBadge : d.appBadge,
+    shareTpl: s.shareTpl === "paper" || s.shareTpl === "night" ? s.shareTpl : "classic",
     examDate: typeof s.examDate === "string" && (s.examDate === "" || /^\d{4}-\d{2}-\d{2}$/.test(s.examDate)) ? s.examDate : d.examDate,
   };
 }
@@ -136,6 +170,9 @@ export function normalize(raw: unknown): AppState {
     revlog: normalizeRevlog(r.revlog),
     badges: r.badges && typeof r.badges === "object" && !Array.isArray(r.badges) ? Object.fromEntries(Object.entries(r.badges).filter(([, v]) => typeof v === "string")) : {},
     weekSeen: typeof r.weekSeen === "string" ? r.weekSeen : undefined,
+    makeup: typeof r.makeup === "number" && Number.isFinite(r.makeup) ? Math.max(0, Math.min(MAKEUP_MAX, Math.floor(r.makeup))) : 0,
+    makeupEarned: typeof r.makeupEarned === "string" ? r.makeupEarned : undefined,
+    patched: Array.isArray(r.patched) ? r.patched.filter((d) => typeof d === "string") : [],
     seed: typeof r.seed === "number" ? r.seed : base.seed,
   };
 }
@@ -297,9 +334,18 @@ export function snoozeBackup(until: string) {
   commit({ ...state, backupSnooze: until });
 }
 
-export function checkIn(day: string) {
-  if (state.checkins.includes(day)) return;
-  commit({ ...state, checkins: [...state.checkins, day].sort() });
+/** 打卡：返回连续天数、是否得了补卡、跨过的里程碑 */
+export function checkIn(day: string): CheckInResult {
+  const r = applyCheckIn(state, day);
+  if (r.checkins !== state.checkins) commit({ ...state, checkins: r.checkins, makeup: r.makeup, makeupEarned: r.makeupEarned });
+  return r;
+}
+
+/** 用 1 张补卡补昨天 */
+export function patchYesterday(day: string): PatchResult | null {
+  const r = applyPatch(state, day);
+  if (r) commit({ ...state, checkins: r.checkins, patched: r.patched, makeup: r.makeup });
+  return r;
 }
 
 /** 保存一次模拟小测成绩（最多保留 60 次） */

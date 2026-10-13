@@ -11,6 +11,8 @@ import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 import { requestPersist } from "@/lib/persist";
+import { useAppBadge, useReminder } from "@/lib/nudge";
+import { MilestoneOverlay } from "@/components/app/milestone";
 
 const BARE = ["/study", "/welcome", "/test", "/tape", "/quiz"];
 
@@ -63,14 +65,18 @@ function Root() {
     if (!booted.current) return;
     const names = ids.map((id) => BADGES.find((b) => b.id === id)?.name).filter(Boolean);
     toast.success(`解锁成就：${names.join("、")}`, { description: "去「统计 → 成就」看看", duration: 2600 });
-  }, [st.cards, st.checkins, st.quizzes, st.onboarded, st.badges]);
+  }, [st.cards, st.checkins, st.quizzes, st.onboarded, st.badges, st.settings.restDay]);
   useEffect(() => {
     booted.current = true;
   }, []);
+  // 学习提醒（到点发通知）与图标角标（待复习数）
+  useReminder(st.settings.remindAt ?? "", st.onboarded);
+  useAppBadge(st);
   return (
     <>
       {bare ? <Outlet /> : <AppShell><Outlet /></AppShell>}
       <UpdatePrompt bare={bare} />
+      <MilestoneOverlay />
       {/* 有底栏的页面：底部居中、浮在标签栏之上；学习/测试页底部是作答按钮，放顶部（让开刘海） */}
       <Toaster
         position={bare ? "top-center" : "bottom-center"}

@@ -382,7 +382,7 @@ export function rankGroup(index: WordIndex, st: AppState, day: string): SessionI
 }
 
 /** 从应用状态算成就进度 */
-export function badgeCtx(st: Pick<AppState, "cards" | "checkins" | "quizzes">, total: number): BadgeCtx {
+export function badgeCtx(st: Pick<AppState, "cards" | "checkins" | "quizzes"> & { settings?: { restDay?: number } }, total: number): BadgeCtx {
   let killed = 0;
   let mastered = 0;
   const cards = Object.values(st.cards);
@@ -391,7 +391,7 @@ export function badgeCtx(st: Pick<AppState, "cards" | "checkins" | "quizzes">, t
     if (c.k || c.st === "mastered") mastered++;
   }
   return {
-    longest: longestStreak(st.checkins),
+    longest: longestStreak(st.checkins, typeof st.settings?.restDay === "number" ? st.settings.restDay : -1),
     learned: cards.length,
     total,
     killed,

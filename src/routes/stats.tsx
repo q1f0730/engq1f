@@ -14,7 +14,9 @@ import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
 import { fmtMinutes } from "@/lib/format";
 import { bookSize } from "@/lib/plan";
-import { emptyLog, forecast, longestStreak, masteryCounts, streak } from "@/lib/srs";
+import { emptyLog, forecast, masteryCounts } from "@/lib/srs";
+import { bestStreak, curStreak, restOf } from "@/lib/habit";
+import { DaySheet } from "@/components/app/day-sheet";
 import { useApp } from "@/lib/store";
 
 type Tab = "overview" | "review" | "badges";
@@ -71,10 +73,16 @@ function StatsPage() {
         <BadgesTab index={index} st={st} />
       </div>
     );
-  return <Overview index={index} st={st} header={header} />;
+  return (
+    <>
+      <Overview index={index} st={st} header={header} onOpen={openWord} />
+      <WordSheet word={sheetWord} open={sheetOpen} onOpenChange={setSheetOpen} />
+    </>
+  );
 }
 
-function Overview({ index, st, header }: { index: WordIndex; st: AppState; header: React.ReactNode }) {
+function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppState; header: React.ReactNode; onOpen: (w: string) => void }) {
+  const [pick, setPick] = useState<string | null>(null);
   const [calView, setCalView] = useState<"heat" | "month">("heat");
   const [fcRange, setFcRange] = useState<7 | 30>(7);
   const [ym, setYm] = useState(() => today().slice(0, 7));
@@ -86,7 +94,7 @@ function Overview({ index, st, header }: { index: WordIndex; st: AppState; heade
   const total = index.list.length;
   const m = masteryCounts(st.cards, total);
   const fc = forecast(st.cards, day, 7);
-  const s = streak(st.checkins, day);
+  const s = curStreak(st, day);
   const firstDays = Object.values(st.cards).map((c) => c.f);
   const book = bookSize(index, st.settings.book);
 
@@ -165,7 +173,7 @@ function Overview({ index, st, header }: { index: WordIndex; st: AppState; heade
           <div className="mb-4 grid grid-cols-3 gap-2 text-center">
             <Big label="连续打卡" value={s} testid="cal-streak" />
             <Big label="累计打卡" value={st.checkins.length} testid="cal-total" />
-            <Big label="最长连续" value={longestStreak(st.checkins)} />
+            <Big label="最长连续" value={bestStreak(st)} testid="cal-best" />
           </div>
           <Segmented<"heat" | "month">
             testid="cal-view"
@@ -177,11 +185,22 @@ function Overview({ index, st, header }: { index: WordIndex; st: AppState; heade
               { value: "month", label: "月历" },
             ]}
           />
+          <p className="-mt-1 mb-2 text-[11px] text-muted-foreground">点某一天，回看当天学了哪些词</p>
           {calView === "heat" ? (
-            <Heatmap logs={st.log} checkins={st.checkins} today={day} />
+            <Heatmap logs={st.log} checkins={st.checkins} today={day} onPick={setPick} />
           ) : (
             <>
-              <MonthCalendar ym={ym} logs={st.log} checkins={st.checkins} today={day} onShift={(n) => setYm((v) => shiftMonth(v, n))} canNext={ym < curYm} />
+              <MonthCalendar
+                ym={ym}
+                logs={st.log}
+                checkins={st.checkins}
+                today={day}
+                onShift={(n) => setYm((v) => shiftMonth(v, n))}
+                canNext={ym < curYm}
+                onPick={setPick}
+                rest={restOf(st)}
+                patched={st.patched}
+              />
               <div className="mt-3 grid grid-cols-3 gap-2 text-center" data-testid="month-sum">
                 <MiniStat label="本月打卡" value={`${ms.checked} 天`} testid="month-checked" />
                 <MiniStat label="学习天数" value={`${ms.days} 天`} />
@@ -192,6 +211,7 @@ function Overview({ index, st, header }: { index: WordIndex; st: AppState; heade
         </Panel>
 
         <QuizPanel quizzes={st.quizzes ?? []} />
+        <DaySheet day={pick} index={index} st={st} onOpenChange={(v) => !v && setPick(null)} onOpenWord={onOpen} />
 
         <Panel className="md:col-span-2">
           <PanelTitle right={<span className="text-[12px] text-muted-foreground">累计用时 {fmtMinutes(all.ms)}</span>}>30 天学习曲线</PanelTitle>

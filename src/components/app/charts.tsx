@@ -143,11 +143,14 @@ export function Heatmap({
   checkins,
   today,
   maxWeeks = 53,
+  onPick,
 }: {
   logs: Record<string, DayLog>;
   checkins: string[];
   today: string;
   maxWeeks?: number;
+  /** 点某天（当日回看） */
+  onPick?: (day: string) => void;
 }) {
   // 按容器宽度决定显示多少周，整列显示、不裁切
   const box = useRef<HTMLDivElement>(null);
@@ -209,8 +212,12 @@ export function Heatmap({
                       title={`${d}${checked ? " · 已打卡" : ""}${lv ? ` · ${(logs[d]?.n ?? 0) + (logs[d]?.r ?? 0)} 词` : ""}`}
                       data-day={d}
                       data-checked={checked ? 1 : 0}
+                      role={onPick && !future ? "button" : undefined}
+                      aria-label={onPick && !future ? `${d} 当日回看` : undefined}
+                      onClick={onPick && !future ? () => onPick(d) : undefined}
                       className={cn(
                         "relative size-[14px] rounded-[4px]",
+                        onPick && !future && "cursor-pointer hover:ring-2 hover:ring-primary/50",
                         future ? "bg-transparent" : checked && !lv ? "bg-primary/45" : shade[lv],
                         d === today && "ring-2 ring-foreground/70 ring-offset-1 ring-offset-card",
                       )}
@@ -243,8 +250,21 @@ export function Heatmap({
   );
 }
 
-export function WeekStrip({ checkins, logs, today }: { checkins: string[]; logs: Record<string, DayLog>; today: string }) {
+export function WeekStrip({
+  checkins,
+  logs,
+  today,
+  rest = -1,
+  patched = [],
+}: {
+  checkins: string[];
+  logs: Record<string, DayLog>;
+  today: string;
+  rest?: number;
+  patched?: string[];
+}) {
   const set = new Set(checkins);
+  const patchSet = new Set(patched);
   const names = ["一", "二", "三", "四", "五", "六", "日"];
   const t = new Date(today + "T12:00:00");
   const dow = (t.getDay() + 6) % 7;
@@ -256,21 +276,27 @@ export function WeekStrip({ checkins, logs, today }: { checkins: string[]; logs:
         const checked = set.has(d);
         const studied = (logs[d]?.n ?? 0) + (logs[d]?.r ?? 0) > 0;
         const isToday = d === today;
+        const isPatch = checked && patchSet.has(d);
+        const isRest = !checked && rest >= 0 && new Date(d + "T12:00:00").getDay() === rest;
         return (
-          <div key={d} className="flex flex-col items-center gap-1.5">
+          <div key={d} className="flex flex-col items-center gap-1.5" data-day={d} data-state={isPatch ? "patched" : checked ? "checked" : isRest ? "rest" : studied ? "studied" : "none"}>
             <span className={cn("text-[11px]", isToday ? "font-bold text-foreground" : "text-muted-foreground")}>{n}</span>
             <span
               className={cn(
                 "grid size-9 place-items-center rounded-full text-[12px] font-semibold tnum",
-                checked
+                isPatch
+                  ? "bg-primary/60 text-primary-foreground"
+                  : checked
                   ? "bg-primary text-primary-foreground"
+                  : isRest
+                  ? "border-2 border-dashed border-know/50 bg-know-soft text-know"
                   : studied
                     ? "bg-brand-soft text-primary"
                     : "bg-secondary text-muted-foreground",
                 isToday && !checked && "ring-2 ring-primary/60",
               )}
             >
-              {checked ? "✓" : Number(d.slice(8))}
+              {isPatch ? "补" : checked ? "✓" : isRest ? "休" : Number(d.slice(8))}
             </span>
           </div>
         );

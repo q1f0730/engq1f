@@ -16,3 +16,13 @@ export function buzz(rating: Rating) {
     /* 不支持 */
   }
 }
+
+/** 任意震动图案（里程碑庆祝等），同样受「震动反馈」开关控制 */
+export function vibrate(pattern: number | number[]) {
+  if (!getState().settings.haptics) return;
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(pattern);
+  } catch {
+    /* 不支持 */
+  }
+}

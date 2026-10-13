@@ -242,27 +242,47 @@ export function logAnswer(log: DayLog | undefined, kind: "new" | "review", ratin
 
 // ---------------------------------------------------------------- check-in / streak
 
-/** 连续打卡天数：截止今天（或昨天，今天还没打也不断） */
-export function streak(checkins: string[], today: string): number {
+/** 星期几（0 = 周日） */
+export const weekdayOf = (day: string) => new Date(day + "T12:00:00").getDay();
+
+/**
+ * 连续打卡天数：截止今天（或昨天，今天还没打也不断）。
+ * rest = 每周休息日（0 = 周日 … 6 = 周六，-1 = 无）：没打卡的休息日跳过，不断也不计数。
+ */
+export function streak(checkins: string[], today: string, rest = -1): number {
   const set = new Set(checkins);
   let day = set.has(today) ? today : addDays(today, -1);
   let n = 0;
-  while (set.has(day)) {
-    n++;
+  for (let guard = 0; guard < 5000; guard++) {
+    if (set.has(day)) n++;
+    else if (!(rest >= 0 && weekdayOf(day) === rest)) break;
     day = addDays(day, -1);
   }
   return n;
 }
 
-export function longestStreak(checkins: string[]): number {
+export function longestStreak(checkins: string[], rest = -1): number {
   const days = [...new Set(checkins)].sort();
+  if (!days.length) return 0;
+  if (rest < 0) {
+    let best = 0;
+    let cur = 0;
+    let prev = "";
+    for (const d of days) {
+      cur = prev && diffDays(prev, d) === 1 ? cur + 1 : 1;
+      best = Math.max(best, cur);
+      prev = d;
+    }
+    return best;
+  }
+  // 有休息日：逐日走一遍，没打卡的休息日不断
+  const set = new Set(days);
   let best = 0;
   let cur = 0;
-  let prev = "";
-  for (const d of days) {
-    cur = prev && diffDays(prev, d) === 1 ? cur + 1 : 1;
-    best = Math.max(best, cur);
-    prev = d;
+  const last = days[days.length - 1];
+  for (let d = days[0], guard = 0; d <= last && guard < 20000; d = addDays(d, 1), guard++) {
+    if (set.has(d)) best = Math.max(best, ++cur);
+    else if (weekdayOf(d) !== rest) cur = 0;
   }
   return best;
 }

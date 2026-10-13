@@ -1,6 +1,9 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import {
+  AlarmClock,
   BookMarked,
+  Coffee,
+  Ticket,
   CalendarCheck,
   Check,
   ChevronRight,
@@ -22,7 +25,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Bars, Ring, WeekStrip } from "@/components/app/charts";
 import { Panel, PanelTitle, Spinner } from "@/components/app/shell";
@@ -32,8 +35,10 @@ import { speak } from "@/lib/audio";
 import { now, today } from "@/lib/clock";
 import { shortMeaning, useWords } from "@/lib/data";
 import { notebookWords, summarize, wordOfDay } from "@/lib/plan";
-import { addDays, forecast, streak } from "@/lib/srs";
-import { checkIn, dismissWeekReport, setSettings, snoozeBackup, useApp } from "@/lib/store";
+import { addDays, forecast } from "@/lib/srs";
+import { checkIn, dismissWeekReport, patchYesterday, setSettings, snoozeBackup, useApp } from "@/lib/store";
+import { MAKEUP_EVERY, MAKEUP_MAX, WEEKDAY_CN, canPatch, curStreak, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf } from "@/lib/habit";
+import { celebrate } from "@/lib/celebrate";
 import { coreUnmastered, effectiveExam, quizDoneOn, sprintPlan, upcomingExams } from "@/lib/exam";
 import { backupDue } from "@/lib/persist";
 import { useShareInfo } from "@/lib/use-share";
@@ -65,10 +70,16 @@ function Today() {
 
   const day = today();
   const sum = summarize(index, st, day);
-  const s = streak(st.checkins, day);
+  const s = curStreak(st, day);
+  const rest = restOf(st);
+  const restToday = isRestDay(day, rest);
+  const late = lateWarning(new Date(now()).getHours(), sum.checked, restToday);
+  const patchable = canPatch(st, day);
+  const timePct = Math.min(1, sum.ms / (sum.goalMin * 60000));
+  const minutes = Math.floor(sum.ms / 60000);
   const fc = forecast(st.cards, day, 7);
   const wod = wordOfDay(index, day);
-  const pct = sum.goal ? Math.min(1, sum.learned / sum.goal) : 0;
+  const pct = sum.timeMode ? Math.min(1, sum.ms / (sum.goalMin * 60000)) : sum.goal ? Math.min(1, sum.learned / sum.goal) : 0;
   const learnLabel = sum.newLeft === 0 ? "词书已学完" : sum.learned === 0 ? "开始学习" : sum.remainingGoal > 0 ? "学下一组" : "再学一组";
   const nb = {
     star: notebookWords(st, "star").length,
@@ -86,9 +97,15 @@ function Today() {
   const dateLine = `${fmtDate(day)} ${WEEK[new Date(day + "T12:00:00").getDay()]}`;
 
   const doCheckIn = () => {
-    checkIn(day);
-    toast.success(`打卡成功！连续 ${streak([...st.checkins, day], day)} 天`);
-    setShare(true);
+    const r = checkIn(day);
+    toast.success(`打卡成功！连续 ${r.streak} 天`, r.earned ? { description: `连续 ${r.streak} 天，奖励 1 张补卡（共 ${r.makeup} 张）` } : undefined);
+    celebrate(r.milestone, () => setShare(true));
+  };
+  const doPatch = () => {
+    const r = patchYesterday(day);
+    if (!r) return;
+    toast.success(`已补上昨天，连续 ${r.streak} 天`, { description: `剩 ${r.makeup} 张补卡` });
+    celebrate(r.milestone);
   };
 
   return (
@@ -113,6 +130,8 @@ function Today() {
         </div>
       </div>
 
+      {late && <LateBanner sum={sum} streak={s} onCheckIn={doCheckIn} />}
+
       <div className="grid gap-4 md:grid-cols-[1.3fr_1fr] md:gap-5">
         <div className="min-w-0 space-y-4 md:space-y-5">
           {/* 主卡片 */}
@@ -120,14 +139,27 @@ function Today() {
             <div className="pointer-events-none absolute -bottom-24 -left-16 size-64 rounded-full bg-white/[0.07]" />
             <div className="relative flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <div className="text-[13px] font-semibold text-white/80">今日新词</div>
-                <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="tnum font-display text-[52px] font-extrabold leading-none tracking-tight" data-testid="learned">
-                    {sum.learned}
-                  </span>
-                  <span className="tnum text-[20px] font-bold text-white/75">/ {sum.goal}</span>
-                </div>
+                {sum.timeMode ? (
+                  <>
+                    <div className="text-[13px] font-semibold text-white/80">今日学习</div>
+                    <div className="mt-1 flex items-baseline gap-1.5" data-testid="hero-time" data-min={minutes}>
+                      <span className="tnum font-display text-[52px] font-extrabold leading-none tracking-tight">{minutes}</span>
+                      <span className="tnum text-[20px] font-bold text-white/75">/ {sum.goalMin} 分钟</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-[13px] font-semibold text-white/80">今日新词</div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="tnum font-display text-[52px] font-extrabold leading-none tracking-tight" data-testid="learned">
+                        {sum.learned}
+                      </span>
+                      <span className="tnum text-[20px] font-bold text-white/75">/ {sum.goal}</span>
+                    </div>
+                  </>
+                )}
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-white/85">
+                  {sum.timeMode && <span data-testid="learned">新词 {sum.learned}</span>}
                   <span data-testid="due-count">待复习 {sum.due}</span>
                   <span>已复习 {sum.reviewed}</span>
                   {sum.deferred > 0 && (
@@ -222,6 +254,20 @@ function Today() {
               />
             </Link>
           )}
+          {patchable && (
+            <Notice
+              testid="makeup-notice"
+              icon={<Ticket className="size-5" />}
+              tone="bg-vague-soft text-vague"
+              title="昨天漏打卡了"
+              sub={`用 1 张补卡补上 → 连续 ${patchedStreak(st, day)} 天 · 还有 ${st.makeup} 张`}
+              action={
+                <button type="button" data-testid="makeup-use" onClick={doPatch} className="shrink-0 rounded-full bg-vague px-3.5 py-2 text-[13px] font-bold text-white dark:text-[oklch(0.2_0.03_80)]">
+                  补卡
+                </button>
+              }
+            />
+          )}
           {backupDays !== null && (
             <Notice
               testid="backup-nag"
@@ -258,7 +304,12 @@ function Today() {
             >
               每日打卡
             </PanelTitle>
-            <WeekStrip checkins={st.checkins} logs={st.log} today={day} />
+            <WeekStrip checkins={st.checkins} logs={st.log} today={day} rest={rest} patched={st.patched} />
+            {restToday && !sum.checked && (
+              <div className="mt-3 flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-2.5 text-[13px] font-medium text-know" data-testid="rest-today">
+                <Coffee className="size-4 shrink-0" /> 今天是休息日，不打卡也不断连续；学了照样可以打卡
+              </div>
+            )}
             <div className="mt-4">
               {sum.checked ? (
                 <div className="flex items-center gap-3 rounded-2xl bg-brand-soft p-3.5" data-testid="checked-in">
@@ -288,11 +339,39 @@ function Today() {
                   <CalendarCheck className="size-5" /> 今日任务完成，立即打卡
                 </button>
               ) : (
-                <div className="grid grid-cols-2 gap-2.5 text-[13px]" data-testid="checkin-todo">
-                  <Todo done={sum.learned >= sum.goal || sum.newLeft === 0} label={`新词 ${sum.learned}/${sum.goal}`} />
-                  <Todo done={sum.due === 0} label={sum.due === 0 ? "复习已清零" : `还需复习 ${sum.due}`} />
-                </div>
+                sum.timeMode ? (
+                  <div className="text-[13px]" data-testid="checkin-todo" data-mode="time">
+                    <div className="flex items-center gap-3 rounded-2xl bg-secondary px-3 py-3">
+                      <AlarmClock className="size-5 shrink-0 text-primary" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex justify-between font-semibold">
+                          <span>学满 {sum.goalMin} 分钟就能打卡</span>
+                          <span className="tnum text-muted-foreground">{minutes}/{sum.goalMin}</span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/70">
+                          <div className="h-full rounded-full bg-primary" style={{ width: `${timePct * 100}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5 text-[13px]" data-testid="checkin-todo" data-mode="words">
+                    <Todo done={sum.learned >= sum.goal || sum.newLeft === 0} label={`新词 ${sum.learned}/${sum.goal}`} />
+                    <Todo done={sum.due === 0} label={sum.due === 0 ? "复习已清零" : `还需复习 ${sum.due}`} />
+                  </div>
+                )
               )}
+            </div>
+            <div className="mt-3 flex items-center gap-2 border-t border-border/60 pt-3 text-[12px] text-muted-foreground" data-testid="habit-row">
+              <span className="flex items-center gap-1 rounded-full bg-vague-soft px-2.5 py-1 font-bold text-vague" data-testid="makeup-count" data-n={st.makeup ?? 0}>
+                <Ticket className="size-3.5" /> 补卡 {st.makeup ?? 0}/{MAKEUP_MAX}
+              </span>
+              <span className="min-w-0 flex-1 truncate">
+                每连续 {MAKEUP_EVERY} 天得 1 张{rest >= 0 ? ` · 周${WEEKDAY_CN[rest]}休息` : ""}
+              </span>
+              <Link to="/me" className="shrink-0 font-semibold text-foreground/70 hover:text-foreground">
+                设置
+              </Link>
             </div>
           </Panel>
 
@@ -545,6 +624,56 @@ function WeekCard({ day, logs }: { day: string; logs: Record<string, import("@/l
       <Link to="/stats" search={{ tab: "review" }} className="mt-3 flex items-center justify-center gap-0.5 text-[12px] font-semibold text-primary" data-testid="week-more">
         看复盘 <ChevronRight className="size-3.5" />
       </Link>
+    </section>
+  );
+}
+
+/** 断签预警：21 点后还没打卡 */
+function LateBanner({ sum, streak, onCheckIn }: { sum: ReturnType<typeof summarize>; streak: number; onCheckIn: () => void }) {
+  const [left, setLeft] = useState(() => minutesToMidnight(new Date(now())));
+  useEffect(() => {
+    const id = window.setInterval(() => setLeft(minutesToMidnight(new Date(now()))), 30000);
+    return () => window.clearInterval(id);
+  }, []);
+  const h = Math.floor(left / 60);
+  const m = left % 60;
+  const todo: string[] = [];
+  if (sum.timeMode) {
+    const need = Math.max(0, sum.goalMin - Math.floor(sum.ms / 60000));
+    if (need > 0) todo.push(`还差 ${need} 分钟`);
+  } else {
+    if (sum.learned < sum.goal && sum.newLeft > 0) todo.push(`新词还差 ${sum.goal - sum.learned}`);
+    if (sum.due > 0) todo.push(`复习还差 ${sum.due}`);
+  }
+  const needNew = !sum.timeMode && sum.learned < sum.goal && sum.newLeft > 0;
+  return (
+    <section className="late-banner late-pulse mb-4 overflow-hidden rounded-3xl p-4 text-white" data-testid="late-warning" role="alert">
+      <div className="flex items-center gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/18">
+          <AlarmClock className="size-6" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[16px] font-extrabold leading-tight">{streak > 0 ? `连续 ${streak} 天要断了！` : "今天还没打卡"}</div>
+          <div className="mt-0.5 text-[12.5px] leading-snug text-white/85" data-testid="late-sub">
+            离今天结束还有 <b className="tnum">{h > 0 ? `${h} 小时 ` : ""}{m} 分</b>
+            {todo.length ? ` · ${todo.join(" · ")}` : " · 任务已完成，就差打卡"}
+          </div>
+        </div>
+        {sum.ready ? (
+          <button type="button" onClick={onCheckIn} data-testid="late-checkin" className="shrink-0 rounded-full bg-white px-3.5 py-2 text-[13px] font-bold text-[oklch(0.5_0.2_20)]">
+            打卡
+          </button>
+        ) : (
+          <Link
+            to="/study"
+            search={{ mode: needNew || (sum.timeMode && sum.due === 0) ? "new" : "review" }}
+            data-testid="late-go"
+            className="shrink-0 rounded-full bg-white px-3.5 py-2 text-[13px] font-bold text-[oklch(0.5_0.2_20)]"
+          >
+            去完成
+          </Link>
+        )}
+      </div>
     </section>
   );
 }
