@@ -30,6 +30,7 @@ export function Logo({ className }: { className?: string }) {
 
 function isActive(path: string, to: string) {
   if (to === "/words" && path.startsWith("/syn")) return true; // 同义词组属于词库
+  if (to === "/me" && path.startsWith("/algo")) return true; // 算法说明属于我的
   return to === "/" ? path === "/" : path.startsWith(to);
 }
 

@@ -64,6 +64,20 @@ export interface Settings {
   preview: boolean;
   /** v9 · 每组新词学完自动速测 */
   postQuiz: boolean;
+  /** v10 · 记忆保持目标 85 / 90 / 95（%） */
+  retention: number;
+  /** v10 · 间隔随机扰动 ±5% */
+  fuzz: boolean;
+  /** v10 · 负荷均衡 */
+  balance: boolean;
+  /** v10 · 逾期加成 */
+  overdue: boolean;
+  /** v10 · 重学步骤 1 天 → 3 天 */
+  steps: boolean;
+  /** v10 · 四键模式（多一个「简单」） */
+  fourKey: boolean;
+  /** v10 · 初始难度拟合 */
+  fitEase: boolean;
 }
 
 export interface AppState {
@@ -104,7 +118,14 @@ export interface AppState {
   installSnooze?: string;
   /** v9 · 小游戏最高分：match = 配对消消乐得分，judge = 判断对错得分 */
   gameBest: Record<string, number>;
+  /** v10 · 新词自适应：某天把新词目标减到 n */
+  newCut?: { d: string; n: number };
+  /** v10 · 新词自适应建议关掉的那天 */
+  newCutSeen?: string;
 }
+
+/** v10 · 记忆保持目标（这里自带一份，不让首屏引入整个 algo.ts） */
+export const cleanRetention = (r: unknown): number => (r === 85 || r === 95 ? r : 90);
 
 export const DAILY_OPTIONS = [10, 20, 30, 50, 80, 100];
 export const REVIEW_CAP_OPTIONS = [0, 50, 100, 200];
@@ -145,6 +166,13 @@ export const defaultSettings = (): Settings => ({
   progressive: false,
   preview: false,
   postQuiz: false,
+  retention: 90,
+  fuzz: false,
+  balance: false,
+  overdue: false,
+  steps: false,
+  fourKey: false,
+  fitEase: false,
 });
 
 export function initialState(): AppState {
@@ -192,6 +220,13 @@ export function cleanSettings(s: Settings): Settings {
     progressive: s.progressive === true,
     preview: s.preview === true,
     postQuiz: s.postQuiz === true,
+    retention: cleanRetention(s.retention),
+    fuzz: s.fuzz === true,
+    balance: s.balance === true,
+    overdue: s.overdue === true,
+    steps: s.steps === true,
+    fourKey: s.fourKey === true,
+    fitEase: s.fitEase === true,
     examDate: typeof s.examDate === "string" && (s.examDate === "" || /^\d{4}-\d{2}-\d{2}$/.test(s.examDate)) ? s.examDate : d.examDate,
   };
 }
@@ -224,6 +259,9 @@ export function normalize(raw: unknown): AppState {
     installSnooze: typeof r.installSnooze === "string" ? r.installSnooze : undefined,
     seed: typeof r.seed === "number" ? r.seed : base.seed,
     gameBest: cleanBest(r.gameBest),
+    newCut:
+      r.newCut && typeof r.newCut === "object" && typeof r.newCut.d === "string" && Number.isInteger(r.newCut.n) && r.newCut.n >= 0 ? { d: r.newCut.d, n: r.newCut.n } : undefined,
+    newCutSeen: typeof r.newCutSeen === "string" ? r.newCutSeen : undefined,
   };
 }
 
@@ -504,6 +542,22 @@ export function saveGameBest(game: string, score: number): boolean {
 export function previewKill(words: string[], day: string, rev: (w: string, card: Card) => RevEntry) {
   const next = applyPreviewKill(state, words, day, rev);
   if (next.cards !== state.cards) commit({ ...state, ...next });
+}
+
+// ---------------------------------------------------------------- v10 · 算法进阶
+
+/** 新词自适应：今天新词目标减到 n；n = null 恢复 */
+export function setNewCut(day: string, n: number | null) {
+  commit({ ...state, newCut: n === null ? undefined : { d: day, n } });
+}
+
+export function dismissNewCut(day: string) {
+  commit({ ...state, newCutSeen: day });
+}
+
+/** 批量替换卡片（负荷均衡挪动到期日） */
+export function replaceCards(cards: Record<string, Card>) {
+  commit({ ...state, cards });
 }
 
 export function saveTest(est: number) {

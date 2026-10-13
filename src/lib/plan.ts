@@ -76,6 +76,8 @@ export interface TodaySummary {
   ms: number;
   /** 时长目标（分钟） */
   goalMin: number;
+  /** v10 · 今天的新词目标被自适应减少了 */
+  cut: boolean;
 }
 
 export function summarize(index: WordIndex, st: AppState, day: string): TodaySummary {
@@ -84,7 +86,7 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
   const due = cappedDue(st, day, dueList.length);
   const left = newWordsLeft(index, st, day).length;
   const bookTotal = bookSize(index, st.settings.book);
-  const goal = st.settings.daily;
+  const goal = st.newCut?.d === day ? Math.min(st.settings.daily, st.newCut.n) : st.settings.daily;
   const remainingGoal = Math.max(0, goal - log.n);
   const timeMode = st.settings.goalMode === "time";
   const goalMin = st.settings.goalMin || 20;
@@ -102,12 +104,21 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
     started: bookTotal - left,
     checked: st.checkins.includes(day),
     ready: timeMode ? timeReached(log.ms, goalMin) : canCheckIn({ learnedToday: log.n, goal, newLeft: left, due }),
-    finish: remainingGoal > 0 ? finishDate(day, left, goal) : finishDate(addDays(day, 1), left, goal),
+    finish: remainingGoal > 0 ? finishDate(day, left, st.settings.daily) : finishDate(addDays(day, 1), left, st.settings.daily),
+    cut: goal < st.settings.daily,
     remainingGoal,
     timeMode,
     ms: log.ms,
     goalMin,
   };
+}
+
+/** v10 · 新词自适应：今天到期复习量超过「每日新词 × 3」（且 ≥30）时建议减少新词：按比例缩，取 5 的倍数，至少 5 */
+export function adaptiveNew(due: number, daily: number): number | null {
+  if (daily <= 5 || due < 30 || due <= daily * 3) return null;
+  const raw = (daily * daily * 3) / due;
+  const n = Math.max(5, Math.floor(raw / 5) * 5);
+  return n < daily ? n : null;
 }
 
 /** 下一组新词：优先补齐今日目标，达标后可以再学一组 10 个 */

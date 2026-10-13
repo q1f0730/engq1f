@@ -25,11 +25,13 @@ export function Kbd({ children }: { children: React.ReactNode }) {
 }
 
 export function ShortcutsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const swap = !!useApp().settings.swapSwipe;
+  const st = useApp().settings;
+  const swap = !!st.swapSwipe;
+  const rows: [string, string][] = st.fourKey ? [ROWS[0], ["4", "简单（四键模式）"], ...ROWS.slice(1)] : ROWS;
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="键盘快捷键" testid="shortcuts">
       <div className="divide-y divide-border/70">
-        {ROWS.map(([k, v]) => (
+        {rows.map(([k, v]) => (
           <div key={k} className="flex items-center justify-between py-2.5 text-sm">
             <span className="text-muted-foreground">{v}</span>
             <span className="flex gap-1">

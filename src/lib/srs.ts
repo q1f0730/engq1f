@@ -34,6 +34,8 @@ export interface Card {
   t: string;
   /** 已斩（永久掌握） */
   k?: 1;
+  /** v10 · 重学步骤：遗忘后下一次「认识」走 3 天这一步 */
+  rs?: 1;
 }
 
 export const MASTER_DAYS = 21;
@@ -87,12 +89,78 @@ export interface ScheduleOptions {
   repeat?: boolean;
   /** 提前复习（还没到期就复习）：认识时按实际经过天数计算，且不短于原间隔 */
   early?: boolean;
+  /** v10 · 算法进阶选项（都不给 = v9 原算法） */
+  algo?: AlgoOptions;
+}
+
+/** v10 · 算法进阶 */
+export interface AlgoOptions {
+  /** 记忆保持目标 85 / 90 / 95（%），90 = 原间隔 */
+  retention?: number;
+  /** 间隔随机扰动：按 key 稳定抖动 ±5%（≥4 天的间隔至少 ±1 天） */
+  fuzz?: boolean;
+  /** 抖动 / 均衡用的稳定种子（单词） */
+  key?: string;
+  /** 逾期加成：逾期很久仍答对，按实际间隔计算 */
+  overdue?: boolean;
+  /** 重学步骤：遗忘后 1 天 → 3 天 */
+  steps?: boolean;
+  /** 四键模式的「简单」：在「认识」基础上间隔再 ×1.3 */
+  easy?: boolean;
+  /** 新卡初始 ease（初始难度拟合） */
+  initEase?: number;
+  /** 负荷均衡：每天的到期量与均值（≥4 天的间隔才挪） */
+  load?: { count: (day: string) => number; avg: number };
+}
+
+export const EASY_BONUS = 1.3;
+export const RELEARN_STEP2 = 3;
+/** 负荷均衡阈值：超过均值的 1.5 倍 */
+export const LOAD_FACTOR = 1.5;
+
+/** 保持目标 → 间隔缩放（ln R / ln 0.9；90% = 1） */
+export function retentionScale(r = 90): number {
+  const R = Math.min(0.97, Math.max(0.7, r / 100));
+  return Math.log(R) / Math.log(0.9);
+}
+
+/** 稳定的 ±5% 抖动（≥4 天至少 ±1 天，<4 天不抖） */
+export function fuzzDays(i: number, key: string, today: string): number {
+  if (i < 4) return 0;
+  const span = Math.max(1, Math.round(i * 0.05));
+  const u = hashStr(key + "|" + today + "|fz") / 4294967296;
+  return Math.round((u * 2 - 1) * span);
+}
+
+/** 逾期很久：实际经过 ≥ 间隔 × 1.5 且至少逾期 2 天 */
+export function longOverdue(card: Card, today: string): boolean {
+  const el = diffDays(card.t, today);
+  return card.i > 0 && el - card.i >= 2 && el >= card.i * 1.5;
+}
+
+/** 到期日落在超载的一天时，挪到前后一天里较空的那天（不早于明天） */
+export function balancedDue(due: string, today: string, load: { count: (day: string) => number; avg: number }): string {
+  const c = load.count(due);
+  if (load.avg <= 0 || c < 3 || c <= load.avg * LOAD_FACTOR) return due;
+  let best = due;
+  let bestN = c;
+  for (const d of [addDays(due, -1), addDays(due, 1)]) {
+    if (d <= today) continue;
+    const n = load.count(d) + 1;
+    if (n < bestN) {
+      best = d;
+      bestN = n;
+    }
+  }
+  return best;
 }
 
 /** 根据一次评分计算新的卡片状态 */
 export function schedule(card: Card | undefined, rating: Rating, today: string, opts: ScheduleOptions = {}): Card {
   const isNew = !card;
+  const a = opts.algo ?? {};
   const base: Card = card ? { ...card } : newCard(today);
+  if (isNew && a.initEase) base.e = clampEase(a.initEase);
 
   // 已斩的词：认识/模糊保持斩；不认识 → 取消斩，回到学习
   if (base.k) {
@@ -111,12 +179,32 @@ export function schedule(card: Card | undefined, rating: Rating, today: string, 
   }
 
   let { e, i, r, l } = base;
+  let rs = base.rs;
+  let growth = false;
   switch (rating) {
     case "know":
       if (isNew) i = FIRST_KNOWN_DAYS;
       else if (i === 0) i = 1;
-      else if (opts.early) i = Math.max(i, Math.round(Math.max(1, diffDays(base.t, today)) * e));
-      else i = Math.max(i + 1, Math.round(i * e));
+      else if (a.steps && rs) {
+        // 重学步骤第二步：固定 3 天
+        i = Math.max(i + 1, RELEARN_STEP2);
+        rs = undefined;
+      } else if (opts.early) {
+        i = Math.max(i, Math.round(Math.max(1, diffDays(base.t, today)) * e));
+        growth = true;
+      } else if (a.overdue && longOverdue(base, today)) {
+        i = Math.max(i + 1, Math.round(diffDays(base.t, today) * e));
+        growth = true;
+      } else {
+        i = Math.max(i + 1, Math.round(i * e));
+        growth = true;
+      }
+      if (a.easy) {
+        i = Math.max(i + 1, Math.round(i * EASY_BONUS));
+        e = clampEase(e + 0.15);
+        rs = undefined;
+      }
+      if (growth && a.retention && a.retention !== 90) i = Math.max(base.i + 1, Math.round(i * retentionScale(a.retention)));
       r += 1;
       break;
     case "vague":
@@ -125,11 +213,24 @@ export function schedule(card: Card | undefined, rating: Rating, today: string, 
       break;
     case "forget":
       e = clampEase(e - 0.2);
+      if (a.steps && i > 0) rs = 1;
       i = 0;
       l += 1;
       break;
   }
-  return { ...base, e, i, r, l, d: addDays(today, i), st: stateFor(i), t: today };
+  let d = addDays(today, i);
+  if (i >= 4 && a.fuzz && a.key) {
+    i += fuzzDays(i, a.key, today);
+    d = addDays(today, i);
+  }
+  if (i >= 4 && a.load) {
+    d = balancedDue(d, today, a.load);
+    i = diffDays(today, d);
+  }
+  const out: Card = { ...base, e, i, r, l, d, st: stateFor(i), t: today };
+  if (rs) out.rs = rs;
+  else delete out.rs;
+  return out;
 }
 
 /** 斩：永久掌握 */
@@ -170,16 +271,21 @@ export function intervalLabel(i: number): string {
   return `${Math.round((i / 365) * 10) / 10}年`;
 }
 
-/** 三个评分各自的下次复习时间（与 schedule 完全一致） */
+/** 三个评分各自的下次复习时间（与 schedule 完全一致）；withEasy = 四键模式多算「简单」 */
 export function previewIntervals(
   card: Card | undefined,
   today: string,
   opts: ScheduleOptions = {},
-): Record<Rating, string> {
-  const out = {} as Record<Rating, string>;
+  withEasy = false,
+): Record<Rating, string> & { easy?: string } {
+  const out = {} as Record<Rating, string> & { easy?: string };
   for (const r of ["know", "vague", "forget"] as Rating[]) {
     const c = schedule(card, r, today, opts);
     out[r] = c.k ? "已斩" : intervalLabel(diffDays(today, c.d));
+  }
+  if (withEasy) {
+    const c = schedule(card, "know", today, { ...opts, algo: { ...opts.algo, easy: true } });
+    out.easy = c.k ? "已斩" : intervalLabel(diffDays(today, c.d));
   }
   return out;
 }
@@ -353,11 +459,12 @@ export function answer(
   today: string,
   log: DayLog | undefined,
   ms = 0,
+  algo?: AlgoOptions,
 ): AnswerResult {
   const item = s.queue[0];
   if (!item) throw new Error("session finished");
   const first = !(item.w in s.firsts);
-  const card = schedule(prev, rating, today, { repeat: !first, early: item.early });
+  const card = schedule(prev, rating, today, { repeat: !first, early: item.early, algo: algo ? { key: item.w, ...algo } : undefined });
   const nextLog = first ? logAnswer(log, item.kind, rating, ms) : { ...emptyLog(), ...log, ms: (log?.ms ?? 0) + Math.min(ms, 60000) };
   const rest = s.queue.slice(1);
   let queue = rest;

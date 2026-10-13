@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Accessibility, BellRing, CalendarDays, Check, Contrast, MonitorDown, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
+import { Accessibility, Scale, BellRing, CalendarDays, Check, Contrast, MonitorDown, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
@@ -32,6 +32,9 @@ import { FONT_LABEL, FONT_SIZES, MOTION_LABEL, type FontSize, type Motion } from
 import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 import { BASE_MODES, REVIEW_MODES, TIER_LONG, TIER_SHORT, toggleMode } from "@/lib/modes";
 import { MODE_LABEL } from "@/lib/exam";
+import { FIT_MIN, RETENTION_OPTIONS, balanceAll, fitInitialEase } from "@/lib/algo";
+import { retentionScale } from "@/lib/srs";
+import { getState, replaceCards } from "@/lib/store";
 
 const APP_VERSION = __APP_VERSION__;
 import { cn } from "@/lib/utils";
@@ -256,6 +259,8 @@ function MePage() {
           </Panel>
 
           <ModesPanel />
+
+          <AlgoPanel />
 
           <A11yPanel />
         </div>
@@ -539,6 +544,91 @@ function ModesPanel() {
           <Switch checked={!!s.postQuiz} onCheckedChange={(v) => setSettings({ postQuiz: v })} aria-label="学后速测" data-testid="post-quiz-switch" />
         </Row>
       </div>
+    </Panel>
+  );
+}
+
+/** v10 · 记忆算法：保持目标、间隔扰动、负荷均衡、逾期加成、重学步骤、四键模式、初始难度拟合 */
+function AlgoPanel() {
+  const st = useApp();
+  const s = st.settings;
+  const ret = s.retention ?? 90;
+  const fit = fitInitialEase(st.revlog);
+  const scale = retentionScale(ret);
+  const doBalance = (quiet = false) => {
+    const day = today();
+    const r = balanceAll(getState().cards, day);
+    if (r.moved.length) {
+      replaceCards(r.cards);
+      toast.success(`负荷均衡：挪动了 ${r.moved.length} 个词`, { description: "从复习扎堆的那天挪到前后一天" });
+    } else if (!quiet) toast("未来 30 天没有扎堆的日子，不用挪");
+  };
+  return (
+    <Panel data-testid="algo-settings">
+      <PanelTitle
+        right={
+          <Link to="/algo" data-testid="algo-link" className="flex items-center text-[13px] text-muted-foreground hover:text-foreground">
+            说明 · 模拟器 <ChevronRight className="size-4" />
+          </Link>
+        }
+      >
+        记忆算法
+      </PanelTitle>
+      <Label>记忆保持目标</Label>
+      <Segmented<number>
+        value={ret}
+        onChange={(v) => setSettings({ retention: v })}
+        testid="retention"
+        options={RETENTION_OPTIONS.map((v) => ({ value: v, label: `${v}%` }))}
+      />
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground" data-testid="retention-hint">
+        {ret === 90 ? "默认：复习间隔不缩放" : ret > 90 ? `间隔 ×${scale.toFixed(2)}：复习更勤，记得更牢，每天复习更多` : `间隔 ×${scale.toFixed(2)}：复习更少，代价是忘得多一些`}
+      </p>
+      <div className="mt-3 border-t border-border/60 pt-1">
+        <Row label="间隔随机扰动" hint="间隔 ±5%，同一天学的词不会同一天扎堆">
+          <Switch checked={!!s.fuzz} onCheckedChange={(v) => setSettings({ fuzz: v })} aria-label="间隔随机扰动" data-testid="fuzz-switch" />
+        </Row>
+        <Row label="负荷均衡" hint="某天到期量超过均值 1.5 倍时，前后挪 1 天">
+          <Switch
+            checked={!!s.balance}
+            onCheckedChange={(v) => {
+              setSettings({ balance: v });
+              if (v) doBalance(true);
+            }}
+            aria-label="负荷均衡"
+            data-testid="balance-switch"
+          />
+        </Row>
+        <Row label="逾期加成" hint="逾期很久还记得，按实际隔了多久算新间隔">
+          <Switch checked={!!s.overdue} onCheckedChange={(v) => setSettings({ overdue: v })} aria-label="逾期加成" data-testid="overdue-switch" />
+        </Row>
+        <Row label="重学步骤" hint="忘掉的词先走 1 天 → 3 天，再恢复正常增长">
+          <Switch checked={!!s.steps} onCheckedChange={(v) => setSettings({ steps: v })} aria-label="重学步骤" data-testid="steps-switch" />
+        </Row>
+        <Row label="四键模式" hint="多一个「简单」：间隔再 ×1.3，快捷键 4">
+          <Switch checked={!!s.fourKey} onCheckedChange={(v) => setSettings({ fourKey: v })} aria-label="四键模式" data-testid="fourkey-switch" />
+        </Row>
+        <Row
+          label="初始难度拟合"
+          hint={
+            fit.ok
+              ? `新词首答正确率 ${Math.round((fit.acc ?? 0) * 100)}% → 新词初始系数 ${fit.ease.toFixed(2)}`
+              : `再学 ${FIT_MIN - fit.n} 个新词后生效（需 ${FIT_MIN} 次首答）`
+          }
+        >
+          <Switch checked={!!s.fitEase} onCheckedChange={(v) => setSettings({ fitEase: v })} aria-label="初始难度拟合" data-testid="fit-switch" />
+        </Row>
+      </div>
+      {s.balance && (
+        <button
+          type="button"
+          data-testid="balance-now"
+          onClick={() => doBalance()}
+          className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-[14px] font-semibold hover:bg-accent"
+        >
+          <Scale className="size-4" /> 立即均衡未来 30 天
+        </button>
+      )}
     </Panel>
   );
 }

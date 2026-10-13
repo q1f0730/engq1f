@@ -38,9 +38,9 @@ import { Phonetic, WordSheet } from "@/components/app/word-bits";
 import { speak } from "@/lib/audio";
 import { now, today } from "@/lib/clock";
 import { shortMeaning, useWords } from "@/lib/data";
-import { notebookWords, summarize, wordOfDay } from "@/lib/plan";
+import { adaptiveNew, notebookWords, summarize, wordOfDay } from "@/lib/plan";
 import { addDays, forecast } from "@/lib/srs";
-import { checkIn, dismissWeekReport, patchYesterday, setSettings, snoozeBackup, snoozeInstall, useApp } from "@/lib/store";
+import { checkIn, dismissNewCut, dismissWeekReport, patchYesterday, setNewCut, setSettings, snoozeBackup, snoozeInstall, useApp } from "@/lib/store";
 import { MAKEUP_EVERY, MAKEUP_MAX, WEEKDAY_CN, canPatch, curStreak, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf } from "@/lib/habit";
 import { celebrate } from "@/lib/celebrate";
 import { coreUnmastered, effectiveExam, quizDoneOn, sprintPlan, upcomingExams } from "@/lib/exam";
@@ -234,6 +234,8 @@ function Today() {
               }
             />
           )}
+
+          <AdaptiveCard day={day} due={sum.due} daily={st.settings.daily} learned={sum.learned} cut={st.newCut?.d === day ? st.newCut.n : null} seen={st.newCutSeen === day} newLeft={sum.newLeft} />
 
           {sum.dueList.length === 0 && sum.aheadCount > 0 && (
             <Notice
@@ -732,6 +734,56 @@ function SnackTile({ to, search, testid, icon, tone, title, sub, dim }: { to: "/
         <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">{sub}</span>
       </span>
     </Link>
+  );
+}
+
+/** v10 · 新词自适应：今天复习太多时建议少学新词，一键减少（只影响今天） */
+function AdaptiveCard({ day, due, daily, learned, cut, seen, newLeft }: { day: string; due: number; daily: number; learned: number; cut: number | null; seen: boolean; newLeft: number }) {
+  if (newLeft === 0) return null;
+  if (cut !== null && cut < daily)
+    return (
+      <Notice
+        testid="adaptive-cut"
+        icon={<Scale className="size-5" />}
+        tone="bg-know-soft text-know"
+        title={`今天新词已减到 ${cut} 个`}
+        sub={`先清复习 · 明天恢复每天 ${daily} 个`}
+        action={
+          <button type="button" data-testid="adaptive-restore" onClick={() => setNewCut(day, null)} className="shrink-0 rounded-full bg-secondary px-3.5 py-2 text-[13px] font-bold">
+            恢复 {daily}
+          </button>
+        }
+      />
+    );
+  const n = adaptiveNew(due, daily);
+  if (n === null || seen || learned >= daily) return null;
+  const to = Math.max(n, learned);
+  return (
+    <Notice
+      testid="adaptive-new"
+      icon={<Scale className="size-5" />}
+      tone="bg-vague-soft text-vague"
+      title={`今天要复习 ${due} 个`}
+      sub={`复习压力大，建议新词 ${daily} → ${to}，先把旧词巩固住`}
+      action={
+        <div className="flex shrink-0 items-center gap-1">
+          <button type="button" aria-label="不用了" data-testid="adaptive-dismiss" onClick={() => dismissNewCut(day)} className="grid size-8 place-items-center rounded-full text-muted-foreground">
+            <X className="size-4" />
+          </button>
+          <button
+            type="button"
+            data-testid="adaptive-apply"
+            onClick={() => {
+              setNewCut(day, to);
+              toast.success(`今天新词减到 ${to} 个`, { description: "只影响今天，明天恢复" });
+            }}
+            className="rounded-full bg-vague px-3.5 py-2 text-[13px] font-bold text-white dark:text-[oklch(0.2_0.03_80)]"
+          >
+            减到 {to}
+          </button>
+        </div>
+      }
+    />
   );
 }
 

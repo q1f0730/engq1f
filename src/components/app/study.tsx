@@ -54,6 +54,14 @@ import { useWakeLock } from "@/lib/wakelock";
 import { rankGroup, revEntry, type RevEntry } from "@/lib/stats";
 import { estimateRemaining, historyPace, quizAnnouncement, rateAnnouncement, rateOrder, sideRating, speedOrder, swipeHint, swipeRating } from "@/lib/ux";
 import { fullscreenSupported, useFullscreen } from "@/lib/fullscreen";
+import { algoOptions, rateOrder4, type Grade4 } from "@/lib/algo";
+import type { AlgoOptions } from "@/lib/srs";
+
+/** v10 · 当前设置下的算法选项（每次作答现算：负荷均衡要看最新的到期分布） */
+function algoNow(day: string): AlgoOptions {
+  const s = getState();
+  return algoOptions(s.settings, { cards: s.cards, revlog: s.revlog, today: day });
+}
 
 export type StudyMode = "new" | "review" | "ahead" | "practice" | "speed" | "core" | "list" | "rank" | Notebook;
 
@@ -105,6 +113,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const leftHand = !!st.settings.leftHand;
   const swap = !!st.settings.swapSwipe;
   const frontIpa = st.settings.frontIpa !== false;
+  const fourKey = !!st.settings.fourKey;
   const practice = mode === "practice";
   const speedMode = mode === "speed";
   const [items, setItems] = useState(() => buildItems(index, mode, words));
@@ -187,12 +196,13 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const day = today();
 
   const doAnswer = useCallback(
-    (rating: Rating, via: Last["via"], pick?: number) => {
+    (rating: Rating, via: Last["via"], pick?: number, easy = false) => {
       const it = current(session);
       if (!it) return;
       const first = !(it.w in session.firsts);
       const spent = now() - shownAt.current;
-      const res = answer(session, getCard(it.w), rating, day, getLog(day), spent);
+      const algo = practice ? undefined : { ...algoNow(day), easy: easy || undefined };
+      const res = answer(session, getCard(it.w), rating, day, getLog(day), spent, algo);
       answerMs.current.push(spent);
       put(it.w, res.card, day, res.log, revEntry(it.w, now(), rating, { isNew: it.kind === "new", repeat: !first, card: res.card }));
       revSteps.current.push(true);
@@ -200,17 +210,19 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       buzz(rating);
       return { it, res, via, pick };
     },
-    [session, day, getCard, getLog, put],
+    [session, day, getCard, getLog, put, practice],
   );
 
   const rate = useCallback(
-    (rating: Rating) => {
+    (grade: Grade4) => {
       if (!head || isQuiz) return;
       if (phase === "back" && !peek) return;
-      const hintNext = previewIntervals(getState().cards[head.w], day, { repeat: head.w in session.firsts, early: head.early });
-      const r = doAnswer(rating, peek || speedMode ? "peek" : "rate");
+      const easy = grade === "easy";
+      const rating: Rating = easy ? "know" : grade;
+      const hintNext = previewIntervals(getState().cards[head.w], day, { repeat: head.w in session.firsts, early: head.early, algo: { key: head.w, ...algoNow(day) } }, easy);
+      const r = doAnswer(rating, peek || speedMode ? "peek" : "rate", undefined, easy);
       if (!r) return;
-      say(rateAnnouncement(r.it.w, rating, practice ? undefined : hintNext[rating]));
+      say(rateAnnouncement(r.it.w, rating, practice ? undefined : easy ? hintNext.easy : hintNext[rating]).replace("记为认识", easy ? "记为简单" : "记为认识"));
       if (peek || speedMode) {
         // 看过答案后的评分：直接下一张
         setPeek(false);
@@ -300,7 +312,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     putUndo(u.w, u.card, day, u.log);
     const first = !(u.w in u.session.firsts);
     const it = current(u.session);
-    const res = answer(u.session, getCard(u.w), "forget", day, getLog(day), 0);
+    const res = answer(u.session, getCard(u.w), "forget", day, getLog(day), 0, practice ? undefined : algoNow(day));
     put(u.w, res.card, day, res.log, revEntry(u.w, now(), "forget", { isNew: it?.kind === "new", repeat: !first, card: res.card }));
     revSteps.current.push(true);
     setSession(res.session);
@@ -308,7 +320,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     buzz("forget");
     say(rateAnnouncement(u.w, "forget"));
     toast("已改为「不认识」，稍后再来一遍");
-  }, [phase, last, peek, session, day, put, putUndo, getCard, getLog, say]);
+  }, [phase, last, peek, session, day, put, putUndo, getCard, getLog, say, practice]);
 
   /** 背面时先撤销刚才的评分，回到这个词的正面状态 */
   const rewind = useCallback((): Session | null => {
@@ -401,6 +413,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         if (k === "1") return rate("know");
         if (k === "2") return rate("vague");
         if (k === "3") return rate("forget");
+        if (k === "4" && fourKey && !speedMode) return rate("easy");
       }
       if (phase === "back" && !peek && (k === "1" || k === "2" || k === "3")) {
         // 背面按数字 = 下一个（方便连按）
@@ -409,7 +422,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [help, finished, next, doUndo, star, doKill, doBury, replay, isQuiz, phase, peek, pick, rate, navigate, speedMode, swap, canFocus, toggleFocus, previewing]);
+  }, [help, finished, next, doUndo, star, doKill, doBury, replay, isQuiz, phase, peek, pick, rate, navigate, speedMode, swap, canFocus, toggleFocus, previewing, fourKey]);
 
   useWakeLock(!finished && items.length > 0);
 
@@ -479,7 +492,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const eta = estimateRemaining(session.queue.length, answerMs.current, pace);
   const preview =
     !practice && head && !isQuiz && (phase === "front" || peek)
-      ? previewIntervals(getState().cards[head.w], day, { repeat: head.w in session.firsts, early: head.early })
+      ? previewIntervals(getState().cards[head.w], day, { repeat: head.w in session.firsts, early: head.early, algo: { key: head.w, ...algoNow(day) } }, fourKey)
       : null;
 
   return (
@@ -596,9 +609,9 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
           />
           <div className="shrink-0 pb-4 pt-4">
             {phase === "front" || peek ? (
-              <div className="grid grid-cols-3 gap-2.5" data-testid="rate-buttons" data-order={rateOrder(leftHand).join(",")}>
-                {rateOrder(leftHand).map((r) => (
-                  <RateBtn key={r} tone={r} k={RATE_KEY[r]} label={RATE_CN[r]} hint={preview?.[r]} onClick={() => rate(r)} />
+              <div className={cn("grid gap-2.5", fourKey ? "grid-cols-4 gap-2" : "grid-cols-3")} data-testid="rate-buttons" data-order={rateOrder4(leftHand, fourKey).join(",")}>
+                {rateOrder4(leftHand, fourKey).map((r) => (
+                  <RateBtn key={r} tone={r} k={RATE_KEY[r]} label={RATE_CN[r]} hint={preview?.[r]} onClick={() => rate(r)} compact={fourKey} />
                 ))}
               </div>
             ) : (
@@ -636,8 +649,8 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
 }
 
 
-const RATE_CN: Record<Rating, string> = { know: "认识", vague: "模糊", forget: "不认识" };
-const RATE_KEY: Record<Rating, string> = { know: "1", vague: "2", forget: "3" };
+const RATE_CN: Record<Grade4, string> = { easy: "简单", know: "认识", vague: "模糊", forget: "不认识" };
+const RATE_KEY: Record<Grade4, string> = { know: "1", vague: "2", forget: "3", easy: "4" };
 
 /** 速刷按钮：位置跟随滑动方向（左边按钮 = 左滑），下面带下次复习时间 */
 function SpeedBtn({ tone, side, label, hint, onClick }: { tone: "know" | "forget"; side: "left" | "right"; label: string; hint?: string; onClick: () => void }) {
@@ -819,8 +832,9 @@ function IconBtn({
   );
 }
 
-function RateBtn({ tone, label, k, hint, onClick }: { tone: "know" | "vague" | "forget"; label: string; k: string; hint?: string; onClick: () => void }) {
+function RateBtn({ tone, label, k, hint, onClick, compact }: { tone: Grade4; label: string; k: string; hint?: string; onClick: () => void; compact?: boolean }) {
   const cls = {
+    easy: "bg-primary text-primary-foreground shadow-primary/25",
     know: "bg-know text-white shadow-know/25 dark:text-[oklch(0.2_0.02_170)]",
     vague: "bg-vague-soft text-vague",
     forget: "bg-forget-soft text-forget",
@@ -830,7 +844,7 @@ function RateBtn({ tone, label, k, hint, onClick }: { tone: "know" | "vague" | "
       type="button"
       onClick={onClick}
       data-testid={`rate-${tone}`}
-      className={cn("relative flex h-16 flex-col items-center justify-center rounded-2xl text-[16px] font-bold shadow-sm transition active:scale-[0.97]", cls)}
+      className={cn("relative flex h-16 flex-col items-center justify-center rounded-2xl font-bold shadow-sm transition active:scale-[0.97]", compact ? "text-[15px]" : "text-[16px]", cls)}
     >
       <span className="leading-tight">{label}</span>
       {hint && (
