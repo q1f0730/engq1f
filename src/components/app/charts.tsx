@@ -256,12 +256,15 @@ export function WeekStrip({
   today,
   rest = -1,
   patched = [],
+  pause,
 }: {
   checkins: string[];
   logs: Record<string, DayLog>;
   today: string;
   rest?: number;
   patched?: string[];
+  /** 11.3 · 考后「先休息」的日子也显示成「休」 */
+  pause?: { from: string; until?: string };
 }) {
   const set = new Set(checkins);
   const patchSet = new Set(patched);
@@ -278,7 +281,7 @@ export function WeekStrip({
         const studied = (logs[d]?.n ?? 0) + (logs[d]?.r ?? 0) > 0;
         const isToday = d === today;
         const isPatch = checked && patchSet.has(d);
-        const isRest = !checked && rest >= 0 && new Date(d + "T12:00:00").getDay() === rest;
+        const isRest = !checked && ((rest >= 0 && new Date(d + "T12:00:00").getDay() === rest) || (!!pause && d >= pause.from && (!pause.until || d < pause.until) && d <= today));
         return (
           <div key={d} className="flex min-w-0 flex-col items-center gap-1.5" data-day={d} data-state={isPatch ? "patched" : checked ? "checked" : isRest ? "rest" : studied ? "studied" : "none"}>
             <span className={cn("text-[11px]", isToday ? "font-bold text-foreground" : "text-muted-foreground")}>{n}</span>

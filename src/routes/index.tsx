@@ -129,7 +129,7 @@ function Today() {
   const pct = sum.timeMode ? Math.min(1, sum.ms / (sum.goalMin * 60000)) : sum.goal ? Math.min(1, sum.learned / sum.goal) : sum.due === 0 ? 1 : 0;
   // 11.3 · 考前模式 / 休息期间不排新词：额外学一组要说清楚、要确认
   const extraNew = sum.examMode || sum.paused;
-  const learnLabel = sum.newLeft === 0 ? "词书已学完" : extraNew ? "额外学一组新词" : sum.learned === 0 ? "开始学习" : sum.remainingGoal > 0 ? "学下一组" : "再学一组";
+  const learnLabel = sum.newLeft === 0 ? "词书已学完" : extraNew ? "额外学新词" : sum.learned === 0 ? "开始学习" : sum.remainingGoal > 0 ? "学下一组" : "再学一组";
   const nightOwl = new Date(now()).getHours() < 5;
   const exam = effectiveExam(day, st.settings.examDate);
   const official = upcomingExams(day, 3).find((e) => e.day === exam.day)?.official ?? false;
@@ -355,7 +355,7 @@ function Today() {
                       sum.due === 0 && sum.newLeft === 0 && "pointer-events-none opacity-60",
                     )}
                   >
-                    {sum.due > 0 ? `复习 ${sum.due}` : sum.newLeft === 0 ? "词书已学完" : extraNew ? "额外学一组新词" : "再学一组"}
+                    {sum.due > 0 ? `复习 ${sum.due}` : sum.newLeft === 0 ? "词书已学完" : extraNew ? "额外学新词" : "再学一组"}
                   </Link>
                 ) : (
                   <Link
@@ -427,7 +427,7 @@ function Today() {
             >
               每日打卡
             </PanelTitle>
-            <WeekStrip checkins={st.checkins} logs={st.log} today={day} rest={rest} patched={st.patched} />
+            <WeekStrip checkins={st.checkins} logs={st.log} today={day} rest={rest} patched={st.patched} pause={st.pause} />
             {restToday && !sum.checked && (
               <div className="mt-3 flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-2.5 text-[13px] font-medium text-know" data-testid="rest-today">
                 <Coffee className="size-4 shrink-0" /> 今天是休息日，不打卡也不断连续；学了照样可以打卡
@@ -477,7 +477,7 @@ function Today() {
                 <div className="grid grid-cols-2 gap-2.5 text-[13px]" data-testid="checkin-todo" data-mode="words">
                   {/* 11.2 · 什么都没做的项目不打勾 */}
                   {sum.goal === 0 ? (
-                    <Todo done={false} muted label={sum.recovering ? "恢复期不学新词" : sum.examMode ? "考前不排新词" : "今天不学新词"} />
+                    <Todo done={false} muted label={sum.recovering ? "恢复期不学新词" : sum.paused ? "休息中不排新词" : sum.examMode ? "考前不排新词" : "今天不学新词"} />
                   ) : (
                     <Todo done={sum.learned >= sum.goal || (sum.newLeft === 0 && sum.started > 0)} label={sum.newLeft === 0 ? "词书已学完" : `新词 ${sum.learned}/${sum.goal}`} />
                   )}

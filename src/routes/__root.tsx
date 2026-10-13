@@ -155,7 +155,14 @@ function Root() {
   const toasterOn = useToasterWanted();
   useEffect(() => {
     const t = setTimeout(wantToaster, 4000);
-    return () => clearTimeout(t);
+    // 第一次点按就开始加载（点下去到松手之间就下载完了，提示几乎不用等）
+    window.addEventListener("pointerdown", wantToaster, { once: true, passive: true });
+    window.addEventListener("keydown", wantToaster, { once: true });
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("pointerdown", wantToaster);
+      window.removeEventListener("keydown", wantToaster);
+    };
   }, []);
   // 学习提醒（到点发通知）与图标角标（待复习数）
   useReminder(st.settings.remindAt ?? "", st.onboarded);
