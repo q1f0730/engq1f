@@ -251,7 +251,7 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
           </div>
           <StateBadge card={card} />
         </div>
-        <div className="mt-5">
+        <div className="fs-card mt-5">
           <Meanings word={word} />
         </div>
         <div className="mt-5">

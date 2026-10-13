@@ -382,21 +382,119 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .flip-inner,
-  .card-in,
-  .speed-in,
-  .pop,
-  .shake,
-  .milestone-in,
-  .milestone-medal,
-  .late-pulse {
-    transition: none !important;
-    animation: none !important;
-  }
-  .confetti {
-    display: none;
-  }
+/* ---------------------------------------------------------------- v8 · 减少动画
+ * <html data-motion="reduce">：跟随系统 prefers-reduced-motion，或在「我的」手动打开（JS 计算后写入）。
+ * 动画与过渡缩到 0.01ms（animationend / transitionend 照常触发，弹窗能正常关闭）。 */
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-motion="reduce"] .flip-inner,
+html[data-motion="reduce"] .late-pulse {
+  transition: none !important;
+  animation: none !important;
+}
+html[data-motion="reduce"] .confetti {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- v8 · 字号
+ * 卡片与释义的内容块加 .fs-card，按 <html data-fs> 整体缩放（不放在 h-full 的容器上）。 */
+:root {
+  --card-zoom: 1;
+}
+html[data-fs="sm"] {
+  --card-zoom: 0.88;
+}
+html[data-fs="lg"] {
+  --card-zoom: 1.16;
+}
+.fs-card {
+  zoom: var(--card-zoom);
+}
+
+/* ---------------------------------------------------------------- v8 · 高对比度主题
+ * 浅色底 + 纯黑文字；文字、评分色、边框与各自背景的对比度都 ≥ 7:1（见 src/lib/v8.test.ts）。
+ * 只用 #rrggbb，测试直接从这里读取配色校验。 */
+html.contrast {
+  --background: #ffffff;
+  --surface: #f0f0f0;
+  --foreground: #000000;
+  --ink: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #8f1a0c;
+  --primary-foreground: #ffffff;
+  --brand-soft: #fff0ec;
+  --secondary: #ececec;
+  --secondary-foreground: #000000;
+  --muted: #ececec;
+  --muted-foreground: #333333;
+  --accent: #e0e0e0;
+  --accent-foreground: #000000;
+  --destructive: #a1110f;
+  --destructive-foreground: #ffffff;
+  --border: #4a4a4a;
+  --input: #4a4a4a;
+  --ring: #000000;
+  --know: #00574a;
+  --know-soft: #e1f4ef;
+  --vague: #6b4400;
+  --vague-soft: #fff1d0;
+  --forget: #9b0c35;
+  --forget-soft: #fde6ec;
+  --chart-1: #8f1a0c;
+  --chart-2: #00574a;
+  --chart-3: #6b4400;
+  --chart-4: #1f2f8f;
+  --chart-5: #4a4a4a;
+}
+/* 半透明边框、弱化文字在高对比度下一律拉满 */
+html.contrast [class*="border-border"] {
+  border-color: var(--border) !important;
+}
+html.contrast [class*="text-muted-foreground/"] {
+  color: var(--muted-foreground) !important;
+}
+html.contrast [data-testid^="ivl-"],
+html.contrast [data-testid="speed-buttons"] span span {
+  opacity: 1 !important;
+}
+html.contrast .paper-grain {
+  display: none;
+}
+html.contrast .hero-gradient,
+html.contrast .late-banner {
+  background: #8f1a0c;
+}
+html.contrast .hero-gradient [class*="text-white/"],
+html.contrast .late-banner [class*="text-white/"] {
+  color: #ffffff !important;
+}
+html.contrast .hero-gradient a[class*="bg-white/"] {
+  background: #5e1006 !important;
+  box-shadow: inset 0 0 0 2px #ffffff;
+}
+html.contrast .hero-gradient [data-testid="start-learn"] {
+  color: #8f1a0c;
+}
+/* 浅底评分按钮加实线描边，形状不只靠底色区分 */
+html.contrast [data-testid="rate-vague"],
+html.contrast [data-testid="rate-forget"],
+html.contrast [data-testid="speed-forget"] {
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+html.contrast :focus-visible {
+  outline: 3px solid #000000 !important;
+  outline-offset: 2px;
 }
 
 /* ---- toast（sonner）：位置与入场 ----

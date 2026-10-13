@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { BellRing, CalendarDays, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
+import { Accessibility, BellRing, CalendarDays, Contrast, MonitorDown, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
@@ -28,6 +28,8 @@ import { usePersist } from "@/lib/persist";
 import { daysUntil, effectiveExam, sprintPlan, upcomingExams } from "@/lib/exam";
 import { MAKEUP_EVERY, MAKEUP_MAX, REST_OPTIONS, TIME_GOALS, WEEKDAY_CN, type GoalMode } from "@/lib/habit";
 import { askNotify, badgeSupported, notifyPermission, notifySupported } from "@/lib/nudge";
+import { FONT_LABEL, FONT_SIZES, MOTION_LABEL, type FontSize, type Motion } from "@/lib/ux";
+import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 
 const APP_VERSION = __APP_VERSION__;
 import { cn } from "@/lib/utils";
@@ -235,20 +237,23 @@ function MePage() {
             <Row label="屏幕常亮" hint="学习和磁带模式时不自动熄屏">
               <Switch checked={s.wakeLock ?? true} onCheckedChange={(v) => setSettings({ wakeLock: v })} aria-label="屏幕常亮" data-testid="wake-lock" />
             </Row>
-            <Row label="外观">
+            <Row label="外观" hint={s.theme === "contrast" ? "高对比度：文字与边框 ≥ 7:1" : undefined}>
               <Segmented<Theme>
-                className="w-44"
+                className="w-56 shrink-0"
                 value={s.theme}
                 onChange={(v) => setSettings({ theme: v })}
                 testid="theme"
                 options={[
                   { value: "light", label: <Sun className="mx-auto size-4" aria-label="浅色" /> },
                   { value: "dark", label: <Moon className="mx-auto size-4" aria-label="深色" /> },
+                  { value: "contrast", label: <Contrast className="mx-auto size-4" aria-label="高对比度" /> },
                   { value: "system", label: <SunMoon className="mx-auto size-4" aria-label="跟随系统" /> },
                 ]}
               />
             </Row>
           </Panel>
+
+          <A11yPanel />
         </div>
 
         <div className="min-w-0 space-y-4 md:space-y-5">
@@ -475,6 +480,67 @@ function HabitPanel() {
           <Switch checked={s.appBadge !== false} disabled={!badgeSupported()} onCheckedChange={(v) => setSettings({ appBadge: v })} aria-label="图标角标" data-testid="app-badge" />
         </Row>
       </div>
+    </Panel>
+  );
+}
+
+/** v8 · 体验与无障碍：字号、左手模式、滑动方向、减少动画、正面音标、安装到桌面 */
+function A11yPanel() {
+  const st = useApp();
+  const s = st.settings;
+  const canInstall = useInstallPrompt();
+  const sysReduce = typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const fs = s.fontSize ?? "md";
+  return (
+    <Panel data-testid="a11y-settings">
+      <PanelTitle right={<Accessibility className="size-4 text-muted-foreground" />}>体验与无障碍</PanelTitle>
+      <Label>卡片字号</Label>
+      <Segmented<FontSize> value={fs} onChange={(v) => setSettings({ fontSize: v })} testid="font-size" options={FONT_SIZES.map((v) => ({ value: v, label: FONT_LABEL[v] }))} />
+      <div className="mt-2 flex items-center gap-3 overflow-hidden rounded-2xl bg-secondary/70 px-4 py-3" data-testid="font-preview">
+        <div className="fs-card min-w-0">
+          <span className="font-display text-[22px] font-extrabold tracking-tight">abandon</span>
+          <span className="ml-2 text-[15px] text-muted-foreground">v. 放弃；遗弃</span>
+        </div>
+      </div>
+      <div className="mt-3 border-t border-border/60 pt-1">
+        <Row label="左手模式" hint="评分按钮左右翻转，「认识」靠左手">
+          <Switch checked={!!s.leftHand} onCheckedChange={(v) => setSettings({ leftHand: v })} aria-label="左手模式" data-testid="left-hand" />
+        </Row>
+        <Row label="滑动方向" hint="速刷与卡片的左右滑">
+          <Segmented<number>
+            className="w-48 shrink-0"
+            value={s.swapSwipe ? 1 : 0}
+            onChange={(v) => setSettings({ swapSwipe: v === 1 })}
+            testid="swipe-dir"
+            options={[
+              { value: 0, label: "右滑认识" },
+              { value: 1, label: "左滑认识" },
+            ]}
+          />
+        </Row>
+        <Row label="正面音标" hint="关掉后先认词形，音标在背面">
+          <Switch checked={s.frontIpa !== false} onCheckedChange={(v) => setSettings({ frontIpa: v })} aria-label="正面音标" data-testid="front-ipa-switch" />
+        </Row>
+      </div>
+      <Label>减少动画</Label>
+      <Segmented<Motion> value={s.motion ?? "system"} onChange={(v) => setSettings({ motion: v })} testid="motion" options={(["system", "reduce", "full"] as Motion[]).map((v) => ({ value: v, label: MOTION_LABEL[v] }))} />
+      <p className="mt-2 text-[12px] text-muted-foreground" data-testid="motion-hint">
+        {(s.motion ?? "system") === "system" ? `系统${sysReduce ? "已开启" : "未开启"}「减少动态效果」` : s.motion === "reduce" ? "关闭翻转、弹出、彩带等动画" : "保留所有动画"}
+        ；学习页右上角可进入专注模式（全屏）。
+      </p>
+      {canInstall && !st.installed && !isStandalone() && (
+        <button
+          type="button"
+          data-testid="me-install"
+          onClick={async () => {
+            const r = await promptInstall();
+            if (r === "accepted") toast.success("已添加到桌面");
+          }}
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-[14px] font-semibold hover:bg-accent"
+        >
+          <MonitorDown className="size-4" /> 添加到桌面
+        </button>
+      )}
     </Panel>
   );
 }

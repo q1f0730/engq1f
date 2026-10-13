@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, CalendarClock, Check, CircleHelp, Dumbbell, Flame, Keyboard, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarClock, Check, CircleHelp, Dumbbell, Flame, Keyboard, Maximize, Minimize, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { speak } from "@/lib/audio";
@@ -49,6 +49,8 @@ import { ShareSheet } from "./share-sheet";
 import { useShareInfo } from "@/lib/use-share";
 import { useWakeLock } from "@/lib/wakelock";
 import { rankGroup, revEntry, type RevEntry } from "@/lib/stats";
+import { estimateRemaining, historyPace, quizAnnouncement, rateAnnouncement, rateOrder, sideRating, speedOrder, swipeHint, swipeRating } from "@/lib/ux";
+import { fullscreenSupported, useFullscreen } from "@/lib/fullscreen";
 
 export type StudyMode = "new" | "review" | "ahead" | "practice" | "speed" | "core" | "list" | "rank" | Notebook;
 
@@ -97,6 +99,9 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const st = useApp();
   const navigate = useNavigate();
   const accent = st.settings.accent;
+  const leftHand = !!st.settings.leftHand;
+  const swap = !!st.settings.swapSwipe;
+  const frontIpa = st.settings.frontIpa !== false;
   const practice = mode === "practice";
   const speedMode = mode === "speed";
   const [items] = useState(() => buildItems(index, mode, words));
@@ -135,6 +140,14 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const bump = () => setTurn((t) => t + 1);
   const shownAt = useRef(now());
   const startedAt = useRef(now());
+  // 本组每题用时（剩余时间估算）
+  const answerMs = useRef<number[]>([]);
+  // 读屏播报：同一句话连说两次时加零宽字符，保证 aria-live 再次播报
+  const [live, setLive] = useState("");
+  const say = useCallback((t: string) => setLive((p) => (p.replace(/\u200b$/, "") === t ? t + (p.endsWith("\u200b") ? "" : "\u200b") : t)), []);
+  const [focus, toggleFocus] = useFullscreen();
+  const canFocus = fullscreenSupported();
+  const pace = useMemo(() => historyPace(getState().log), []);
 
   const head = current(session);
   const shownItem: SessionItem | undefined = phase === "back" && last && !peek ? last.item : head;
@@ -169,7 +182,9 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       const it = current(session);
       if (!it) return;
       const first = !(it.w in session.firsts);
-      const res = answer(session, getCard(it.w), rating, day, getLog(day), now() - shownAt.current);
+      const spent = now() - shownAt.current;
+      const res = answer(session, getCard(it.w), rating, day, getLog(day), spent);
+      answerMs.current.push(spent);
       put(it.w, res.card, day, res.log, revEntry(it.w, now(), rating, { isNew: it.kind === "new", repeat: !first, card: res.card }));
       revSteps.current.push(true);
       setSession(res.session);
@@ -183,8 +198,10 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     (rating: Rating) => {
       if (!head || isQuiz) return;
       if (phase === "back" && !peek) return;
+      const hintNext = previewIntervals(getState().cards[head.w], day, { repeat: head.w in session.firsts, early: head.early });
       const r = doAnswer(rating, peek || speedMode ? "peek" : "rate");
       if (!r) return;
+      say(rateAnnouncement(r.it.w, rating, practice ? undefined : hintNext[rating]));
       if (peek || speedMode) {
         // 看过答案后的评分：直接下一张
         setPeek(false);
@@ -197,7 +214,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         if (cnFirst) speak(r.it.w, accent);
       }
     },
-    [head, isQuiz, phase, peek, doAnswer, cnFirst, accent, speedMode],
+    [head, isQuiz, phase, peek, doAnswer, cnFirst, accent, speedMode, say, practice, day, session],
   );
 
   const pick = useCallback(
@@ -209,21 +226,23 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       const r = doAnswer(ok ? "know" : "forget", "quiz", k);
       if (!r) return;
       if (!ok) setShake((x) => x + 1);
+      say(quizAnnouncement(ok, word.w, options.find((o) => o.correct)?.text ?? word.w));
       setLast({ item: r.it, rating: ok ? "know" : "forget", pick: k, via: "quiz" });
       setPhase("back");
       if (shownItem?.mode === "cn2en" || shownItem?.mode === "audio" || shownItem?.mode === "listen" || shownItem?.mode === "cloze") speak(word.w, accent);
     },
-    [head, isQuiz, phase, word, options, doAnswer, shownItem, accent],
+    [head, isQuiz, phase, word, options, doAnswer, shownItem, accent, say],
   );
 
   const giveUp = useCallback(() => {
     if (!isQuiz || phase !== "front" || !word) return;
     const r = doAnswer("forget", "quiz", -1);
     if (!r) return;
+    say(quizAnnouncement(false, word.w, options.find((o) => o.correct)?.text ?? word.w, true));
     setLast({ item: r.it, rating: "forget", pick: -1, via: "quiz" });
     setPhase("back");
     speak(word.w, accent);
-  }, [isQuiz, phase, word, doAnswer, accent]);
+  }, [isQuiz, phase, word, doAnswer, accent, options, say]);
 
   const next = useCallback(() => {
     if (speedMode) {
@@ -278,8 +297,9 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     setSession(res.session);
     setLast({ ...last, rating: "forget" });
     buzz("forget");
+    say(rateAnnouncement(u.w, "forget"));
     toast("已改为「不认识」，稍后再来一遍");
-  }, [phase, last, peek, session, day, put, putUndo, getCard, getLog]);
+  }, [phase, last, peek, session, day, put, putUndo, getCard, getLog, say]);
 
   /** 背面时先撤销刚才的评分，回到这个词的正面状态 */
   const rewind = useCallback((): Session | null => {
@@ -361,10 +381,11 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       if (k === "d") return doKill();
       if (k === "b") return doBury();
       if (k === "r") return replay();
+      if (k === "f" && canFocus) return toggleFocus();
       if (isQuiz && phase === "front" && ["1", "2", "3", "4"].includes(k)) return pick(Number(k) - 1);
       if (speedMode && phase === "front") {
-        if (k === "arrowright") return rate("know");
-        if (k === "arrowleft") return rate("forget");
+        if (k === "arrowright") return rate(sideRating("right", swap));
+        if (k === "arrowleft") return rate(sideRating("left", swap));
       }
       if (!isQuiz && (phase === "front" || peek)) {
         if (k === "1") return rate("know");
@@ -378,7 +399,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [help, finished, next, doUndo, star, doKill, doBury, replay, isQuiz, phase, peek, pick, rate, navigate, speedMode]);
+  }, [help, finished, next, doUndo, star, doKill, doBury, replay, isQuiz, phase, peek, pick, rate, navigate, speedMode, swap, canFocus, toggleFocus]);
 
   useWakeLock(!finished && items.length > 0);
 
@@ -392,6 +413,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const flipped = phase === "back" && !isQuiz;
   const relearn = !!shownItem.repeat;
   const leech = !practice && isLeech(st.cards[word.w]);
+  const eta = estimateRemaining(session.queue.length, answerMs.current, pace);
   const preview =
     !practice && head && !isQuiz && (phase === "front" || peek)
       ? previewIntervals(getState().cards[head.w], day, { repeat: head.w in session.firsts, early: head.early })
@@ -400,8 +422,8 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe md:py-6" data-testid="study" data-mode={mode}>
       {/* 顶栏 */}
-      <div className="flex shrink-0 items-center gap-2 pt-3 pt-safe">
-        <Link to="/" aria-label="退出" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+      <div className="flex shrink-0 items-center gap-1.5 pt-3 pt-safe md:gap-2">
+        <Link to="/" aria-label="退出" className="grid size-9 shrink-0 place-items-center md:size-10 rounded-full text-muted-foreground hover:bg-secondary">
           <X className="size-5" />
         </Link>
         <div className="flex-1">
@@ -409,7 +431,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
             <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${(doneN / total) * 100}%` }} />
           </div>
         </div>
-        <span className="tnum min-w-12 text-center text-[13px] font-semibold text-muted-foreground" data-testid="progress">
+        <span className="tnum min-w-11 text-center text-[13px] font-semibold text-muted-foreground" data-testid="progress">
           {doneN}/{total}
         </span>
         <IconBtn label="撤销 (Z)" onClick={doUndo} testid="undo" disabled={!session.history.length && !peek}>
@@ -423,6 +445,11 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         <IconBtn label="生词本 (S)" onClick={star} testid="star" active={starred}>
           <Star className={cn("size-[18px]", starred && "fill-current")} />
         </IconBtn>
+        {canFocus && (
+          <IconBtn label={focus ? "退出专注 (F)" : "专注模式 (F)"} onClick={toggleFocus} testid="focus" active={focus} pressed={focus}>
+            {focus ? <Minimize className="size-[18px]" /> : <Maximize className="size-[18px]" />}
+          </IconBtn>
+        )}
         <IconBtn label="快捷键 (?)" onClick={() => setHelp(true)} className="hidden md:grid">
           <Keyboard className="size-[18px]" />
         </IconBtn>
@@ -439,6 +466,14 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
           </span>
         )}
         {practice && <span className="rounded-full bg-secondary px-2 py-px">不影响复习计划</span>}
+        {eta && (
+          <span className="tnum shrink-0" data-testid="eta" data-min={eta.min}>
+            · {eta.label}
+          </span>
+        )}
+      </div>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" data-testid="live">
+        {live}
       </div>
 
       {isQuiz ? (
@@ -455,6 +490,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
           onNext={next}
           onUndo={doUndo}
           shake={shake}
+          leftHand={leftHand}
         />
       ) : speedMode ? (
         <>
@@ -466,11 +502,14 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
             onReveal={() => setReveal(true)}
             onSwipe={rate}
             onKill={doKill}
+            swap={swap}
+            frontIpa={frontIpa}
           />
           <div className="shrink-0 pb-4 pt-4">
-            <div className="grid grid-cols-2 gap-2.5" data-testid="speed-buttons">
-              <SpeedBtn tone="forget" label="不认识" hint={preview?.forget} onClick={() => rate("forget")} />
-              <SpeedBtn tone="know" label="认识" hint={preview?.know} onClick={() => rate("know")} />
+            <div className="grid grid-cols-2 gap-2.5" data-testid="speed-buttons" data-order={speedOrder(swap).join(",")}>
+              {speedOrder(swap).map((r, k) => (
+                <SpeedBtn key={r} tone={r} side={k === 0 ? "left" : "right"} label={r === "know" ? "认识" : "不认识"} hint={preview?.[r]} onClick={() => rate(r)} />
+              ))}
             </div>
           </div>
         </>
@@ -489,16 +528,18 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
             onTap={next}
             onKill={doKill}
             last={phase === "back" && !peek ? last : null}
+            swap={swap}
+            frontIpa={frontIpa}
           />
           <div className="shrink-0 pb-4 pt-4">
             {phase === "front" || peek ? (
-              <div className="grid grid-cols-3 gap-2.5" data-testid="rate-buttons">
-                <RateBtn tone="know" k="1" label="认识" hint={preview?.know} onClick={() => rate("know")} />
-                <RateBtn tone="vague" k="2" label="模糊" hint={preview?.vague} onClick={() => rate("vague")} />
-                <RateBtn tone="forget" k="3" label="不认识" hint={preview?.forget} onClick={() => rate("forget")} />
+              <div className="grid grid-cols-3 gap-2.5" data-testid="rate-buttons" data-order={rateOrder(leftHand).join(",")}>
+                {rateOrder(leftHand).map((r) => (
+                  <RateBtn key={r} tone={r} k={RATE_KEY[r]} label={RATE_CN[r]} hint={preview?.[r]} onClick={() => rate(r)} />
+                ))}
               </div>
             ) : (
-              <div className="flex gap-2.5">
+              <div className={cn("flex gap-2.5", leftHand && "flex-row-reverse")} data-testid="back-actions">
                 {last && last.rating !== "forget" ? (
                   <button
                     type="button"
@@ -532,8 +573,11 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
 }
 
 
-/** 速刷按钮：左不认识、右认识，下面带下次复习时间 */
-function SpeedBtn({ tone, label, hint, onClick }: { tone: "know" | "forget"; label: string; hint?: string; onClick: () => void }) {
+const RATE_CN: Record<Rating, string> = { know: "认识", vague: "模糊", forget: "不认识" };
+const RATE_KEY: Record<Rating, string> = { know: "1", vague: "2", forget: "3" };
+
+/** 速刷按钮：位置跟随滑动方向（左边按钮 = 左滑），下面带下次复习时间 */
+function SpeedBtn({ tone, side, label, hint, onClick }: { tone: "know" | "forget"; side: "left" | "right"; label: string; hint?: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -544,12 +588,12 @@ function SpeedBtn({ tone, label, hint, onClick }: { tone: "know" | "forget"; lab
         tone === "know" ? "bg-know text-white shadow-know/25 dark:text-[oklch(0.2_0.02_170)]" : "bg-forget-soft text-forget",
       )}
     >
-      {tone === "forget" && <ArrowLeft className="size-4" />}
+      {side === "left" && <ArrowLeft className="size-4" />}
       <span className="flex flex-col items-center leading-tight">
         {label}
         {hint && <span className="tnum mt-0.5 text-[11px] font-semibold opacity-75">{hint}</span>}
       </span>
-      {tone === "know" && <ArrowRight className="size-4" />}
+      {side === "right" && <ArrowRight className="size-4" />}
     </button>
   );
 }
@@ -562,6 +606,8 @@ function SpeedCard({
   onReveal,
   onSwipe,
   onKill,
+  swap,
+  frontIpa,
 }: {
   word: Word;
   accent: "us" | "uk";
@@ -569,6 +615,8 @@ function SpeedCard({
   onReveal: () => void;
   onSwipe: (r: Rating) => void;
   onKill: () => void;
+  swap: boolean;
+  frontIpa: boolean;
 }) {
   const [dx, setDxState] = useState<number | null>(null);
   const dxRef = useRef<number | null>(null);
@@ -594,10 +642,10 @@ function SpeedCard({
     setDx(null);
     if (d === null) return;
     swiped.current = Math.abs(d) > 8;
-    if (d > 80) onSwipe("know");
-    else if (d < -80) onSwipe("forget");
+    const r = swipeRating(d, 0, { swap, threshold: 80, vertical: false });
+    if (r) onSwipe(r);
   };
-  const hint = dx === null ? null : dx > 50 ? "know" : dx < -50 ? "forget" : null;
+  const hint = dx === null ? null : swipeRating(dx, 0, { swap, threshold: 50, vertical: false });
   return (
     <div className="relative min-h-0 flex-1 speed-in" data-testid="speed-card">
       <div
@@ -617,12 +665,12 @@ function SpeedCard({
       >
         <div className="paper-grain absolute inset-0 opacity-60" />
         <div className="relative flex h-full flex-col items-center px-6 pb-14 pt-8 text-center">
-          <div className="flex flex-1 flex-col items-center justify-center">
+          <div className="fs-card flex flex-1 flex-col items-center justify-center">
             <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} data-testid="card-word">
               {word.w}
             </h2>
             <div className="mt-3 flex items-center gap-2.5 text-[16px] text-muted-foreground">
-              <Phonetic word={word} accent={accent} />
+              {(frontIpa || reveal) && <Phonetic word={word} accent={accent} />}
               <button
                 type="button"
                 aria-label="播放发音"
@@ -636,14 +684,14 @@ function SpeedCard({
               </button>
             </div>
           </div>
-          <div className="w-full max-w-md shrink-0" data-testid="speed-meaning" data-revealed={reveal ? 1 : 0}>
+          <div className="fs-card w-full max-w-md shrink-0" data-testid="speed-meaning" data-revealed={reveal ? 1 : 0}>
             {reveal ? (
               <div className="rounded-2xl bg-secondary/70 px-4 py-3 text-left">
                 <Meanings word={word} />
               </div>
             ) : (
               <div className="flex h-16 items-center justify-center rounded-2xl border-2 border-dashed border-border text-[13px] font-medium text-muted-foreground">
-                点一下看释义 · 右滑认识 · 左滑不认识
+                点一下看释义 · {swipeHint(swap)}
               </div>
             )}
           </div>
@@ -660,7 +708,7 @@ function SpeedCard({
           <Swords className="size-3.5" /> 斩 · 已掌握
         </button>
         {hint && (
-          <div className={cn("pointer-events-none absolute inset-0 grid place-items-center rounded-[32px] text-[28px] font-extrabold", hint === "know" ? "bg-know/15 text-know" : "bg-forget/15 text-forget")}>
+          <div className={cn("pointer-events-none absolute inset-0 grid place-items-center rounded-[32px] text-[28px] font-extrabold", hint === "know" ? "bg-know/15 text-know" : "bg-forget/15 text-forget")} data-testid="swipe-hint" data-rating={hint}>
             {hint === "know" ? "认识" : "不认识"}
           </div>
         )}
@@ -677,6 +725,7 @@ function IconBtn({
   active,
   disabled,
   className,
+  pressed,
 }: {
   children: React.ReactNode;
   label: string;
@@ -685,17 +734,19 @@ function IconBtn({
   active?: boolean;
   disabled?: boolean;
   className?: string;
+  pressed?: boolean;
 }) {
   return (
     <button
       type="button"
+      aria-pressed={pressed}
       aria-label={label}
       title={label}
       onClick={onClick}
       data-testid={testid}
       disabled={disabled}
       className={cn(
-        "grid size-10 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary disabled:opacity-35",
+        "grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary disabled:opacity-35 md:size-10",
         active && "text-vague",
         className,
       )}
@@ -741,7 +792,11 @@ function FlipCard({
   onTap,
   onKill,
   last,
+  swap,
+  frontIpa,
 }: {
+  swap: boolean;
+  frontIpa: boolean;
   word: Word;
   accent: "us" | "uk";
   flipped: boolean;
@@ -761,7 +816,7 @@ function FlipCard({
     setDragState(d);
   };
   const origin = useRef<{ x: number; y: number; id: number } | null>(null);
-  const hint = drag ? (drag.x > 60 ? "know" : drag.x < -60 ? "forget" : drag.y < -60 ? "vague" : null) : null;
+  const hint = drag ? swipeRating(drag.x, drag.y, { swap, threshold: 60 }) : null;
 
   const onDown = (e: React.PointerEvent) => {
     if (!canSwipe || e.pointerType === "mouse") return;
@@ -781,25 +836,24 @@ function FlipCard({
     setDrag(null);
     if (!d) return;
     swiped.current = Math.hypot(d.x, d.y) > 8;
-    if (d.x > 90) onSwipe("know");
-    else if (d.x < -90) onSwipe("forget");
-    else if (d.y < -90) onSwipe("vague");
+    const r = swipeRating(d.x, d.y, { swap, threshold: 90 });
+    if (r) onSwipe(r);
   };
 
   const front = (
     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
       {cnFirst ? (
-        <div className="w-full max-w-md text-left">
+        <div className="fs-card w-full max-w-md text-left">
           <Meanings word={word} size="lg" />
           <p className="mt-6 text-center text-[13px] text-muted-foreground">想一想对应的英文单词</p>
         </div>
       ) : (
-        <>
+        <div className="fs-card flex max-w-full flex-col items-center">
           <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} data-testid="card-word">
             {word.w}
           </h2>
-          <div className="mt-4 flex items-center gap-2.5 text-[17px] text-muted-foreground">
-            <Phonetic word={word} accent={accent} />
+          <div className="mt-4 flex items-center gap-2.5 text-[17px] text-muted-foreground" data-testid="front-ipa" data-shown={frontIpa ? 1 : 0}>
+            {frontIpa && <Phonetic word={word} accent={accent} />}
             <button
               type="button"
               aria-label="播放发音"
@@ -812,8 +866,8 @@ function FlipCard({
               <Volume2 className="size-5" />
             </button>
           </div>
-          <p className="mt-10 text-[13px] text-muted-foreground/80">认识这个词吗？点卡片可以先看释义</p>
-        </>
+          <p className="mt-10 text-[13px] text-muted-foreground/80">{frontIpa ? "认识这个词吗？点卡片可以先看释义" : "先认词形 · 音标在背面"}</p>
+        </div>
       )}
     </div>
   );
@@ -831,7 +885,8 @@ function FlipCard({
   ) : null;
 
   const back = (
-    <div className="flex h-full flex-col overflow-y-auto px-6 py-6 text-left" data-testid="card-back">
+    <div className="h-full overflow-y-auto px-6 py-6 text-left" data-testid="card-back">
+      <div className="fs-card">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight">{word.w}</h2>
@@ -862,6 +917,7 @@ function FlipCard({
       </div>
       <div className="mt-6 empty:hidden">
         <Examples word={word} enabled={flipped} />
+      </div>
       </div>
     </div>
   );
@@ -914,7 +970,7 @@ function FlipCard({
                   hint === "know" ? "bg-know/15 text-know" : hint === "vague" ? "bg-vague/15 text-vague" : "bg-forget/15 text-forget",
                 )}
               >
-                {hint === "know" ? "认识" : hint === "vague" ? "模糊" : "不认识"}
+                <span data-testid="swipe-hint" data-rating={hint}>{hint === "know" ? "认识" : hint === "vague" ? "模糊" : "不认识"}</span>
               </div>
             )}
           </div>
@@ -939,7 +995,9 @@ function QuizView({
   onNext,
   onUndo,
   shake,
+  leftHand,
 }: {
+  leftHand?: boolean;
   word: Word;
   mode: SessionItem["mode"];
   accent: "us" | "uk";
@@ -959,7 +1017,7 @@ function QuizView({
       <ChoiceList choices={options} done={done} pick={answered?.pick} wrong={done && answered?.rating === "forget" && answered.pick !== -1} shakeKey={shake} onPick={onPick} subTestId={mode === "listen" ? "listen-meaning" : undefined} />
       <div className="shrink-0 pb-4 pt-3">
         {done ? (
-          <div className="flex gap-2.5">
+          <div className={cn("flex gap-2.5", leftHand && "flex-row-reverse")} data-testid="quiz-actions">
             <button type="button" onClick={onUndo} className="h-14 w-[30%] rounded-2xl bg-secondary text-[15px] font-semibold text-muted-foreground">
               撤销
             </button>
@@ -999,6 +1057,7 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
       )}
       data-testid="quiz-prompt"
     >
+      <div className="fs-card flex w-full flex-col items-center">
       {mode === "cn2en" && !done && (
         <div className="w-full max-w-md text-left">
           <Meanings word={word} size="lg" />
@@ -1057,6 +1116,7 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
         </div>
       ) : null}
       {!done && <p className="mt-5 text-[13px] text-muted-foreground" data-testid="quiz-hint">{MODE_HINT[mode] ?? "选出正确的意思"}</p>}
+      </div>
     </div>
   );
 }
@@ -1109,7 +1169,7 @@ export function ChoiceList({
             >
               {done && isCorrect ? <Check className="size-3.5" /> : done && picked ? <X className="size-3.5" /> : k + 1}
             </span>
-            <span className={cn("min-w-0", o.en ? "font-display text-[17px] font-semibold" : "line-clamp-2")}>
+            <span className={cn("fs-card min-w-0", o.en ? "font-display text-[17px] font-semibold" : "line-clamp-2")}>
               {o.text}
               {done && o.sub && (
                 <span className="mt-0.5 block truncate font-sans text-[12px] font-normal text-muted-foreground" data-testid={subTestId}>

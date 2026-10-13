@@ -1,4 +1,5 @@
 import { BottomSheet } from "./sheet";
+import { useApp } from "@/lib/store";
 
 const ROWS: [string, string][] = [
   ["1 / 2 / 3", "认识 / 模糊 / 不认识"],
@@ -9,6 +10,7 @@ const ROWS: [string, string][] = [
   ["S", "加入 / 移出生词本"],
   ["D", "斩（已掌握，不再出现）"],
   ["B", "明天再说（不计对错）"],
+  ["F", "专注模式（全屏）"],
   ["← / →", "速刷：不认识 / 认识；磁带：上一个 / 下一个"],
   ["Esc", "退出学习"],
   ["?", "打开这个帮助"],
@@ -23,6 +25,7 @@ export function Kbd({ children }: { children: React.ReactNode }) {
 }
 
 export function ShortcutsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const swap = !!useApp().settings.swapSwipe;
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="键盘快捷键" testid="shortcuts">
       <div className="divide-y divide-border/70">
@@ -38,7 +41,7 @@ export function ShortcutsSheet({ open, onOpenChange }: { open: boolean; onOpenCh
         ))}
       </div>
       <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-        手机上：卡片向右滑 = 认识，向左滑 = 不认识，向上滑 = 模糊；速刷只有左右滑。磁带模式里空格 = 播放 / 暂停。
+        手机上：卡片向右滑 = {swap ? "不认识" : "认识"}，向左滑 = {swap ? "认识" : "不认识"}，向上滑 = 模糊；速刷只有左右滑。磁带模式里空格 = 播放 / 暂停。
       </p>
     </BottomSheet>
   );

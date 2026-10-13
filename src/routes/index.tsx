@@ -28,7 +28,9 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Bars, Ring, WeekStrip } from "@/components/app/charts";
-import { Panel, PanelTitle, Spinner } from "@/components/app/shell";
+import { Logo, Panel, PanelTitle, Spinner } from "@/components/app/shell";
+import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
+import { INSTALL_SNOOZE_DAYS, installVisible } from "@/lib/ux";
 import { ShareSheet } from "@/components/app/share-sheet";
 import { Phonetic, WordSheet } from "@/components/app/word-bits";
 import { speak } from "@/lib/audio";
@@ -36,7 +38,7 @@ import { now, today } from "@/lib/clock";
 import { shortMeaning, useWords } from "@/lib/data";
 import { notebookWords, summarize, wordOfDay } from "@/lib/plan";
 import { addDays, forecast } from "@/lib/srs";
-import { checkIn, dismissWeekReport, patchYesterday, setSettings, snoozeBackup, useApp } from "@/lib/store";
+import { checkIn, dismissWeekReport, patchYesterday, setSettings, snoozeBackup, snoozeInstall, useApp } from "@/lib/store";
 import { MAKEUP_EVERY, MAKEUP_MAX, WEEKDAY_CN, canPatch, curStreak, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf } from "@/lib/habit";
 import { celebrate } from "@/lib/celebrate";
 import { coreUnmastered, effectiveExam, quizDoneOn, sprintPlan, upcomingExams } from "@/lib/exam";
@@ -203,6 +205,8 @@ function Today() {
           </section>
 
           {showWeekReport(st.log, day, st.weekSeen) && <WeekCard day={day} logs={st.log} />}
+
+          <InstallCard day={day} installed={st.installed} snooze={st.installSnooze} />
 
           <ExamCard
             day={day}
@@ -674,6 +678,45 @@ function LateBanner({ sum, streak, onCheckIn }: { sum: ReturnType<typeof summari
           </Link>
         )}
       </div>
+    </section>
+  );
+}
+
+/** v8 · 安装引导：浏览器允许安装（beforeinstallprompt）时出现；装过不再出现，关掉 14 天内不出现 */
+function InstallCard({ day, installed, snooze }: { day: string; installed?: boolean; snooze?: string }) {
+  const canPrompt = useInstallPrompt();
+  if (!installVisible({ canPrompt, standalone: isStandalone(), installed, snoozeUntil: snooze, today: day })) return null;
+  return (
+    <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card p-4" data-testid="install-card">
+      <div className="pointer-events-none absolute -right-12 -top-16 size-32 rounded-full bg-brand-soft" />
+      <div className="relative flex items-center gap-3.5">
+        <Logo className="size-12 shrink-0 drop-shadow-[0_6px_12px_rgba(200,60,30,0.3)]" />
+        <div className="min-w-0 flex-1">
+          <div className="text-[15px] font-bold leading-tight">添加到桌面</div>
+          <div className="mt-0.5 text-[12px] leading-snug text-muted-foreground">从桌面图标全屏打开，没网也能背</div>
+        </div>
+        <button
+          type="button"
+          aria-label="暂不添加"
+          data-testid="install-dismiss"
+          onClick={() => snoozeInstall(addDays(day, INSTALL_SNOOZE_DAYS))}
+          className="grid size-8 shrink-0 place-items-center self-start rounded-full text-muted-foreground hover:bg-secondary"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+      <button
+        type="button"
+        data-testid="install-go"
+        onClick={async () => {
+          const r = await promptInstall();
+          if (r === "accepted") toast.success("已添加到桌面", { description: "以后从桌面图标打开就行" });
+          else if (r === "dismissed") snoozeInstall(addDays(day, INSTALL_SNOOZE_DAYS));
+        }}
+        className="relative mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[14px] font-bold text-primary-foreground shadow-md shadow-primary/20 transition active:scale-[0.98]"
+      >
+        安装到手机桌面
+      </button>
     </section>
   );
 }

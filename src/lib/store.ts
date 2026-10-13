@@ -6,10 +6,11 @@ import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type Wo
 import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
 import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, parseHM, type CheckInResult, type GoalMode, type PatchResult } from "./habit";
 import type { ShareTpl } from "./share";
+import { cleanFontSize, cleanMotion, motionReduced, type FontSize, type Motion } from "./ux";
 
 export type Book = "all" | "core";
 export type Order = "core" | "alpha" | "random";
-export type Theme = "system" | "light" | "dark";
+export type Theme = "system" | "light" | "dark" | "contrast";
 
 export interface Settings {
   book: Book;
@@ -43,6 +44,16 @@ export interface Settings {
   appBadge: boolean;
   /** 分享图样式 */
   shareTpl: ShareTpl;
+  /** 卡片与释义字号 */
+  fontSize: FontSize;
+  /** 左手模式：评分按钮左右翻转 */
+  leftHand: boolean;
+  /** 交换左右滑：右滑 = 不认识，左滑 = 认识 */
+  swapSwipe: boolean;
+  /** 减少动画：跟随系统 / 减少 / 正常 */
+  motion: Motion;
+  /** 卡片正面显示音标 */
+  frontIpa: boolean;
 }
 
 export interface AppState {
@@ -77,6 +88,10 @@ export interface AppState {
   makeupEarned?: string;
   /** 用补卡补上的日期（也在 checkins 里） */
   patched: string[];
+  /** 已经安装到桌面（安装引导不再出现） */
+  installed?: boolean;
+  /** 安装卡片关掉了：这天之前不出现 */
+  installSnooze?: string;
 }
 
 export const DAILY_OPTIONS = [10, 20, 30, 50, 80, 100];
@@ -109,6 +124,11 @@ export const defaultSettings = (): Settings => ({
   remindAt: "",
   appBadge: true,
   shareTpl: "classic",
+  fontSize: "md",
+  leftHand: false,
+  swapSwipe: false,
+  motion: "system",
+  frontIpa: true,
 });
 
 export function initialState(): AppState {
@@ -145,6 +165,12 @@ export function cleanSettings(s: Settings): Settings {
     remindAt: parseHM(s.remindAt) !== null ? s.remindAt : "",
     appBadge: typeof s.appBadge === "boolean" ? s.appBadge : d.appBadge,
     shareTpl: s.shareTpl === "paper" || s.shareTpl === "night" ? s.shareTpl : "classic",
+    theme: s.theme === "light" || s.theme === "dark" || s.theme === "contrast" ? s.theme : "system",
+    fontSize: cleanFontSize(s.fontSize),
+    leftHand: s.leftHand === true,
+    swapSwipe: s.swapSwipe === true,
+    motion: cleanMotion(s.motion),
+    frontIpa: typeof s.frontIpa === "boolean" ? s.frontIpa : d.frontIpa,
     examDate: typeof s.examDate === "string" && (s.examDate === "" || /^\d{4}-\d{2}-\d{2}$/.test(s.examDate)) ? s.examDate : d.examDate,
   };
 }
@@ -173,6 +199,8 @@ export function normalize(raw: unknown): AppState {
     makeup: typeof r.makeup === "number" && Number.isFinite(r.makeup) ? Math.max(0, Math.min(MAKEUP_MAX, Math.floor(r.makeup))) : 0,
     makeupEarned: typeof r.makeupEarned === "string" ? r.makeupEarned : undefined,
     patched: Array.isArray(r.patched) ? r.patched.filter((d) => typeof d === "string") : [],
+    installed: r.installed === true ? true : undefined,
+    installSnooze: typeof r.installSnooze === "string" ? r.installSnooze : undefined,
     seed: typeof r.seed === "number" ? r.seed : base.seed,
   };
 }
@@ -223,6 +251,7 @@ function commit(next: AppState) {
   state = next;
   persist();
   applyTheme(state.settings.theme);
+  applyLook(state.settings);
   listeners.forEach((l) => l());
 }
 
@@ -239,19 +268,36 @@ export const getState = () => state;
 
 // ---------------------------------------------------------------- theme
 
+/** 高对比度是浅色底的一套配色：这里归为 light（toast 等只认 light/dark） */
 export function resolvedTheme(t: Theme): "light" | "dark" {
+  if (t === "contrast") return "light";
   if (t !== "system") return t;
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export function applyTheme(t: Theme) {
   const r = resolvedTheme(t);
+  const hc = t === "contrast";
   const el = document.documentElement;
-  if (el.classList.contains(r)) return;
-  el.classList.remove("light", "dark");
+  const want = hc ? "contrast" : r;
+  // data-theme 记着当前是哪套（高对比度也是 light 类）
+  if (el.classList.contains(r) && ((el as HTMLElement).dataset?.theme ?? want) === want) return;
+  el.classList.remove("light", "dark", "contrast");
   el.classList.add(r);
-  el.setAttribute("data-theme", r);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", r === "dark" ? "#16171d" : "#faf7f2");
+  if (hc) el.classList.add("contrast");
+  el.setAttribute("data-theme", want);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", hc ? "#ffffff" : r === "dark" ? "#16171d" : "#faf7f2");
+}
+
+/** 字号与动画：写到 <html> 的 data 属性上，CSS 据此缩放 / 关动画 */
+export function applyLook(s: Pick<Settings, "fontSize" | "motion">) {
+  const el = typeof document !== "undefined" ? document.documentElement : null;
+  if (!el || typeof el.setAttribute !== "function" || typeof el.getAttribute !== "function") return;
+  const sys = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const motion = motionReduced(s.motion ?? "system", sys) ? "reduce" : "full";
+  if (el.getAttribute("data-motion") !== motion) el.setAttribute("data-motion", motion);
+  const fs = s.fontSize ?? "md";
+  if (el.getAttribute("data-fs") !== fs) el.setAttribute("data-fs", fs);
 }
 
 // ---------------------------------------------------------------- actions
@@ -324,6 +370,14 @@ export function setBury(w: string, until: string | undefined) {
   if (until) bury[w] = until;
   else delete bury[w];
   commit({ ...state, bury });
+}
+
+export function markInstalled() {
+  commit({ ...state, installed: true });
+}
+
+export function snoozeInstall(until: string) {
+  commit({ ...state, installSnooze: until });
 }
 
 export function markBackedUp(day: string) {
