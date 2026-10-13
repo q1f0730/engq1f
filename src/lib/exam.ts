@@ -12,57 +12,8 @@ import { DAILY_OPTIONS, type AppState } from "./store";
 import { addDays, diffDays, hashStr, rng, shuffle, type QuizMode } from "./srs";
 import { exampleCloze, hasExampleCloze } from "./examples";
 
-// ---------------------------------------------------------------- 考试日期
-
-/** 已公布的笔试日期（12/2026 来自中国教育考试网 cet.neea.edu.cn 2026-09-02 公告） */
-export const OFFICIAL_EXAMS = ["2024-06-15", "2024-12-14", "2025-06-14", "2025-12-13", "2026-06-13", "2026-12-12"];
-
-/** 某年某月的第二个星期六（未公布的场次按近年规律预估） */
-export function secondSaturday(year: number, month: number): string {
-  const d = new Date(year, month - 1, 1, 12);
-  const first = 1 + ((6 - d.getDay() + 7) % 7);
-  const day = first + 7;
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-/** 某一场（年 + 6/12 月）的日期：已公布用官方日期，否则预估 */
-export function examOf(year: number, month: 6 | 12): { day: string; official: boolean } {
-  const pre = `${year}-${String(month).padStart(2, "0")}`;
-  const hit = OFFICIAL_EXAMS.find((d) => d.startsWith(pre));
-  return hit ? { day: hit, official: true } : { day: secondSaturday(year, month), official: false };
-}
-
-/** 从今天起接下来的 n 场考试（考试当天也算「接下来」） */
-export function upcomingExams(today: string, n = 2): { day: string; official: boolean }[] {
-  const out: { day: string; official: boolean }[] = [];
-  let y = Number(today.slice(0, 4));
-  let m: 6 | 12 = 6;
-  while (out.length < n) {
-    const e = examOf(y, m);
-    if (e.day >= today) out.push(e);
-    if (m === 6) m = 12;
-    else {
-      m = 6;
-      y += 1;
-    }
-  }
-  return out;
-}
-
-export function nextExamDate(today: string): string {
-  return upcomingExams(today, 1)[0].day;
-}
-
-/** 实际使用的考试日：用户设置的日期还没过就用它，否则自动换成下一场 */
-export function effectiveExam(today: string, setting?: string): { day: string; custom: boolean } {
-  if (setting && /^\d{4}-\d{2}-\d{2}$/.test(setting) && setting >= today) return { day: setting, custom: true };
-  return { day: nextExamDate(today), custom: false };
-}
-
-/** 距离考试还有几天（考试当天 = 0） */
-export function daysUntil(today: string, exam: string): number {
-  return Math.max(0, diffDays(today, exam));
-}
+export * from "./examdate";
+import { daysUntil } from "./examdate";
 
 // ---------------------------------------------------------------- 冲刺计划
 
@@ -113,6 +64,58 @@ export function recommendPlan(today: string, exam: string, sizes: { all: number;
   const all = sprintPlan(today, exam, sizes.all);
   if (!all.tooMany && all.need <= RECOMMEND_ALL_MAX) return { book: "all", plan: all };
   return { book: "core", plan: sprintPlan(today, exam, sizes.core) };
+}
+
+/**
+ * 11.2 · 学不完时的诚实目标：每天 SPRINT_MAX 个，考前（扣掉最后只复习的几天）能拿下多少个。
+ */
+export function capReach(today: string, exam: string, newLeft: number, daily = SPRINT_MAX): number {
+  const daysLeft = daysUntil(today, exam);
+  const learnDays = Math.max(1, daysLeft - reserveDays(daysLeft));
+  return Math.min(newLeft, daily * learnDays);
+}
+
+/** 一次加量最多翻一倍（不到 10 个时先加到 10），取 5 的倍数，不超过 SPRINT_MAX */
+export function stepUp(daily: number, target: number): number {
+  const step = Math.max(daily * 2, 10);
+  return Math.min(SPRINT_MAX, target, Math.ceil(step / 5) * 5);
+}
+
+/**
+ * 11.2 · 首页冲刺建议和新手引导共用这一个函数（recommendPlan 的同一套规则）：
+ *  - switch：全部词每天要 > 50 个 → 先改学核心词（一次最多翻一倍）
+ *  - raise ：每日新词低于计划 → 加量（一次最多翻一倍，说明之后再加）
+ *  - cap   ：每天 100 个也学不完 → 只给诚实的目标「考前能拿下 N 个」，没有「改成 X」按钮
+ * 考试当天 / 前一天（考前模式）、词书学完、已达标时返回 null。
+ */
+export type ExamAdvice =
+  | { kind: "switch"; to: number; target: number; finish: string; need: number }
+  | { kind: "raise"; to: number; target: number; finish: string; spare: number }
+  | { kind: "cap"; daily: number; reach: number; left: number; daysLeft: number; canRaise: number | null };
+
+export function examAdvice(
+  today: string,
+  exam: string,
+  x: { book: "all" | "core"; daily: number; newLeft: number; coreNewLeft: number },
+): ExamAdvice | null {
+  if (x.newLeft <= 0) return null;
+  const daysLeft = daysUntil(today, exam);
+  if (daysLeft <= 1) return null;
+  const p = sprintPlan(today, exam, x.newLeft);
+  if (x.book === "all" && p.need > RECOMMEND_ALL_MAX && x.coreNewLeft > 0) {
+    const c = sprintPlan(today, exam, x.coreNewLeft);
+    const target = c.tooMany ? SPRINT_MAX : c.daily;
+    return { kind: "switch", to: Math.max(x.daily, stepUp(x.daily, target)), target, finish: c.finish, need: p.need };
+  }
+  if (p.tooMany) {
+    const canRaise = x.daily < SPRINT_MAX ? stepUp(x.daily, SPRINT_MAX) : null;
+    return { kind: "cap", daily: x.daily, reach: capReach(today, exam, x.newLeft, SPRINT_MAX), left: x.newLeft, daysLeft, canRaise };
+  }
+  if (x.daily < p.daily) {
+    const to = stepUp(x.daily, p.daily);
+    return { kind: "raise", to, target: p.daily, finish: p.finish, spare: p.spare };
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------- 一词多义

@@ -80,7 +80,26 @@ if (hasWin) {
 
 const idx = (s: HState) => (typeof s.__TSR_index === "number" ? s.__TSR_index : undefined);
 
+/** 11.2 · 下一次 popstate 由调用方自己处理（不自动「再退一步」） */
+let hold = false;
+export function holdNextPop() {
+  hold = true;
+}
+/** 当前条目在路由 history 里的序号（没有 = 地址栏直接改的） */
+export const historyIndex = () => idx(cur());
+/** 当前条目是作废 / 无主的（会话结束后守卫留下的那条） */
+export const atPhantom = () => {
+  const st = cur();
+  return phantom(st) && !!(st.__dead || st.__sheet !== undefined || st.__guard !== undefined);
+};
+
 function onPop() {
+  if (hold) {
+    hold = false;
+    last = cur();
+    lastHref = href();
+    return;
+  }
   const st = cur();
   const prev = last;
   const prevHref = lastHref;

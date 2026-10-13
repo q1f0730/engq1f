@@ -263,7 +263,19 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
               {word.w}
             </h2>
             <div className="mt-1 flex flex-wrap items-center gap-3 text-[14px] text-muted-foreground">
-              {word.p && (
+              {word.p && ipaOf(word, "us") === ipaOf(word, "uk") && (
+                // 11.2 · 美音、英音音标一样（或美音退回英音）：音标只写一次，两种发音照样能点
+                <span className="flex items-center gap-2" data-testid="sheet-ipa-one">
+                  <span className="font-ipa">/{ipaOf(word, "us")}/</span>
+                  <button className="flex items-center gap-0.5 hover:text-foreground" onClick={() => speak(word.w, "us")} aria-label="美音">
+                    美 <Volume2 className="size-3.5" />
+                  </button>
+                  <button className="flex items-center gap-0.5 hover:text-foreground" onClick={() => speak(word.w, "uk")} aria-label="英音">
+                    英 <Volume2 className="size-3.5" />
+                  </button>
+                </span>
+              )}
+              {word.p && ipaOf(word, "us") !== ipaOf(word, "uk") && (
                 <>
                   <button className="flex items-center gap-1 hover:text-foreground" onClick={() => speak(word.w, "us")}>
                     美 <span className="font-ipa">/{ipaOf(word, "us")}/</span> <Volume2 className="size-3.5" />

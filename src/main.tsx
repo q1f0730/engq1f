@@ -32,3 +32,21 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 
 if (import.meta.env.PROD) registerSW();
+
+// 11.2 · 动态模块的预加载失败（发新版后旧文件没了 / 网络抖动）：Vite 会派发这个事件，
+// 交给路由的错误页（「网络不好…重试」），不再冒成未处理的异常
+window.addEventListener("vite:preloadError", (e) => {
+  console.warn("preload failed", (e as Event & { payload?: unknown }).payload);
+});
+
+// 11.2 · 首页渲染完、空闲时把常用页面的代码块先拉下来：之后断网也能切到这些页面（SW 预缓存之外的第二道保险）
+const warm = () => {
+  for (const path of ["/study", "/words", "/stats", "/me"] as const) {
+    const r = (router.routesByPath as unknown as Record<string, unknown>)[path];
+    if (r) Promise.resolve(router.loadRouteChunk(r as never)).catch(() => {});
+  }
+};
+window.addEventListener("load", () => {
+  const ric = (window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+  setTimeout(() => (ric ? ric(warm, { timeout: 4000 }) : warm()), 2500);
+});

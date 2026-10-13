@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarClock, Check, CircleHelp, ClipboardCheck, Dumbbell, Flame, Keyboard, Maximize, Minimize, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import {
   addDays,
   answer,
   buryCurrent,
+  diffDays,
   createSession,
   current,
   hashStr,
@@ -40,7 +41,7 @@ import {
   type Session,
   type SessionItem,
 } from "@/lib/srs";
-import { applyAnswer, checkIn, getState, previewKill, setBury, toggleStar, useApp } from "@/lib/store";
+import { applyAnswer, checkIn, getState, onExternalChange, previewKill, setBury, toggleStar, useApp } from "@/lib/store";
 import { PostQuiz, PreviewList } from "./study-extra";
 import { postQuizWords, postSummary, retryWords } from "@/lib/learnflow";
 import { curStreak } from "@/lib/habit";
@@ -48,7 +49,8 @@ import { celebrate } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
 import { Confusables, Examples, Meanings, Phonetic, Phrases } from "./word-bits";
 import { ShortcutsSheet } from "./shortcuts";
-import { LeaveSheet, useLeaveGuard } from "./leave";
+import { LeaveSheet, exitBack, replaceStudy, useLeaveGuard } from "./leave";
+import { comeBackLine } from "@/lib/come-back";
 import { useFinePointer } from "@/lib/pointer";
 import { ShareSheet } from "./share-sheet";
 import { useShareInfo } from "@/lib/use-share";
@@ -111,6 +113,7 @@ type Last = { item: SessionItem; rating: Rating; pick?: number; via: "rate" | "q
 export function Study({ index, mode, words = [], listId, listName }: { index: WordIndex; mode: StudyMode; words?: string[]; listId?: string; listName?: string }) {
   const st = useApp();
   const navigate = useNavigate();
+  const router = useRouter();
   const accent = st.settings.accent;
   const leftHand = !!st.settings.leftHand;
   const swap = !!st.settings.swapSwipe;
@@ -399,7 +402,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         return;
       }
       if (finished) return;
-      if (k === "escape") return navigate({ to: "/" });
+      if (k === "escape") return exitBack(router);
       if (k === " " || k === "enter") {
         e.preventDefault();
         return next();
@@ -439,7 +442,21 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     saveResume(mode, isFinished(session) ? 0 : answered);
   }, [answered, session, mode, practice]);
   useEffect(() => () => saveResume(mode, 0), [mode]);
-  const blocker = useLeaveGuard(!isFinished(session) && session.done.length > 0 && !previewing);
+  // 11.2 · 别的窗口清空 / 覆盖导入 / 回滚了记录：这一组直接结束，不再往新档案里写
+  const [replaced, setReplaced] = useState(false);
+  useEffect(() => onExternalChange((why) => why === "replace" && setReplaced(true)), []);
+  const blocker = useLeaveGuard(!replaced && !isFinished(session) && session.done.length > 0 && !previewing);
+
+  if (replaced)
+    return (
+      <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center px-6 text-center" data-testid="study-replaced">
+        <div className="text-[20px] font-extrabold">记录在另一个窗口被替换了</div>
+        <p className="mt-2 text-[14px] text-muted-foreground">这一组已经结束，刚才这一题没有写进新的记录。</p>
+        <button type="button" onClick={() => void router.navigate({ to: "/", replace: true })} className="mt-6 h-12 w-full rounded-2xl bg-primary font-bold text-primary-foreground">
+          回首页
+        </button>
+      </div>
+    );
 
   if (!items.length) return <Empty mode={mode} />;
   if (previewing)
@@ -448,7 +465,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         index={index}
         words={previewWords}
         accent={accent}
-        onQuit={() => navigate({ to: "/" })}
+        onQuit={() => exitBack(router)}
         onStart={(killed) => {
           if (killed.length) {
             previewKill(killed, day, (w, card) => revEntry(w, now(), "kill", { isNew: true, card }));
@@ -514,7 +531,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe md:py-6" data-testid="study" data-mode={mode}>
       {/* 顶栏：只留退出和进度（11.1 · 撤销 / 明天再说 / 收藏放到卡片下面，带文字） */}
       <div className="flex shrink-0 items-center gap-1.5 pt-3 pt-safe md:gap-2">
-        <button type="button" onClick={() => navigate({ to: "/" })} aria-label="退出" data-testid="study-quit" className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary md:size-10">
+        <button type="button" onClick={() => exitBack(router)} aria-label="退出" data-testid="study-quit" className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary md:size-10">
           <X className="size-5" />
         </button>
         <div className="flex-1">
@@ -1427,6 +1444,7 @@ function Summary({
 }) {
   const st = useApp();
   const navigate = useNavigate();
+  const router = useRouter();
   const day = today();
   const sum = summarize(index, st, day);
   const acc = Math.round(sessionAccuracy(session) * 100);
@@ -1438,7 +1456,7 @@ function Summary({
   // 第一次学完一组：专门的「第一组 ✓」
   const firstEver = mode === "new" && st.checkins.length === 0 && Object.keys(st.cards).length <= words.length;
 
-  const restart = (m: StudyMode) => navigate({ to: "/study", search: { mode: m, t: Date.now() } });
+  const restart = (m: StudyMode) => replaceStudy(router, { mode: m, t: Date.now() });
   // 学后速测答错的也算进「错词再练」
   const { n: postN, ok: postOk, wrong: postWrong, pct: postPct } = postSummary(postRes);
   const missed = retryWords(session.firsts, postRes);
@@ -1446,9 +1464,9 @@ function Summary({
   return (
     <div className="mx-auto min-h-dvh max-w-xl px-4 pb-10 pt-safe" data-testid="summary">
       <div className="flex items-center pt-3">
-        <Link to="/" aria-label="关闭" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+        <button type="button" onClick={() => exitBack(router)} aria-label="关闭" data-testid="summary-close" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
           <X className="size-5" />
-        </Link>
+        </button>
       </div>
       <div className="flex flex-col items-center pt-4 text-center">
         <div className="pop grid size-20 place-items-center rounded-[28px] bg-primary text-primary-foreground shadow-xl shadow-primary/30">
@@ -1457,7 +1475,11 @@ function Summary({
         <h1 className="mt-5 font-display text-[28px] font-extrabold tracking-tight" data-testid="summary-title">
           {firstEver ? "第一组 ✓" : "本组完成！"}
         </h1>
-        {firstEver && <p className="mt-1 text-[14px] font-semibold text-primary" data-testid="first-group">好的开始！这 {words.length} 个词明天会回来复习一次</p>}
+        {firstEver && (
+          <p className="mt-1 text-[14px] font-semibold text-primary" data-testid="first-group">
+            好的开始！{comeBackLine(words.filter(([w]) => !st.cards[w]?.k).map(([w]) => st.cards[w]?.d).filter((d): d is string => !!d), day, words.length)}
+          </p>
+        )}
         <p className="mt-1 text-[15px] text-muted-foreground">
           {MODE_TITLE[mode]} {words.length} 词 · 首次正确率 {acc}% · 用时 {Math.max(1, Math.round(ms / 60000))} 分钟
         </p>
@@ -1541,7 +1563,7 @@ function Summary({
         <button
           type="button"
           data-testid="retry-wrong"
-          onClick={() => navigate({ to: "/study", search: { mode: "practice", words: missed.join(","), t: Date.now() } })}
+          onClick={() => replaceStudy(router, { mode: "practice", words: missed.join(","), t: Date.now() })}
           className="mt-5 flex w-full items-center gap-3 rounded-3xl border border-forget/25 bg-forget-soft px-4 py-3.5 text-left transition active:scale-[0.99]"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-forget text-white">
@@ -1596,7 +1618,7 @@ function Summary({
         {mode === "list" && listId ? (
           <button
             type="button"
-            onClick={() => navigate({ to: "/study", search: { mode: "list", list: listId, t: Date.now() } })}
+            onClick={() => replaceStudy(router, { mode: "list", list: listId, t: Date.now() })}
             data-testid="list-again"
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-secondary py-3.5 font-semibold"
           >
@@ -1629,3 +1651,4 @@ function MiniStat({ label, value, testid }: { label: string; value: string; test
     </div>
   );
 }
+

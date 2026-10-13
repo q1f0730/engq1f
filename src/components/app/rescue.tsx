@@ -6,9 +6,35 @@
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { KEY, REV_KEY, parseBackup } from "@/lib/store";
 import { ACTIVE_PROFILE } from "@/lib/profiles";
+import { isChunkError } from "@/lib/chunk-error";
+export { isChunkError };
 import type { SnapMeta } from "@/lib/snapshots";
 
-const RESCUE_KEY = "cet4v-rescue-v1";
+export const RESCUE_KEY = "cet4v-rescue-v1";
+
+/** 网络 / 加载失败：重试；联网后自动再试一次 */
+export function LoadFailed({ onRetry, message }: { onRetry: () => void; message?: string }) {
+  useEffect(() => {
+    const on = () => onRetry();
+    window.addEventListener("online", on);
+    return () => window.removeEventListener("online", on);
+  }, [onRetry]);
+  return (
+    <div className="grid min-h-[70dvh] place-items-center p-6" data-testid="load-failed">
+      <div className="w-full max-w-sm text-center">
+        <h1 className="text-xl font-bold">网络不好，页面没加载出来</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">学习记录都在，没有受影响。连上网后点重试，或者稍等一下自动重试。</p>
+        <button type="button" data-testid="load-retry" onClick={onRetry} className="mt-5 h-12 w-full rounded-2xl bg-primary font-semibold text-primary-foreground">
+          重试
+        </button>
+        <button type="button" onClick={() => (location.hash = "#/")} className="mt-2 h-11 w-full rounded-2xl text-[14px] font-semibold text-muted-foreground">
+          回首页
+        </button>
+        {message && <p className="mt-3 break-all text-[11px] text-muted-foreground/70" data-testid="load-failed-msg">{message}</p>}
+      </div>
+    </div>
+  );
+}
 
 function rawDump(): string {
   let main: string | null = null;
@@ -99,26 +125,28 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
     <div className="grid min-h-dvh place-items-center p-6" data-testid="rescue">
       <div className="w-full max-w-sm">
         <h1 className="text-xl font-bold">{boot ? "学习记录读不出来" : "出了点问题"}</h1>
-        <p className="mt-2 text-[15px] leading-relaxed">
+        <p className="mt-2 text-[15px] leading-relaxed" data-testid="rescue-body">
           {boot ? "存在这台设备上的记录格式坏了，app 读不懂它。" : "有一部分记录 app 读不懂，页面打不开。"}
-          你的记录没有被删掉：可以先导出原始数据留底，再回滚到最近一次自动快照。
+          {snaps === null || newest ? "你的记录没有被删掉：可以先导出原始数据留底，再回滚到最近一次自动快照。" : "你的记录没有被删掉：先导出原始数据留底（以后可以在「数据与备份」里导入）。"}
         </p>
         {/* 技术细节小字放在后面，给反馈问题用 */}
         <p className="mt-2 break-all text-[11px] leading-snug text-muted-foreground/80" data-testid="rescue-msg">
           {message}
         </p>
         <div className="mt-5 space-y-2">
-          <button
-            type="button"
-            data-testid="rescue-rollback"
-            disabled={busy || !newest}
-            onClick={() => newest && go(newest.id)}
-            className="w-full rounded-2xl bg-primary px-4 py-3 text-left font-semibold text-primary-foreground disabled:opacity-50"
-          >
-            回滚到最近快照
-            <span className="block text-[12px] font-normal opacity-85">{snaps === null ? "查找快照…" : newest ? fmt(newest) : "这台设备上还没有快照"}</span>
-          </button>
-          <button type="button" data-testid="rescue-export" onClick={exportRaw} className="w-full rounded-2xl bg-secondary px-4 py-3 font-semibold">
+          {(snaps === null || newest) && (
+            <button
+              type="button"
+              data-testid="rescue-rollback"
+              disabled={busy || !newest}
+              onClick={() => newest && go(newest.id)}
+              className="w-full rounded-2xl bg-primary px-4 py-3 text-left font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              回滚到最近快照
+              <span className="block text-[12px] font-normal opacity-85">{snaps === null ? "查找快照…" : newest ? fmt(newest) : ""}</span>
+            </button>
+          )}
+          <button type="button" data-testid="rescue-export" onClick={exportRaw} className={snaps !== null && !newest ? "w-full rounded-2xl bg-primary px-4 py-3 font-semibold text-primary-foreground" : "w-full rounded-2xl bg-secondary px-4 py-3 font-semibold"}>
             导出原始数据
           </button>
           {boot && (
@@ -126,17 +154,19 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
               type="button"
               data-testid="rescue-fresh"
               onClick={() => {
+                // 11.2 · 先把原始数据下载到手机里（看得见、拿得回来），再在本机留一份（数据与备份里能导出 / 恢复 / 删除）
+                exportRaw();
                 try {
                   localStorage.setItem(RESCUE_KEY, rawDump());
                   localStorage.removeItem(KEY);
                 } catch {
                   /* 存储不可用 */
                 }
-                location.reload();
+                setTimeout(() => location.reload(), 600);
               }}
               className="w-full rounded-2xl bg-secondary px-4 py-3 font-semibold"
             >
-              从头开始（原始数据另存一份）
+              下载原始数据，然后从头开始
             </button>
           )}
           <button type="button" data-testid="rescue-reload" onClick={() => location.reload()} className="w-full rounded-2xl px-4 py-3 text-[14px] font-semibold text-muted-foreground">
@@ -181,7 +211,10 @@ export class AppBoundary extends Component<{ children: ReactNode }, { error: unk
     console.warn("app crashed", error, info.componentStack);
   }
   render() {
-    if (this.state.error) return <Rescue message={`错误信息：${String((this.state.error as Error)?.message ?? this.state.error)}`} />;
+    if (this.state.error) {
+      if (isChunkError(this.state.error)) return <LoadFailed message={String((this.state.error as Error)?.message ?? "")} onRetry={() => location.reload()} />;
+      return <Rescue message={`错误信息：${String((this.state.error as Error)?.message ?? this.state.error)}`} />;
+    }
     return this.props.children;
   }
 }

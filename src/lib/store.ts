@@ -126,9 +126,19 @@ export interface AppState {
   /** v10 · 新词自适应建议关掉的那天 */
   newCutSeen?: string;
   /** 11.1 · 回归恢复计划：from–until 这几天只清积压、新词暂停 */
-  recover?: { from: string; until: string; n: number };
+  recover?: { from: string; until: string; n: number; perDay?: number; spread?: string; shifted?: number };
   /** 11.1 · 欢迎回来卡片关掉的那天 */
   recoverSeen?: string;
+  /** 11.2 · 冲刺卡今天处理过（应用 / 关掉）：当天不再出现 */
+  sprintSeen?: string;
+  /** 11.2 · 「每天 100 个也学不完」的信息卡关掉了：这一场考试（值 = 考试日）不再出现 */
+  sprintOff?: string;
+  /** 11.2 · 已经确认过「考完了」的那一场 */
+  examDone?: string;
+  /** 11.2 · 考完选了「先休息」：不排考试计划，直到重新选考试日期 */
+  examPause?: boolean;
+  /** 11.2 · 整份替换（清空 / 覆盖导入 / 回滚）时换一个新值：别的窗口据此知道「记录被整份换掉了」，不再往上合并 */
+  epoch?: string;
 }
 
 /** v10 · 记忆保持目标（这里自带一份，不让首屏引入整个 algo.ts） */
@@ -303,9 +313,21 @@ export function normalize(raw: unknown, has?: (w: string) => boolean, rep: Clean
     newCutSeen: str(r.newCutSeen),
     recover:
       r.recover && typeof r.recover === "object" && isDay(r.recover.from) && isDay(r.recover.until) && Number.isInteger(r.recover.n) && r.recover.n > 0
-        ? { from: r.recover.from, until: r.recover.until, n: r.recover.n }
+        ? {
+            from: r.recover.from,
+            until: r.recover.until,
+            n: r.recover.n,
+            ...(Number.isInteger(r.recover.perDay) && (r.recover.perDay as number) > 0 ? { perDay: r.recover.perDay } : {}),
+            ...(isDay(r.recover.spread) ? { spread: r.recover.spread } : {}),
+            ...(Number.isInteger(r.recover.shifted) && (r.recover.shifted as number) > 0 ? { shifted: r.recover.shifted } : {}),
+          }
         : undefined,
     recoverSeen: optDay(r.recoverSeen),
+    sprintSeen: optDay(r.sprintSeen),
+    sprintOff: optDay(r.sprintOff),
+    examDone: optDay(r.examDone),
+    examPause: r.examPause === true ? true : undefined,
+    epoch: str(r.epoch),
   };
 }
 
@@ -353,10 +375,11 @@ function read(): AppState {
 let state: AppState = read();
 let savedRev: RevEntry[] | null = null;
 const listeners = new Set<() => void>();
-const external = new Set<(why: "sync" | "merge") => void>();
+export type ExternalWhy = "sync" | "merge" | "replace";
+const external = new Set<(why: ExternalWhy) => void>();
 
 /** 别的窗口改了记录（已同步 / 已合并）时通知界面 */
-export function onExternalChange(fn: (why: "sync" | "merge") => void) {
+export function onExternalChange(fn: (why: ExternalWhy) => void) {
   external.add(fn);
   return () => {
     external.delete(fn);
@@ -392,6 +415,8 @@ export function rebase(prev: AppState, next: AppState, other: AppState): AppStat
       const added = (b as RevEntry[]).filter((e) => !had.has(key(e)) && !seen.has(key(e)));
       const removed = new Set((a as RevEntry[]).filter((e) => !(b as RevEntry[]).some((x) => key(x) === key(e))).map(key));
       out.revlog = [...other.revlog.filter((e) => !removed.has(key(e))), ...added].sort((x, y) => x[1] - y[1]);
+    } else if (k === "log") {
+      out.log = mergeLog(prev, next, other);
     } else if (k === "checkins" || k === "patched") {
       out[k] = [...new Set([...((other as unknown as Record<string, string[]>)[k] ?? []), ...(b as string[])])].sort();
     } else if (k === "settings") {
@@ -405,6 +430,33 @@ export function rebase(prev: AppState, next: AppState, other: AppState): AppStat
     } else out[k] = b;
   }
   return out as unknown as AppState;
+}
+
+/**
+ * 11.2 · 日志按差值合并：本窗口这一步加了多少就在对方的数上加多少（不再整条覆盖丢掉对方的计数）；
+ * 同一个新词在两个窗口都学了（两边都新建了这张卡）只算一次。
+ */
+function mergeLog(prev: AppState, next: AppState, other: AppState): AppState["log"] {
+  const out = { ...other.log };
+  const F = ["n", "r", "ok", "a", "ms"] as const;
+  for (const day of Object.keys(next.log)) {
+    const a = prev.log[day];
+    const b = next.log[day];
+    if (a === b) continue;
+    const base = other.log[day] ?? { n: 0, r: 0, ok: 0, a: 0, ms: 0 };
+    const row = { ...base };
+    for (const f of F) row[f] = Math.max(0, base[f] + (b[f] ?? 0) - (a?.[f] ?? 0));
+    // 两个窗口都把同一个词学成了新词：只算一次
+    let dup = 0;
+    for (const w of Object.keys(next.cards)) if (!prev.cards[w] && next.cards[w]?.f === day && other.cards[w] && !prev.cards[w] && other.cards[w].f === day) dup++;
+    if (dup) {
+      row.n = Math.max(0, row.n - dup);
+      row.a = Math.max(0, row.a - dup);
+      row.ok = Math.min(row.ok, row.a);
+    }
+    out[day] = row;
+  }
+  return out;
 }
 
 function writeOut() {
@@ -433,14 +485,28 @@ function persist(prev: AppState) {
   try {
     const cur = localStorage.getItem(KEY);
     let merged = false;
+    let replaced = false;
     if (cur !== null && lastRaw !== null && cur !== lastRaw) {
       // 别的窗口在我们上次同步之后写过：先合并，再写（谁最后写谁赢会丢数据）
       try {
-        state = rebase(prev, state, fromRaw(cur));
-        merged = true;
+        const other = fromRaw(cur);
+        if ((other.epoch ?? "") !== (prev.epoch ?? "") && state.epoch === prev.epoch) {
+          // 11.2 · 对方把记录整份换掉了（清空 / 覆盖导入 / 回滚）：不往上合并本窗口这一步，直接用对方的
+          state = other;
+          lastRaw = cur;
+          savedRev = null;
+          replaced = true;
+        } else {
+          state = rebase(prev, state, other);
+          merged = true;
+        }
       } catch {
         /* 对方写的读不出来：保留本窗口 */
       }
+    }
+    if (replaced) {
+      external.forEach((f) => f("replace"));
+      return;
     }
     writeOut();
     bc?.postMessage({ key: KEY });
@@ -466,12 +532,13 @@ export function syncFromStorage(): boolean {
     return false;
   }
   lastRaw = cur;
+  const replaced = (next.epoch ?? "") !== (state.epoch ?? "");
   state = next;
   savedRev = null;
   applyTheme(state.settings.theme);
   applyLook(state.settings);
   listeners.forEach((l) => l());
-  external.forEach((f) => f("sync"));
+  external.forEach((f) => f(replaced ? "replace" : "sync"));
   return true;
 }
 
@@ -539,15 +606,23 @@ export function applyLook(s: Pick<Settings, "fontSize" | "motion">) {
 // ---------------------------------------------------------------- actions
 
 export function setSettings(patch: Partial<Settings>) {
-  commit({ ...state, settings: { ...state.settings, ...patch } });
+  // 11.2 · 重新选了考试日期 = 结束「先休息」
+  commit({ ...state, ...("examDate" in patch ? { examPause: undefined } : {}), settings: { ...state.settings, ...patch } });
 }
 
-export function completeOnboarding(patch: Partial<Settings>) {
-  commit({ ...state, onboarded: true, settings: { ...state.settings, ...patch } });
+/** extra：引导里已经看过的计划提示（当天不再弹冲刺卡等） */
+export function completeOnboarding(patch: Partial<Settings>, extra: Partial<Pick<AppState, "sprintSeen" | "sprintOff">> = {}) {
+  commit({ ...state, ...extra, onboarded: true, settings: { ...state.settings, ...patch } });
 }
 
 /** 一次回答：卡片 + 当日日志；rev = 追加一条复习日志，"pop" = 撤销这个词最后一条 */
 export function applyAnswer(w: string, card: Card | undefined, day: string, log: DayLog | undefined, rev?: RevEntry | "pop") {
+  // 11.2 · 两个窗口同时学到同一个新词：这个窗口以为是新词（新学 +1），但卡片已经由另一个窗口建好了 → 不再重复计数
+  const before = state.log[day];
+  if (log && card && state.cards[w] && state.cards[w].f === day && log.n > (before?.n ?? 0)) {
+    const dn = log.n - (before?.n ?? 0);
+    log = { ...log, n: log.n - dn, a: Math.max(before?.a ?? 0, log.a - dn), ok: Math.min(log.ok, Math.max(before?.ok ?? 0, log.ok - dn)) };
+  }
   const cards = { ...state.cards };
   if (card) cards[w] = card;
   else delete cards[w];
@@ -734,12 +809,28 @@ export function replaceCards(cards: Record<string, Card>) {
 // ---------------------------------------------------------------- 11.1 · 回归恢复计划
 
 /** 开始恢复：积压按天摊开（cards 由调用方算好），这几天新词暂停 */
-export function startRecover(cards: Record<string, Card>, from: string, until: string, n: number) {
-  commit({ ...state, cards, recover: { from, until, n }, recoverSeen: from });
+export function startRecover(cards: Record<string, Card>, from: string, until: string, n: number, perDay?: number) {
+  commit({ ...state, cards, recover: { from, until, n, ...(perDay ? { perDay } : {}), spread: from }, recoverSeen: from });
 }
 
 export function endRecover() {
   commit({ ...state, recover: undefined });
+}
+
+/** 11.2 · 恢复期里漏了一天：剩下的积压从今天起按额度重新摊开、顺延结束日（cards / until 由 coach.recoverTick 算好） */
+export function respreadRecover(cards: Record<string, Card>, until: string, n: number, shifted: number, day: string) {
+  if (!state.recover) return;
+  commit({ ...state, cards, recover: { ...state.recover, until, n, spread: day, shifted } });
+}
+
+/** 11.2 · 冲刺卡：今天处理过（应用 / 关掉）就不再出现；off = 这一场考试都不再出现 */
+export function dismissSprint(day: string, offExam?: string) {
+  commit({ ...state, sprintSeen: day, ...(offExam ? { sprintOff: offExam } : {}) });
+}
+
+/** 11.2 · 考完了：next = 备考下一场（examDate 清空 = 自动下一场）；rest = 先休息 */
+export function ackExam(passed: string, choice: "next" | "rest") {
+  commit({ ...state, examDone: passed, examPause: choice === "rest" ? true : undefined, settings: { ...state.settings, examDate: "" } });
 }
 
 export function dismissRecover(day: string) {
@@ -775,17 +866,19 @@ export function parseBackup(text: string, has?: (w: string) => boolean, rep: Cle
   return normalize(p.state, has, rep);
 }
 
+const newEpoch = () => Math.random().toString(36).slice(2, 10);
+
 export function importBackup(text: string): AppState {
   const next = parseBackup(text);
-  commit({ ...next, onboarded: true });
+  commit({ ...next, onboarded: true, epoch: newEpoch() });
   return next;
 }
 
 /** v11 · 整体替换当前档案的状态（合并导入、快照回滚、数据体检修复） */
 export function replaceState(next: AppState) {
-  commit(next);
+  commit({ ...next, epoch: newEpoch() });
 }
 
 export function resetAll() {
-  commit(initialState());
+  commit({ ...initialState(), epoch: newEpoch() });
 }

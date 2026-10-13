@@ -76,11 +76,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // 其它外部资源（例句接口等）不拦截
   if (req.mode === "navigate") {
-    event.respondWith(fetch(req).catch(() => caches.match("index.html", { ignoreSearch: true })));
+    event.respondWith(fetch(req).catch(() => caches.match("index.html", { ignoreSearch: true, ignoreVary: true })));
     return;
   }
   event.respondWith(
-    caches.match(req, { ignoreSearch: true }).then(
+    caches.match(req, { ignoreSearch: true, ignoreVary: true }).then(
       (hit) =>
         hit ||
         fetch(req).then((res) => {

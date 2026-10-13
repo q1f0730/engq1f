@@ -20,7 +20,7 @@ const { KEY, NEWER_MSG, normalize, parseBackup, getState, replaceState, setSetti
 type AppState = import("./store").AppState;
 const { cleanCards, fixCard, emptyReport } = await import("./validate");
 const { homeAdvice, recoveryPlan, recoverPerDay, lastActive, RETURN_GAP } = await import("./coach");
-const { sprintPlan, recommendPlan } = await import("./exam");
+const { sprintPlan, recommendPlan, examAdvice } = await import("./exam");
 const { familyOf, stemLen } = await import("./groups");
 const { hasGoodPhrase, phraseOptions, phraseFor, DOMAIN_RE, summarize } = await import("./plan");
 const { addDays, dueWords } = await import("./srs");
@@ -93,8 +93,8 @@ describe("#2 多窗口：三方合并，两边的改动都留下", () => {
     const base: AppState = { ...initialState(), onboarded: true, cards: cardsOf(60), settings: { ...initialState().settings, daily: 20 } };
     replaceState(base);
     expect(Object.keys(getState().cards)).toHaveLength(60);
-    // 另一个窗口（A）学了 3 个新词并写进存储
-    const a = { ...base, cards: cardsOf(63) };
+    // 另一个窗口（A）学了 3 个新词并写进存储（11.2：两个窗口读的是同一份存档，epoch 相同）
+    const a = { ...getState(), cards: cardsOf(63) };
     const { revlog: _r, ...rest } = a;
     void _r;
     mem.set(KEY, JSON.stringify(rest));
@@ -172,7 +172,8 @@ describe("#11 #6 #13 唯一的计划引擎", () => {
   };
   it("考试计划落后 + 复习压力大：只给一条（冲刺），永远不会同时出现「加到 100」和「减到 5」", () => {
     const plan = sprintPlan(T, "2026-12-12", 4000);
-    const a = homeAdvice({ ...baseIn, due: 122, dueAll: 122, plan });
+    const exam = examAdvice(T, "2026-12-12", { book: "all", daily: baseIn.daily, newLeft: 4000, coreNewLeft: 2600 });
+    const a = homeAdvice({ ...baseIn, due: 122, dueAll: 122, plan, exam });
     expect(a?.kind).toBe("sprint");
   });
   it("计划来得及时，复习压力建议不会把新词减到计划需要的量以下", () => {

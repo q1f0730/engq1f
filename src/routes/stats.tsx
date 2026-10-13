@@ -13,7 +13,7 @@ import { fmtDate } from "@/lib/format";
 import { PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
-import { fmtMinutes } from "@/lib/format";
+import { fmtMinutes, fmtMinutesShort, fmtPct, fmtPctDelta } from "@/lib/format";
 import { bookSize } from "@/lib/plan";
 import { addDays, emptyLog, forecast, masteryCounts } from "@/lib/srs";
 import { bestStreak, curStreak, restOf } from "@/lib/habit";
@@ -107,7 +107,9 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
   const projected = Math.min(book, started + st.settings.daily * daysLeft);
   const ret7 = retention(st.revlog ?? [], day, 7);
   const retPrev = retention(st.revlog ?? [], addDays(day, -7), 7);
-  const retDelta = ret7.rate !== null && retPrev.rate !== null ? Math.round((ret7.rate - retPrev.rate) * 100) : 0;
+  // 11.2 · retention().rate 已经是百分数；这里一律用 ok/n 小数交给 fmtPct，不再自己乘 100
+  const ret7f = ret7.n ? ret7.ok / ret7.n : null;
+  const retPrevF = retPrev.n ? retPrev.ok / retPrev.n : null;
   return (
     <div data-testid="stats">
       {header}
@@ -120,17 +122,18 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
           </span>
         </PanelTitle>
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-          <Tile icon={<Target className="size-4" />} label="考前能学完" value={`${projected}/${book}`} sub={projected >= book ? `按每天 ${st.settings.daily} 个能学完` : `还差 ${book - projected} 个，去「我的」调每日新词`} tone="text-primary bg-brand-soft" testid="outlook-learn" />
+          <Tile icon={<Target className="size-4" />} label="考前能学完" value={`${projected}/${book}`}
+            small={String(projected).length + String(book).length > 7} sub={projected >= book ? `按每天 ${st.settings.daily} 个能学完` : `还差 ${book - projected} 个，去「我的」调每日新词`} tone="text-primary bg-brand-soft" testid="outlook-learn" />
           <Tile icon={<Sparkles className="size-4" />} label="已掌握" value={String(m.mastered)} sub={`占词书 ${Math.round((Math.min(m.mastered, book) / Math.max(1, book)) * 100)}%`} tone="text-know bg-know-soft" testid="outlook-mastered" />
           <Tile
             icon={<Repeat2 className="size-4" />}
             label="近 7 天记得住"
-            value={ret7.rate === null ? "—" : `${Math.round(ret7.rate * 100)}%`}
-            sub={ret7.rate === null || retPrev.rate === null ? "复习满一周后显示变化" : retDelta === 0 ? "和上周持平" : `比上周${retDelta > 0 ? "高" : "低"} ${Math.abs(retDelta)}%`}
+            value={fmtPct(ret7f)}
+            sub={fmtPctDelta(ret7f, retPrevF) ?? "复习满一周后显示变化"}
             tone="text-vague bg-vague-soft"
             testid="outlook-retention"
           />
-          <Tile icon={<Clock3 className="size-4" />} label="累计用时" value={fmtMinutes(all.ms)} sub={accAll === null ? undefined : `首答正确率 ${accAll}%`} tone="text-chart-4 bg-secondary" testid="outlook-time" />
+          <Tile icon={<Clock3 className="size-4" />} label="累计用时" value={fmtMinutesShort(all.ms)} sub={accAll === null ? undefined : `首答正确率 ${accAll}%`} tone="text-chart-4 bg-secondary" testid="outlook-time" />
         </div>
       </Panel>
 
@@ -470,14 +473,16 @@ function QStat({ label, value, unit, testid }: { label: string; value: number; u
   );
 }
 
-function Tile({ icon, label, value, sub, tone, testid }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone: string; testid?: string }) {
+function Tile({ icon, label, value, sub, tone, testid, small }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone: string; testid?: string; small?: boolean }) {
   return (
     <div className="rounded-3xl border border-border/70 bg-card p-4" data-testid={testid}>
       <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
         <span className={`grid size-7 place-items-center rounded-lg ${tone}`}>{icon}</span>
         {label}
       </div>
-      <div className="tnum mt-2.5 truncate text-[26px] font-extrabold tracking-tight">{value}</div>
+      <div className={`tnum mt-2.5 [overflow-wrap:anywhere] font-extrabold leading-tight tracking-tight ${small ? "text-[21px]" : "text-[26px]"}`} data-value={value}>
+        {value}
+      </div>
       {sub && <div className="text-[12px] text-muted-foreground">{sub}</div>}
     </div>
   );

@@ -1,14 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, Gauge, RotateCcw, ShieldCheck, WifiOff, Zap } from "lucide-react";
 import { useState } from "react";
+import { useBackClose } from "@/lib/back-stack";
 import { Logo, Spinner } from "@/components/app/shell";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
 import { fmtDate } from "@/lib/format";
 import { bookSize } from "@/lib/plan";
 import { diffDays, finishDate } from "@/lib/srs";
-import { DAILY_OPTIONS, completeOnboarding, getState, type Book, type Order } from "@/lib/store";
-import { daysUntil, effectiveExam, recommendPlan, sprintPlan, upcomingExams } from "@/lib/exam";
+import { DAILY_OPTIONS, completeOnboarding, getState, type Book } from "@/lib/store";
+import { SPRINT_MAX, capReach, daysUntil, effectiveExam, recommendPlan, reserveDays, sprintPlan, upcomingExams } from "@/lib/exam";
 import { NEW_CARD_SEC, REVIEW_CARD_SEC } from "@/lib/ux";
 import { cn } from "@/lib/utils";
 
@@ -24,8 +25,10 @@ function Welcome() {
   // 11.1 · 第一步先问考试：默认下一场（2026-12-12），可以换
   const [exam, setExam] = useState(() => effectiveExam(day, init.examDate).day);
   const [book, setBook] = useState<Book | null>(null);
-  const [order, setOrder] = useState<Order>(init.order);
   const [daily, setDaily] = useState<number | null>(null);
+  // 11.2 · 每一步压一条 history：返回键回到上一步，不直接离开 app
+  useBackClose(step >= 1, () => setStep(0));
+  useBackClose(step >= 2, () => setStep(1));
 
   if (!index) return <Spinner />;
   const sizes = { all: index.list.length, core: index.coreCount };
@@ -42,9 +45,16 @@ function Welcome() {
   const reviews = Math.round(curDaily * 2.5);
   const minutes = Math.max(5, Math.round((curDaily * NEW_CARD_SEC + reviews * REVIEW_CARD_SEC) / 60));
   const spareOf = (sz: number, n: number) => diffDays(finishDate(day, sz, n), exam);
+  // 11.2 · 考试太近：说实话。cap = 每天 100 个也学不完这本书 → 给能做到的目标；soon = 考试就在今天 / 明天
+  const soon = examLeft <= 1;
+  const cap = !soon && bookPlan.tooMany;
+  const learnDays = Math.max(1, examLeft - reserveDays(examLeft));
+  const reachOf = (n: number) => capReach(day, exam, size, n);
+  const bookName = curBook === "core" ? "核心词" : "词";
 
   const finishSetup = (to: "/" | "/test") => {
-    completeOnboarding({ book: curBook, order, daily: curDaily, examDate: exam === exams[0].day ? "" : exam });
+    // 引导里已经把计划说清楚了：当天不再弹冲刺卡；学不完的信息卡这一场也不再弹
+    completeOnboarding({ book: curBook, daily: curDaily, examDate: exam === exams[0].day ? "" : exam }, { sprintSeen: day, ...(cap || soon ? { sprintOff: exam } : {}) });
     navigate({ to, replace: true });
   };
 
@@ -150,35 +160,12 @@ function Welcome() {
                     setDaily(null);
                   }}
                   title={b === "all" ? "四级全部词汇" : "四级核心词汇"}
-                  sub={`${sz} 词 · ${p.tooMany ? `每天 100 个也要到考后才学完` : `每天 ${p.daily} 个，考前 ${p.spare} 天学完`}`}
+                  sub={`${sz} 词 · ${p.daysLeft <= 1 ? "考前来不及系统背，先过一遍最要紧的" : p.tooMany ? `学不完：每天 ${SPRINT_MAX} 个，考前能学 ${capReach(day, exam, sz)} 个` : `每天 ${p.daily} 个，考前 ${p.spare} 天学完`}`}
                   badge={rec.book === b ? "推荐" : undefined}
                   testid={`book-${b}`}
                 />
               );
             })}
-          </div>
-          <div className="mb-2 mt-5 text-[12px] font-bold tracking-wider text-muted-foreground">学习顺序</div>
-          <div className="grid grid-cols-3 gap-2">
-            {(
-              [
-                ["core", "核心优先"],
-                ["alpha", "字母顺序"],
-                ["random", "乱序"],
-              ] as [Order, string][]
-            ).map(([v, l]) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setOrder(v)}
-                data-testid={`order-${v}`}
-                className={cn(
-                  "rounded-2xl border py-2.5 text-[14px] font-semibold transition",
-                  order === v ? "border-primary bg-brand-soft text-primary" : "border-border bg-card text-muted-foreground",
-                )}
-              >
-                {l}
-              </button>
-            ))}
           </div>
           <div className="flex-1" />
           <Primary onClick={() => setStep(2)} testid="welcome-next">
@@ -189,10 +176,23 @@ function Welcome() {
 
       {step === 2 && (
         <div className="card-in flex flex-1 flex-col">
-          <h1 className="mt-4 font-display text-[30px] font-extrabold tracking-tight">每天学多少新词？</h1>
-          <p className="mt-1 text-[15px] text-muted-foreground">
-            推荐 <b className="text-foreground">{bookPlan.daily}</b> 个：考前 {Math.max(0, bookPlan.spare)} 天学完{curBook === "core" ? "核心词" : "全部词"}，最后留时间复习。
+          <h1 className="mt-4 font-display text-[30px] font-extrabold tracking-tight">{soon ? "考前冲刺" : cap ? "冲刺计划" : "每天学多少新词？"}</h1>
+          <p className="mt-1 text-[15px] text-muted-foreground" data-testid="onb-plan-line" data-kind={soon ? "soon" : cap ? "cap" : "plan"}>
+            {soon ? (
+              <>
+                {examLeft === 0 ? "今天就考了" : "明天就考了"}，来不及系统背新词。首页切换成<b className="text-foreground">考前模式</b>：只复习学过的词，想多看就一组 10 个地过{bookName}。考完再按下一场排计划。
+              </>
+            ) : cap ? (
+              <>
+                {examLeft} 天学不完 {size} 个{bookName}。每天 <b className="text-foreground">{SPRINT_MAX}</b> 个，考前能先拿下其中 <b className="text-foreground">{reachOf(SPRINT_MAX)}</b> 个{reserveDays(examLeft) ? `，最后 ${reserveDays(examLeft)} 天只复习` : ""}。
+              </>
+            ) : (
+              <>
+                推荐 <b className="text-foreground">{bookPlan.daily}</b> 个：考前 {Math.max(0, bookPlan.spare)} 天学完{curBook === "core" ? "核心词" : "全部词"}，最后留时间复习。
+              </>
+            )}
           </p>
+          {!soon && (
           <div className="mt-5 grid grid-cols-3 gap-2.5" data-testid="daily-pick">
             {options.map((n) => {
               const sp = spareOf(size, n);
@@ -206,24 +206,40 @@ function Welcome() {
                   className={cn("relative rounded-3xl border py-4 transition", curDaily === n ? "border-primary bg-brand-soft" : "border-border bg-card")}
                 >
                   <div className={cn("tnum font-display text-[28px] font-extrabold leading-none", curDaily === n ? "text-primary" : "")}>{n}</div>
-                  <div className={cn("mt-1.5 text-[11px]", sp < 0 ? "font-semibold text-forget" : "text-muted-foreground")}>{sp < 0 ? "考后才学完" : `考前 ${sp} 天学完`}</div>
+                  <div className={cn("mt-1.5 text-[11px]", sp < 0 && !cap && !soon ? "font-semibold text-forget" : "text-muted-foreground")}>{cap || (soon && sp < 0) ? `考前学 ${reachOf(n)} 个` : sp < 0 ? "考后才学完" : `考前 ${sp} 天学完`}</div>
                   {n === bookPlan.daily && <span className="absolute -top-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">推荐</span>}
                 </button>
               );
             })}
           </div>
+          )}
+          {!soon && (
           <div className="mt-5 rounded-3xl bg-secondary/80 p-5" data-testid="plan-preview" data-spare={spare}>
             <div className="text-[13px] text-muted-foreground">按这个节奏</div>
-            <div className="mt-1 text-[20px] font-extrabold">
-              {days} 天，<span className="text-primary">{fmtDate(finish, true)}</span> 学完
-            </div>
-            <div className={cn("mt-1 text-[13px] font-semibold", spare < 0 ? "text-forget" : "text-know")} data-testid="plan-exam">
-              {spare < 0 ? `比考试晚 ${-spare} 天，来不及` : `考前 ${spare} 天学完`}
-            </div>
+            {cap || soon ? (
+              <>
+                <div className="mt-1 text-[20px] font-extrabold">
+                  考前能学 <span className="text-primary">{reachOf(curDaily)}</span> / {size} 个{bookName}
+                </div>
+                <div className="mt-1 text-[13px] font-semibold text-muted-foreground" data-testid="plan-exam">
+                  {soon ? "考前模式：首页只安排复习" : `学 ${learnDays} 天，剩下 ${size - reachOf(curDaily)} 个考后再说`}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mt-1 text-[20px] font-extrabold">
+                  {days} 天，<span className="text-primary">{fmtDate(finish, true)}</span> 学完
+                </div>
+                <div className={cn("mt-1 text-[13px] font-semibold", spare < 0 ? "text-forget" : "text-know")} data-testid="plan-exam">
+                  {spare < 0 ? `比考试晚 ${-spare} 天，来不及` : `考前 ${spare} 天学完`}
+                </div>
+              </>
+            )}
             <div className="mt-1 text-[13px] text-muted-foreground">
               每天约 {curDaily} 个新词 + {reviews} 个左右复习，约 {minutes} 分钟
             </div>
           </div>
+          )}
           <div className="flex-1" />
           <Primary onClick={() => finishSetup("/")} testid="welcome-done">
             <Check className="size-5" /> 开始背单词
@@ -238,9 +254,6 @@ function Welcome() {
           </button>
         </div>
       )}
-      <p className="pb-3 text-center text-[11px] text-muted-foreground/70">
-        by Q1f730 · 词表 KyleBing/english-vocabulary · 音标 qwerty-learner
-      </p>
     </div>
   );
 }

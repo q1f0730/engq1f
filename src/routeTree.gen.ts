@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdvancedRouteImport } from './routes/advanced'
 import { Route as AlgoRouteImport } from './routes/algo'
 import { Route as DataRouteImport } from './routes/data'
 import { Route as JudgeRouteImport } from './routes/judge'
+import { Route as LabRouteImport } from './routes/lab'
 import { Route as ListLinkRouteImport } from './routes/list-link'
 import { Route as MatchRouteImport } from './routes/match'
 import { Route as MeRouteImport } from './routes/me'
@@ -30,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdvancedRoute = AdvancedRouteImport.update({
+  id: '/advanced',
+  path: '/advanced',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AlgoRoute = AlgoRouteImport.update({
   id: '/algo',
   path: '/algo',
@@ -43,6 +50,11 @@ const DataRoute = DataRouteImport.update({
 const JudgeRoute = JudgeRouteImport.update({
   id: '/judge',
   path: '/judge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabRoute = LabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListLinkRoute = ListLinkRouteImport.update({
@@ -103,9 +115,11 @@ const WordsRoute = WordsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/advanced': typeof AdvancedRoute
   '/algo': typeof AlgoRoute
   '/data': typeof DataRoute
   '/judge': typeof JudgeRoute
+  '/lab': typeof LabRoute
   '/list-link': typeof ListLinkRoute
   '/match': typeof MatchRoute
   '/me': typeof MeRoute
@@ -120,9 +134,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/advanced': typeof AdvancedRoute
   '/algo': typeof AlgoRoute
   '/data': typeof DataRoute
   '/judge': typeof JudgeRoute
+  '/lab': typeof LabRoute
   '/list-link': typeof ListLinkRoute
   '/match': typeof MatchRoute
   '/me': typeof MeRoute
@@ -138,9 +154,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/advanced': typeof AdvancedRoute
   '/algo': typeof AlgoRoute
   '/data': typeof DataRoute
   '/judge': typeof JudgeRoute
+  '/lab': typeof LabRoute
   '/list-link': typeof ListLinkRoute
   '/match': typeof MatchRoute
   '/me': typeof MeRoute
@@ -157,9 +175,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/advanced'
     | '/algo'
     | '/data'
     | '/judge'
+    | '/lab'
     | '/list-link'
     | '/match'
     | '/me'
@@ -174,9 +194,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/advanced'
     | '/algo'
     | '/data'
     | '/judge'
+    | '/lab'
     | '/list-link'
     | '/match'
     | '/me'
@@ -191,9 +213,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/advanced'
     | '/algo'
     | '/data'
     | '/judge'
+    | '/lab'
     | '/list-link'
     | '/match'
     | '/me'
@@ -209,9 +233,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdvancedRoute: typeof AdvancedRoute
   AlgoRoute: typeof AlgoRoute
   DataRoute: typeof DataRoute
   JudgeRoute: typeof JudgeRoute
+  LabRoute: typeof LabRoute
   ListLinkRoute: typeof ListLinkRoute
   MatchRoute: typeof MatchRoute
   MeRoute: typeof MeRoute
@@ -234,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/advanced': {
+      id: '/advanced'
+      path: '/advanced'
+      fullPath: '/advanced'
+      preLoaderRoute: typeof AdvancedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/algo': {
       id: '/algo'
       path: '/algo'
@@ -253,6 +286,13 @@ declare module '@tanstack/react-router' {
       path: '/judge'
       fullPath: '/judge'
       preLoaderRoute: typeof JudgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lab': {
+      id: '/lab'
+      path: '/lab'
+      fullPath: '/lab'
+      preLoaderRoute: typeof LabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/list-link': {
@@ -337,9 +377,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdvancedRoute: AdvancedRoute,
   AlgoRoute: AlgoRoute,
   DataRoute: DataRoute,
   JudgeRoute: JudgeRoute,
+  LabRoute: LabRoute,
   ListLinkRoute: ListLinkRoute,
   MatchRoute: MatchRoute,
   MeRoute: MeRoute,

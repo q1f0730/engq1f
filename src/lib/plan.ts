@@ -3,6 +3,7 @@ import { posOf } from "./data";
 import { confusables, editDistance, isInflection } from "./confusables";
 import type { AppState, Settings } from "./store";
 import { timeReached } from "./habit";
+import { examModeOn } from "./examdate";
 import { hasExampleCloze } from "./examples";
 import { chooseMode, practiceMode } from "./modes";
 import {
@@ -70,6 +71,8 @@ export interface TodaySummary {
   ready: boolean;
   finish: string;
   remainingGoal: number;
+  /** 11.2 · 考前模式 */
+  examMode: boolean;
   /** 按学习时长打卡 */
   timeMode: boolean;
   /** 今日学习时长（ms） */
@@ -85,12 +88,17 @@ export interface TodaySummary {
 export function summarize(index: WordIndex, st: AppState, day: string): TodaySummary {
   const log = st.log[day] ?? emptyLog();
   const dueList = dueWords(st.cards, day);
-  const due = cappedDue(st, day, dueList.length);
   const left = newWordsLeft(index, st, day).length;
   const bookTotal = bookSize(index, st.settings.book);
   // 11.1 · 回归恢复期：只清积压，新词暂停
   const recovering = !!st.recover && day >= st.recover.from && day <= st.recover.until;
-  const goal = recovering ? 0 : st.newCut?.d === day ? Math.min(st.settings.daily, st.newCut.n) : st.settings.daily;
+  // 11.2 · 恢复期守住「每天 N 个以内」：今天要复习的不超过额度（漏了一天也一样，多的由 recoverTick 顺延）
+  const cap0 = st.settings.reviewCap ?? 0;
+  const recoverQuota = recovering ? Math.max(0, (st.recover!.perDay ?? (cap0 > 0 ? Math.min(cap0, 150) : 100)) - log.r) : Infinity;
+  const due = Math.min(cappedDue(st, day, dueList.length), recoverQuota);
+  // 11.2 · 考前模式（考试当天 / 前一天）：只复习，新词不设目标
+  const examMode = !st.examPause && examModeOn(day, st.settings.examDate);
+  const goal = recovering || examMode ? 0 : st.newCut?.d === day ? Math.min(st.settings.daily, st.newCut.n) : st.settings.daily;
   const remainingGoal = Math.max(0, goal - log.n);
   const timeMode = st.settings.goalMode === "time";
   const goalMin = st.settings.goalMin || 20;
@@ -107,10 +115,12 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
     bookTotal,
     started: bookTotal - left,
     checked: st.checkins.includes(day),
-    ready: timeMode ? timeReached(log.ms, goalMin) : canCheckIn({ learnedToday: log.n, goal, newLeft: left, due }),
+    // 考前模式没有新词目标：至少学 / 复习过一个才算完成（不给什么都没做的一天打勾）
+    ready: timeMode ? timeReached(log.ms, goalMin) : canCheckIn({ learnedToday: log.n, goal, newLeft: left, due }) && (!examMode || recovering || log.n + log.r > 0),
     finish: remainingGoal > 0 ? finishDate(day, left, st.settings.daily) : finishDate(addDays(day, 1), left, st.settings.daily),
     cut: goal < st.settings.daily,
     recovering,
+    examMode,
     remainingGoal,
     timeMode,
     ms: log.ms,

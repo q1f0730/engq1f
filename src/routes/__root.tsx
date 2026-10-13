@@ -1,4 +1,4 @@
-import { Navigate, Outlet, createRootRoute, redirect, useRouterState } from "@tanstack/react-router";
+import { Navigate, Outlet, createRootRoute, redirect, useRouter, useRouterState } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { AppShell } from "@/components/app/shell";
 import { exportBackup, getState, resolvedTheme, unlockBadges, useApp } from "@/lib/store";
@@ -14,19 +14,33 @@ import { useEffect, useRef } from "react";
 import { requestPersist } from "@/lib/persist";
 import { useAppBadge, useReminder } from "@/lib/nudge";
 import { MilestoneOverlay } from "@/components/app/milestone";
-import { Rescue } from "@/components/app/rescue";
+import { LoadFailed, Rescue, isChunkError } from "@/components/app/rescue";
 import { useSheetOpen } from "@/lib/back-stack";
 import { onExternalChange } from "@/lib/store";
 
 const BARE = ["/study", "/welcome", "/test", "/tape", "/quiz", "/match", "/judge"];
 /** 11.1 · 二级页：不显示底部标签栏（只用左上角返回一种导航） */
-const SUB = ["/data", "/algo", "/syn"];
+const SUB = ["/data", "/algo", "/syn", "/advanced", "/lab"];
 
 function NotFound() {
   return <Navigate to="/" replace />;
 }
 
-function ErrorView({ error }: { error: unknown }) {
+function ErrorView({ error, reset }: { error: unknown; reset?: () => void }) {
+  const router = useRouter();
+  // 11.2 · 代码块没下载下来 ≠ 记录坏了：只给重试
+  if (isChunkError(error))
+    return (
+      <LoadFailed
+        message={String((error as Error)?.message ?? "")}
+        onRetry={() => {
+          // 浏览器会记住一次失败的动态 import（同一个地址再 import 还是失败）：重新加载页面才是真的重试
+          void reset;
+          void router;
+          location.reload();
+        }}
+      />
+    );
   // 11.1 · 不依赖主界面的救援页：回滚到快照 / 导出原始数据
   return <Rescue message={String((error as Error)?.message ?? error)} />;
 }
@@ -36,6 +50,8 @@ export const Route = createRootRoute({
     if (!getState().onboarded && !["/welcome", "/test", "/list-link"].some((p) => location.pathname.startsWith(p))) {
       throw redirect({ to: "/welcome" });
     }
+    // 11.2 · 已经完成引导的人打开 #/welcome（返回键 / 旧链接）：直接回首页，不再重走引导、覆盖计划
+    if (getState().onboarded && location.pathname === "/welcome") throw redirect({ to: "/", replace: true });
   },
   component: Root,
   notFoundComponent: NotFound,
@@ -55,7 +71,7 @@ function Root() {
   useEffect(
     () =>
       onExternalChange((why) =>
-        toast(why === "merge" ? "另一个窗口也改了记录，已合并，两边的进度都保留" : "另一个窗口更新了学习记录，已同步", {
+        toast(why === "replace" ? "记录在另一个窗口被整份替换了" : why === "merge" ? "另一个窗口也改了记录，已合并，两边的进度都保留" : "另一个窗口更新了学习记录，已同步", {
           id: "multi-tab",
           description: "同时开着多个窗口时，记录会自动合并",
           duration: 3000,

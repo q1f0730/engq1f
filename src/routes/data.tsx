@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { PageHeader, Panel, PanelTitle, Spinner } from "@/components/app/shell";
 import { BottomSheet } from "@/components/app/sheet";
 import { ImportFlow } from "@/components/app/import-flow";
+import { RESCUE_KEY } from "@/components/app/rescue";
 import { NameField } from "@/components/app/name-field";
 import { today } from "@/lib/clock";
 import { useWords, type WordIndex } from "@/lib/data";
@@ -45,7 +46,7 @@ import {
   writeRegistry,
   type Registry,
 } from "@/lib/profiles";
-import { KEY, REV_KEY, createList, exportBackup, getState, markBackedUp, parseBackup, replaceState, useApp } from "@/lib/store";
+import { KEY, REV_KEY, createList, exportBackup, getState, markBackedUp, parseBackup, replaceState, resetAll, useApp } from "@/lib/store";
 import { PASS_MIN, cryptoReady, encryptBackup, fmtBytes, inspectState, listNameFromFile, lowerLookup, lsBytes, parseWordText, type Issue, type WordFileResult } from "@/lib/sync";
 import type { SnapMeta } from "@/lib/snapshots";
 import { drawReport, reportData } from "@/lib/report";
@@ -89,6 +90,8 @@ function DataPage() {
           <ProfilesPanel />
           <HealthPanel index={index} />
           <StoragePanel />
+          <RescueDumpPanel />
+          <ResetPanel />
         </div>
       </div>
     </div>
@@ -892,6 +895,97 @@ function StoragePanel() {
           <p className="mt-1 text-[12px] text-muted-foreground">学习记录和日志不能在这里删；例句和发音缓存清掉后，联网时会重新获取。</p>
         </>
       )}
+    </Panel>
+  );
+}
+
+// ---------------------------------------------------------------- 11.2 · 救援时另存的原始数据 / 清空
+
+/** 救援页「从头开始」或回滚前另存的原始数据：在这里导出、恢复、删除（没有就不显示） */
+function RescueDumpPanel() {
+  const [raw, setRaw] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(RESCUE_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const [pending, setPending] = useState<string | null>(null);
+  if (!raw) return null;
+  let at = "";
+  let restorable = false;
+  try {
+    const j = JSON.parse(raw) as { exportedAt?: string; state?: unknown };
+    at = j.exportedAt ? j.exportedAt.slice(0, 10) : "";
+    restorable = !!j.state;
+  } catch {
+    /* 原样保存的坏数据 */
+  }
+  return (
+    <Panel data-testid="rescue-dump">
+      <PanelTitle>救援时另存的原始数据</PanelTitle>
+      <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">
+        {at ? `${at} 救援时留下的一份。` : "救援时留下的一份。"}
+        {restorable ? "可以导出成文件，或者恢复回来（会先让你选合并还是覆盖）。" : "格式坏了，只能导出成文件留底。"}
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        <button type="button" data-testid="rescue-dump-export" onClick={() => download(`四级单词打卡-救援原始数据-${at || today()}.json`, raw)} className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold">
+          导出
+        </button>
+        <button type="button" data-testid="rescue-dump-restore" disabled={!restorable} onClick={() => setPending(raw)} className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold disabled:opacity-50">
+          恢复
+        </button>
+        <button
+          type="button"
+          data-testid="rescue-dump-delete"
+          onClick={() => {
+            try {
+              localStorage.removeItem(RESCUE_KEY);
+            } catch {
+              /* 存储不可用 */
+            }
+            setRaw(null);
+            toast("已删除救援时另存的数据");
+          }}
+          className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold text-destructive"
+        >
+          删除
+        </button>
+      </div>
+      <ImportFlow text={pending} onDone={() => setPending(null)} />
+    </Panel>
+  );
+}
+
+/** 11.2 · 「清空所有学习记录」从「高级」挪到数据中心最底部 */
+function ResetPanel() {
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <Panel data-testid="reset-panel">
+      <button type="button" onClick={() => setConfirm(true)} data-testid="reset" className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-semibold text-destructive hover:bg-destructive/10">
+        清空所有学习记录
+      </button>
+      <BottomSheet open={confirm} onOpenChange={setConfirm} title="清空所有学习记录？" testid="reset-confirm">
+        <p className="text-[14px] text-muted-foreground">这台设备上这个档案的学习记录、打卡、词单都会删掉，无法恢复。建议先导出备份。</p>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-2xl bg-secondary font-semibold">
+            取消
+          </button>
+          <button
+            type="button"
+            data-testid="reset-yes"
+            onClick={() => {
+              resetAll();
+              setConfirm(false);
+              toast("已清空");
+              location.hash = "#/welcome";
+            }}
+            className="h-12 rounded-2xl bg-destructive font-semibold text-white"
+          >
+            确认清空
+          </button>
+        </div>
+      </BottomSheet>
     </Panel>
   );
 }
