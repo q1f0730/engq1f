@@ -10,6 +10,8 @@ import { today } from "@/lib/clock";
 import { cn } from "@/lib/utils";
 import { BottomSheet } from "./sheet";
 import { ListPicker } from "./lists";
+import { WordTrack } from "./track";
+import { wordTrack, type RevEntry } from "@/lib/stats";
 
 export function Phonetic({ word, accent, className }: { word: Word; accent: "us" | "uk"; className?: string }) {
   if (!word.p) return null;
@@ -278,6 +280,8 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
           )}
         </div>
 
+        <TrackBlock w={word.w} log={st.revlog ?? []} learned={!!card} />
+
         <div className="mt-4 grid grid-cols-3 gap-2">
           <button
             onClick={() => toggleStar(word.w)}
@@ -327,6 +331,38 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
         <ListPicker open={picker} onOpenChange={setPicker} words={[word.w]} />
       </div>
     </BottomSheet>
+  );
+}
+
+/** 记忆轨迹：这个词每次作答的时间轴 */
+function TrackBlock({ w, log, learned }: { w: string; log: RevEntry[]; learned: boolean }) {
+  const [all, setAll] = useState(false);
+  const entries = wordTrack(log, w);
+  if (!learned && !entries.length) return null;
+  const ok = entries.filter((e) => e[2] >= 2).length;
+  return (
+    <div className="mt-3 rounded-2xl bg-secondary/70 p-4" data-testid="word-track">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-[12px] font-bold tracking-wider text-muted-foreground">记忆轨迹</span>
+        {entries.length > 0 && (
+          <span className="tnum text-[12px] text-muted-foreground" data-testid="track-sum">
+            {entries.length} 次作答 · 记得 {ok} 次
+          </span>
+        )}
+      </div>
+      {entries.length === 0 ? (
+        <p className="text-[13px] text-muted-foreground" data-testid="track-empty">这个词还没有作答记录（v6 起开始记录）。</p>
+      ) : (
+        <>
+          <WordTrack entries={entries} max={all ? entries.length : 6} testid="track-list" />
+          {entries.length > 6 && (
+            <button type="button" data-testid="track-all" onClick={() => setAll((v) => !v)} className="mt-2 text-[12px] font-semibold text-primary">
+              {all ? "收起" : `查看全部 ${entries.length} 次`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 

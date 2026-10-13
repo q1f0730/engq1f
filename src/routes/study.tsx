@@ -4,7 +4,7 @@ import { Study, type StudyMode } from "@/components/app/study";
 import { useWords } from "@/lib/data";
 import { getState } from "@/lib/store";
 
-const MODES: StudyMode[] = ["new", "review", "ahead", "practice", "star", "wrong", "mastered", "hard", "speed", "core", "list"];
+const MODES: StudyMode[] = ["new", "review", "ahead", "practice", "star", "wrong", "mastered", "hard", "speed", "core", "list", "rank"];
 
 export const Route = createFileRoute("/study")({
   validateSearch: (s: Record<string, unknown>): { mode: StudyMode; t?: number; words?: string; list?: string } => ({

@@ -47,8 +47,9 @@ import { ShortcutsSheet } from "./shortcuts";
 import { ShareSheet } from "./share-sheet";
 import { useShareInfo } from "@/lib/use-share";
 import { useWakeLock } from "@/lib/wakelock";
+import { rankGroup, revEntry, type RevEntry } from "@/lib/stats";
 
-export type StudyMode = "new" | "review" | "ahead" | "practice" | "speed" | "core" | "list" | Notebook;
+export type StudyMode = "new" | "review" | "ahead" | "practice" | "speed" | "core" | "list" | "rank" | Notebook;
 
 const MODE_TITLE: Record<StudyMode, string> = {
   new: "学新词",
@@ -62,6 +63,7 @@ const MODE_TITLE: Record<StudyMode, string> = {
   wrong: "错词本复习",
   mastered: "熟词回顾",
   hard: "顽固词专项",
+  rank: "难词榜专项",
 };
 
 function buildItems(index: WordIndex, mode: StudyMode, words: string[]): SessionItem[] {
@@ -77,6 +79,7 @@ function buildItems(index: WordIndex, mode: StudyMode, words: string[]): Session
     return g.kind === "new" ? g.words.map((w) => ({ w, kind: "new" as const, mode: "recall" as const })) : reviewItems(index, st, g.words, day);
   }
   if (mode === "list") return listGroup(index, st, words, day).items;
+  if (mode === "rank") return rankGroup(index, st, day);
   return notebookGroup(index, st, mode, day);
 }
 
@@ -100,14 +103,24 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const scratch = useRef<{ cards: Record<string, Card | undefined>; log: DayLog | undefined }>({ cards: {}, log: undefined });
   const getCard = useCallback((w: string) => (practice ? scratch.current.cards[w] : getState().cards[w]), [practice]);
   const getLog = useCallback((d: string) => (practice ? scratch.current.log : getState().log[d]), [practice]);
+  // 每一步是否写了复习日志（撤销时据此去掉对应的那条）
+  const revSteps = useRef<boolean[]>([]);
   const put = useCallback(
-    (w: string, card: Card | undefined, d: string, log: DayLog | undefined) => {
+    (w: string, card: Card | undefined, d: string, log: DayLog | undefined, rev?: RevEntry | "pop") => {
       if (practice) {
         scratch.current.cards[w] = card;
         scratch.current.log = log;
-      } else applyAnswer(w, card, d, log);
+      } else applyAnswer(w, card, d, log, rev);
     },
     [practice],
+  );
+  /** 撤销一步时同步撤销日志 */
+  const putUndo = useCallback(
+    (w: string, card: Card | undefined, d: string, log: DayLog | undefined) => {
+      const logged = revSteps.current.pop();
+      put(w, card, d, log, logged ? "pop" : undefined);
+    },
+    [put],
   );
   const [session, setSession] = useState<Session>(() => createSession(items));
   const [phase, setPhase] = useState<"front" | "back">("front");
@@ -154,8 +167,10 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     (rating: Rating, via: Last["via"], pick?: number) => {
       const it = current(session);
       if (!it) return;
+      const first = !(it.w in session.firsts);
       const res = answer(session, getCard(it.w), rating, day, getLog(day), now() - shownAt.current);
-      put(it.w, res.card, day, res.log);
+      put(it.w, res.card, day, res.log, revEntry(it.w, now(), rating, { isNew: it.kind === "new", repeat: !first, card: res.card }));
+      revSteps.current.push(true);
       setSession(res.session);
       buzz(rating);
       return { it, res, via, pick };
@@ -240,38 +255,41 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       toast("没有可以撤销的操作");
       return;
     }
-    put(u.w, u.card, day, u.log);
+    putUndo(u.w, u.card, day, u.log);
     if (!practice && getState().bury[u.w]) setBury(u.w, undefined);
     setSession(u.session);
     setLast(null);
     setPhase("front");
     toast(`已撤销：${u.w}`);
-  }, [session, peek, day, put, practice]);
+  }, [session, peek, day, putUndo, practice]);
 
   /** 记错了：撤销刚才的「认识/模糊」，改记为不认识 */
   const mistake = useCallback(() => {
     if (phase !== "back" || !last || last.rating === "forget" || peek) return;
     const u = undo(session);
     if (!u) return;
-    put(u.w, u.card, day, u.log);
+    putUndo(u.w, u.card, day, u.log);
+    const first = !(u.w in u.session.firsts);
+    const it = current(u.session);
     const res = answer(u.session, getCard(u.w), "forget", day, getLog(day), 0);
-    put(u.w, res.card, day, res.log);
+    put(u.w, res.card, day, res.log, revEntry(u.w, now(), "forget", { isNew: it?.kind === "new", repeat: !first, card: res.card }));
+    revSteps.current.push(true);
     setSession(res.session);
     setLast({ ...last, rating: "forget" });
     buzz("forget");
     toast("已改为「不认识」，稍后再来一遍");
-  }, [phase, last, peek, session, day, put, getCard, getLog]);
+  }, [phase, last, peek, session, day, put, putUndo, getCard, getLog]);
 
   /** 背面时先撤销刚才的评分，回到这个词的正面状态 */
   const rewind = useCallback((): Session | null => {
     if (phase === "back" && last && !peek) {
       const u = undo(session);
       if (!u) return null;
-      put(u.w, u.card, day, u.log);
+      putUndo(u.w, u.card, day, u.log);
       return u.session;
     }
     return session;
-  }, [phase, last, peek, session, day, put]);
+  }, [phase, last, peek, session, day, putUndo]);
 
   const doBury = useCallback(() => {
     if (practice) return;
@@ -282,6 +300,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     const res = buryCurrent(s0, prev, day, getState().log[day]);
     if (res.card) applyAnswer(it.w, res.card, day, getState().log[day]);
     else setBury(it.w, addDays(day, 1));
+    revSteps.current.push(false);
     setSession(res.session);
     setPeek(false);
     setLast(null);
@@ -297,8 +316,10 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     const it = current(s0);
     if (!it) return;
     const s = getState();
+    const first = !(it.w in s0.firsts);
     const res = killCurrent(s0, s.cards[it.w], day, s.log[day]);
-    applyAnswer(it.w, res.card, day, res.log);
+    applyAnswer(it.w, res.card, day, res.log, revEntry(it.w, now(), "kill", { isNew: it.kind === "new", repeat: !first, card: res.card }));
+    revSteps.current.push(true);
     setSession(res.session);
     setPeek(false);
     setLast(null);
@@ -1138,6 +1159,7 @@ function Empty({ mode }: { mode: StudyMode }) {
     core: ["核心词全部掌握了", "2607 个核心词都已掌握，四级稳了。"],
     list: ["这个词单没有可学的词", "词单是空的或者全部斩完了，去词库加点词吧。"],
     hard: ["没有顽固词", "遗忘 3 次以上的词会出现在这里。"],
+    rank: ["难词榜是空的", "复习时忘过的词会按遗忘次数上榜。"],
     star: ["生词本是空的", "学习时按 S 或点星标收藏生词。"],
     wrong: ["错词本是空的", "选择题答错或点「不认识」的词会自动进来。"],
     mastered: ["还没有熟词", "学习时按 D「斩」掉已经掌握的词。"],

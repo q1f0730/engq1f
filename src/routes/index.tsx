@@ -19,6 +19,7 @@ import {
   Swords,
   TriangleAlert,
   Volume2,
+  X,
   Zap,
 } from "lucide-react";
 import { useState } from "react";
@@ -32,12 +33,13 @@ import { now, today } from "@/lib/clock";
 import { shortMeaning, useWords } from "@/lib/data";
 import { notebookWords, summarize, wordOfDay } from "@/lib/plan";
 import { addDays, forecast, streak } from "@/lib/srs";
-import { checkIn, setSettings, snoozeBackup, useApp } from "@/lib/store";
+import { checkIn, dismissWeekReport, setSettings, snoozeBackup, useApp } from "@/lib/store";
 import { coreUnmastered, effectiveExam, quizDoneOn, sprintPlan, upcomingExams } from "@/lib/exam";
 import { backupDue } from "@/lib/persist";
 import { useShareInfo } from "@/lib/use-share";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/format";
+import { showWeekReport, weekReport } from "@/lib/stats";
 
 export const Route = createFileRoute("/")({ component: Today });
 
@@ -167,6 +169,8 @@ function Today() {
               </Link>
             </div>
           </section>
+
+          {showWeekReport(st.log, day, st.weekSeen) && <WeekCard day={day} logs={st.log} />}
 
           <ExamCard
             day={day}
@@ -495,6 +499,52 @@ function ExamCard({
           <ChevronRight className="ml-auto size-4" />
         </Link>
       )}
+    </section>
+  );
+}
+
+/** 周一的上周周报：与前一周对比 */
+function WeekCard({ day, logs }: { day: string; logs: Record<string, import("@/lib/srs").DayLog> }) {
+  const w = weekReport(logs, day);
+  const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
+  const min = (ms: number) => Math.round(ms / 60000);
+  const items: { label: string; value: string; delta: number | null; unit: string; testid: string }[] = [
+    { label: "新学", value: String(w.last.n), delta: w.delta.n, unit: "", testid: "wk-new" },
+    { label: "复习", value: String(w.last.r), delta: w.delta.r, unit: "", testid: "wk-review" },
+    { label: "正确率", value: w.last.acc === null ? "—" : `${w.last.acc}%`, delta: w.delta.acc, unit: "%", testid: "wk-acc" },
+    { label: "用时", value: min(w.last.ms) < 60 ? `${min(w.last.ms)}分` : `${Math.floor(min(w.last.ms) / 60)}时${min(w.last.ms) % 60}分`, delta: min(w.last.ms) - min(w.prev.ms), unit: "分", testid: "wk-time" },
+  ];
+  const hasPrev = w.prev.n + w.prev.r > 0;
+  return (
+    <section className="rounded-3xl border border-border/70 bg-card p-4" data-testid="week-report">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[15px] font-bold">上周周报</div>
+          <div className="mt-0.5 text-[12px] text-muted-foreground" data-testid="wk-range">
+            {md(w.last.start)}–{md(w.last.end)} · 学了 {w.last.days}/7 天{hasPrev ? " · 对比前一周" : ""}
+          </div>
+        </div>
+        <button type="button" aria-label="关闭周报" data-testid="week-close" onClick={() => dismissWeekReport(day)} className="-mr-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+          <X className="size-4" />
+        </button>
+      </div>
+      <div className="mt-3 grid grid-cols-4 gap-1.5">
+        {items.map((it) => (
+          <div key={it.label} className="min-w-0 rounded-2xl bg-secondary/70 px-1 py-2.5 text-center" data-testid={it.testid} data-value={it.value} data-delta={it.delta ?? ""}>
+            <div className="tnum truncate text-[17px] font-extrabold leading-tight">{it.value}</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">{it.label}</div>
+            {hasPrev && it.delta !== null && (
+              <div className={cn("tnum mt-1 text-[11px] font-bold", it.delta > 0 ? "text-know" : it.delta < 0 ? "text-forget" : "text-muted-foreground")}>
+                {it.delta > 0 ? "↑" : it.delta < 0 ? "↓" : "持平"}
+                {it.delta !== 0 ? `${Math.abs(it.delta)}${it.unit}` : ""}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <Link to="/stats" search={{ tab: "review" }} className="mt-3 flex items-center justify-center gap-0.5 text-[12px] font-semibold text-primary" data-testid="week-more">
+        看复盘 <ChevronRight className="size-3.5" />
+      </Link>
     </section>
   );
 }

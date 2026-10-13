@@ -3,6 +3,7 @@ import { kill, unkill, type Card, type DayLog } from "./srs";
 import { today } from "./clock";
 import type { QuizRecord } from "./exam";
 import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
+import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
 
 export type Book = "all" | "core";
 export type Order = "core" | "alpha" | "random";
@@ -50,6 +51,12 @@ export interface AppState {
   quizzes: QuizRecord[];
   /** 自定义词单 */
   lists: WordList[];
+  /** 复习日志（每次作答一条，旧 → 新；单独存一个 key） */
+  revlog: RevEntry[];
+  /** 已解锁的成就：id → 解锁日期 */
+  badges: Record<string, string>;
+  /** 周报已读：哪个周一关掉的 */
+  weekSeen?: string;
 }
 
 export const DAILY_OPTIONS = [10, 20, 30, 50, 80, 100];
@@ -59,6 +66,7 @@ export const REPEAT_OPTIONS = [1, 2, 3];
 /** 磁带模式定时停止（分钟），0 = 不定时 */
 export const SLEEP_OPTIONS = [0, 10, 20, 30];
 const KEY = "cet4v-state-v1";
+export const REV_KEY = "cet4v-revlog-v1";
 export const THEME_KEY = "cet4v-theme";
 
 export const defaultSettings = (): Settings => ({
@@ -90,6 +98,8 @@ export function initialState(): AppState {
     bury: {},
     quizzes: [],
     lists: [],
+    revlog: [],
+    badges: {},
   };
 }
 
@@ -123,6 +133,9 @@ export function normalize(raw: unknown): AppState {
     bury: r.bury && typeof r.bury === "object" ? r.bury : {},
     quizzes: Array.isArray(r.quizzes) ? r.quizzes.filter((q) => q && typeof q.ok === "number" && typeof q.n === "number" && typeof q.at === "string") : [],
     lists: normalizeLists(r.lists),
+    revlog: normalizeRevlog(r.revlog),
+    badges: r.badges && typeof r.badges === "object" && !Array.isArray(r.badges) ? Object.fromEntries(Object.entries(r.badges).filter(([, v]) => typeof v === "string")) : {},
+    weekSeen: typeof r.weekSeen === "string" ? r.weekSeen : undefined,
     seed: typeof r.seed === "number" ? r.seed : base.seed,
   };
 }
@@ -130,7 +143,18 @@ export function normalize(raw: unknown): AppState {
 function read(): AppState {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return normalize(JSON.parse(raw));
+    if (raw) {
+      const st = normalize(JSON.parse(raw));
+      // 复习日志单独存（主状态里带了就用主状态里的，例如刚导入）
+      if (!st.revlog.length) {
+        try {
+          st.revlog = normalizeRevlog(JSON.parse(localStorage.getItem(REV_KEY) || "[]"));
+        } catch {
+          /* 日志损坏：丢掉日志，不影响学习记录 */
+        }
+      }
+      return st;
+    }
   } catch {
     /* 损坏的数据：从头开始 */
   }
@@ -138,11 +162,20 @@ function read(): AppState {
 }
 
 let state: AppState = read();
+let savedRev: RevEntry[] | null = null;
 const listeners = new Set<() => void>();
 
 function persist() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    // 日志可能上万条：只在变了的时候写它自己的 key
+    if (state.revlog !== savedRev) {
+      if (state.revlog.length) localStorage.setItem(REV_KEY, JSON.stringify(state.revlog));
+      else localStorage.removeItem(REV_KEY);
+      savedRev = state.revlog;
+    }
+    const { revlog: _omit, ...rest } = state;
+    void _omit;
+    localStorage.setItem(KEY, JSON.stringify(rest));
     localStorage.setItem(THEME_KEY, state.settings.theme);
   } catch {
     /* 存储已满 */
@@ -194,15 +227,28 @@ export function completeOnboarding(patch: Partial<Settings>) {
   commit({ ...state, onboarded: true, settings: { ...state.settings, ...patch } });
 }
 
-/** 一次回答：卡片 + 当日日志 */
-export function applyAnswer(w: string, card: Card | undefined, day: string, log: DayLog | undefined) {
+/** 一次回答：卡片 + 当日日志；rev = 追加一条复习日志，"pop" = 撤销这个词最后一条 */
+export function applyAnswer(w: string, card: Card | undefined, day: string, log: DayLog | undefined, rev?: RevEntry | "pop") {
   const cards = { ...state.cards };
   if (card) cards[w] = card;
   else delete cards[w];
   const logs = { ...state.log };
   if (log) logs[day] = log;
   else delete logs[day];
-  commit({ ...state, cards, log: logs });
+  const revlog = rev === "pop" ? popRev(state.revlog, w) : rev ? appendRev(state.revlog, rev) : state.revlog;
+  commit({ ...state, cards, log: logs, revlog });
+}
+
+/** 记录新解锁的成就 */
+export function unlockBadges(ids: string[], day: string) {
+  if (!ids.length) return;
+  const badges = { ...state.badges };
+  for (const id of ids) if (!badges[id]) badges[id] = day;
+  commit({ ...state, badges });
+}
+
+export function dismissWeekReport(day: string) {
+  commit({ ...state, weekSeen: day });
 }
 
 export function toggleStar(w: string) {
