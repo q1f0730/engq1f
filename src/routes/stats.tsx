@@ -8,13 +8,13 @@ import { BADGES, badgeCtx, forecast30, hardest, hourBand, hourDist, intervalBuck
 import { download } from "@/lib/format";
 import { shortMeaning, type Word, type WordIndex } from "@/lib/data";
 import type { AppState } from "@/lib/store";
-import { daysUntil, effectiveExam, fmtClock, quizStats, scoreOf } from "@/lib/exam";
+import { daysUntil, effectiveExam, examForecast, fmtClock, quizStats, scoreOf } from "@/lib/exam";
 import { fmtDate } from "@/lib/format";
 import { PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
 import { fmtMinutes, fmtMinutesShort, fmtPct, fmtPctDelta } from "@/lib/format";
-import { bookSize } from "@/lib/plan";
+import { bookSize, summarize } from "@/lib/plan";
 import { addDays, emptyLog, forecast, masteryCounts } from "@/lib/srs";
 import { bestStreak, curStreak, restOf } from "@/lib/habit";
 import { DaySheet } from "@/components/app/day-sheet";
@@ -103,8 +103,10 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
   const ms = monthSum(st.log, st.checkins, ym);
   const exam = effectiveExam(day, st.settings.examDate);
   const daysLeft = daysUntil(day, exam.day);
-  const started = Math.min(book, Object.keys(st.cards).filter((w) => st.settings.book === "all" || index.map.get(w)?.c).length);
-  const projected = Math.min(book, started + st.settings.daily * daysLeft);
+  // 11.6 · 和首页考试卡同一个算法（exam.examForecast）：扣掉最后只复习的几天，考前模式只复习
+  const sumT = summarize(index, st, day);
+  const fcx = examForecast(day, exam.day, sumT.newLeft, st.settings.daily, sumT.examMode);
+  const projected = Math.min(book, book - sumT.newLeft + fcx.reach);
   const ret7 = retention(st.revlog ?? [], day, 7);
   const retPrev = retention(st.revlog ?? [], addDays(day, -7), 7);
   // 11.2 · retention().rate 已经是百分数；这里一律用 ok/n 小数交给 fmtPct，不再自己乘 100
@@ -123,7 +125,7 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
         </PanelTitle>
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           <Tile icon={<Target className="size-4" />} label="考前能学完" value={`${projected}/${book}`}
-            small={String(projected).length + String(book).length > 7} sub={projected >= book ? `按每天 ${st.settings.daily} 个能学完` : `还差 ${book - projected} 个，去「我的」调每日新词`} tone="text-primary bg-brand-soft" testid="outlook-learn" />
+            small={String(projected).length + String(book).length > 7} sub={fcx.examMode ? "考前模式：只复习" : projected >= book ? `按每天 ${st.settings.daily} 个能学完` : `考前还能学 ${fcx.reach} 个，剩 ${fcx.left} 个来不及`} tone="text-primary bg-brand-soft" testid="outlook-learn" />
           <Tile icon={<Sparkles className="size-4" />} label="已掌握" value={String(m.mastered)} sub={`占词书 ${Math.round((Math.min(m.mastered, book) / Math.max(1, book)) * 100)}%`} tone="text-know bg-know-soft" testid="outlook-mastered" />
           <Tile
             icon={<Repeat2 className="size-4" />}

@@ -710,3 +710,70 @@ html[data-motion="reduce"] .checkin-burst {
     transform: none;
   }
 }
+
+/* 11.6 · 手机横屏（高度 < 500）：卡片背面改成左右两栏——左边单词 + 音标，右边释义 / 短语 / 例句（单独滚动），
+   释义第一行翻面就看得见；右栏放不下时底部渐隐 + 「上滑看更多」 */
+.back-more {
+  display: none;
+}
+@media (max-height: 500px) {
+  [data-testid="card-back"] {
+    padding: 10px 18px 10px 22px;
+    overflow: hidden;
+  }
+  [data-testid="card-back"] > .back-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    grid-template-rows: minmax(0, 1fr);
+    column-gap: 18px;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+  }
+  .back-grid > .back-head {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .back-grid > .back-head h2 {
+    font-size: max(20px, min(7.5vh, 30px)) !important;
+    line-height: 1.15;
+  }
+  .back-grid > .back-rule {
+    display: none;
+  }
+  .back-grid > .back-body {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2px 4px 2px 16px;
+    border-left: 1px solid var(--border);
+  }
+  .back-grid > .back-body > :first-child {
+    margin-top: 0;
+  }
+  .back-grid > .back-body[data-more="1"] {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
+  }
+  .back-grid > .back-more {
+    display: block;
+    position: absolute;
+    right: 4px;
+    bottom: 0;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--secondary);
+    color: var(--muted-foreground);
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+  }
+}

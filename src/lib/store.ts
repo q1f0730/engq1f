@@ -3,6 +3,7 @@ import { applyPreviewKill } from "./learnflow";
 import { kill, unkill, type Card, type DayLog, type QuizMode } from "./srs";
 import { cleanOffModes } from "./modes";
 import { today } from "./clock";
+import { toast } from "./toast";
 import type { QuizRecord } from "./exam";
 import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
 import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
@@ -623,13 +624,17 @@ function withTodayRule(prev: AppState, next: AppState): AppState {
   const d = today();
   const src = ruleSource?.(next, d) ?? null;
   const old = next.dayRule?.[d];
+  const checked = next.checkins.includes(d);
+  // 11.6 · 今天的任务已经完成过（记了 goalMet，或按改之前的规则已经达标）：完成在那一刻就冻结，之后调高任务不收回
+  const doneBefore = !checked && prev.onboarded && (prev.epoch ?? "") === (next.epoch ?? "") && (!!prev.goalMet?.includes(d) || !!ruleSource?.(prev, d)?.ready);
   if (!src) {
-    // 词库还没加载：先把今天的快照和「任务完成」作废，回到首页时按改完的设置重新记
-    if (!old && !next.goalMet?.includes(d)) return next;
+    // 词库还没加载：先把今天的快照作废，回到首页时按改完的设置重新记；「任务完成」没完成过才撤
+    if (!old && !next.goalMet?.includes(d) && !doneBefore) return next;
     const rules = { ...(next.dayRule ?? {}) };
     delete rules[d];
-    const checked = next.checkins.includes(d);
-    return { ...next, dayRule: Object.keys(rules).length ? rules : undefined, goalMet: checked ? next.goalMet : next.goalMet?.filter((x) => x !== d) };
+    const base = { ...next, dayRule: Object.keys(rules).length ? rules : undefined };
+    if (doneBefore) return freezeDone(base, d);
+    return { ...base, goalMet: checked ? next.goalMet : next.goalMet?.filter((x) => x !== d) };
   }
   const rule: DayRule = { ...src.rule };
   if (old && !(old.x && rule.x)) delete rule.x;
@@ -637,13 +642,37 @@ function withTodayRule(prev: AppState, next: AppState): AppState {
   const all = { ...(next.dayRule ?? {}), [d]: rule };
   const keep = Object.keys(all).sort().slice(-DAY_RULE_KEEP);
   let goalMet = next.goalMet;
+  const out = { ...next, dayRule: Object.fromEntries(keep.map((k) => [k, all[k]])) };
   if (!src.checked) {
     const has = !!goalMet?.includes(d);
     if (src.ready && !has) goalMet = [...(goalMet ?? []), d].sort().slice(-14);
+    else if (!src.ready && doneBefore) return freezeDone({ ...out, goalMet }, d);
     else if (!src.ready && has) goalMet = goalMet!.filter((x) => x !== d);
   }
-  return { ...next, dayRule: Object.fromEntries(keep.map((k) => [k, all[k]])), goalMet };
+  return { ...out, goalMet };
 }
+
+/**
+ * 11.6 · 今天已经完成、改动又把今天的任务调高了：先替用户打上今天的卡（goalMet 也留着），新目标从明天开始算，
+ * 今天多学的算额外的。今天的卡片（已打卡）和明天的补记（已经打过、不用补）还是同一个说法。
+ */
+function freezeDone(st: AppState, d: string): AppState {
+  const r = applyCheckIn(st, d);
+  const goalMet = st.goalMet?.includes(d) ? st.goalMet : [...(st.goalMet ?? []), d].sort().slice(-14);
+  lastFreeze = { day: d, streak: r.streak };
+  const n = r.streak;
+  const say = () => toast.success(`今天的任务已完成，已帮你打卡${n > 0 ? ` · 连续 ${n} 天` : ""}`, { id: "freeze-done", description: "新目标从明天开始算，今天再学的算额外的" });
+  if (typeof queueMicrotask === "function") queueMicrotask(say);
+  else say();
+  return { ...st, checkins: r.checkins, makeup: r.makeup, makeupEarned: r.makeupEarned, goalMet };
+}
+/** 11.6 · 最近一次「已完成 → 调高任务 → 替用户打卡」（测试 / 界面读） */
+let lastFreeze: { day: string; streak: number } | null = null;
+export const takeFreeze = () => {
+  const f = lastFreeze;
+  lastFreeze = null;
+  return f;
+};
 
 function commit(next: AppState) {
   const prev = state;

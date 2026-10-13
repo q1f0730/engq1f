@@ -14,7 +14,8 @@ import { isRawDump, unwrapRaw } from "./salvage";
 import { LIST_MAX, LIST_WORDS_MAX, addWords, cleanListName, type WordList } from "./lists";
 import { REV_MAX, isRevEntry, type RevEntry } from "./stats";
 import type { QuizRecord } from "./exam";
-import { MAKEUP_MAX } from "./habit";
+import { EXAM_DAYS_KEEP, MAKEUP_MAX, harvestExamDays } from "./habit";
+import { today } from "./clock";
 
 // ---------------------------------------------------------------- 合并导入
 
@@ -134,6 +135,10 @@ export function mergeStates(local: AppState, remote: AppState): { state: AppStat
 
   const test = !local.test ? remote.test : !remote.test ? local.test : remote.test.at > local.test.at ? remote.test : local.test;
 
+  const dayRule = local.dayRule || remote.dayRule ? { ...(remote.dayRule ?? {}), ...(local.dayRule ?? {}) } : undefined;
+  const ed0 = [...new Set([...(local.examDays ?? []), ...(remote.examDays ?? [])])].sort().slice(-EXAM_DAYS_KEEP);
+  const examDays = harvestExamDays(dayRule, ed0.length ? ed0 : undefined, today());
+
   return {
     state: {
       ...local,
@@ -155,7 +160,10 @@ export function mergeStates(local: AppState, remote: AppState): { state: AppStat
       lastBackup: later(local.lastBackup, remote.lastBackup),
       // 11.4 · 两边记下的「任务完成」都算；每天的任务快照以先记下的为准（本机优先，缺的补上）
       goalMet: [...new Set([...(local.goalMet ?? []), ...(remote.goalMet ?? [])])].sort().slice(-14),
-      dayRule: local.dayRule || remote.dayRule ? { ...(remote.dayRule ?? {}), ...(local.dayRule ?? {}) } : undefined,
+      dayRule,
+      // 11.6 · 记下来的考试日取两边的并集（同样最多 12 个），确认考完的那一场取较晚的；再按合并后的快照补一遍
+      examDays,
+      examDone: later(local.examDone, remote.examDone),
     },
     stats,
   };

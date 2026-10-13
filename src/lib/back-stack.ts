@@ -93,7 +93,15 @@ export const atPhantom = () => {
   return phantom(st) && !!(st.__dead || st.__sheet !== undefined || st.__guard !== undefined);
 };
 
+/**
+ * 11.6 · 上一次 popstate 是第 1 步替用户「顺着走过」一条无主条目（用户并没停在那条上）：这一次落地后不再做第 4 步，
+ * 否则「计划步骤 → 切标签 → 返回」会连退两步，退出 app（r6 R6-4）。
+ */
+let passing = false;
+
 function onPop() {
+  const passed = passing;
+  passing = false;
   if (hold) {
     hold = false;
     last = cur();
@@ -110,6 +118,7 @@ function onPop() {
   const forward = pi !== undefined && ni !== undefined && ni > pi;
   // 1. 落到了没有主人的条目：顺着方向再走一步（同一个页面，用户感觉不到）
   if (phantom(st) && (st.__dead || st.__sheet !== undefined || st.__guard !== undefined)) {
+    passing = true;
     if (forward) window.history.forward();
     else window.history.back();
     return;
@@ -138,7 +147,7 @@ function onPop() {
   // 4. 刚从一条作废的同 URL 条目退回来（例如按钮关掉弹层 / 会话结束后的第一次返回）：再退一步，不让这次返回白按。
   //    只认真正的「后退」（两边都有 index 且变小）：跳到同一个哈希的导航也会触发 popstate，那不是返回。
   const back = pi !== undefined && ni !== undefined && ni < pi;
-  if (back && phantom(prev) && (prev.__dead || prev.__sheet !== undefined || prev.__guard !== undefined) && prevHref === href()) {
+  if (back && !passed && phantom(prev) && (prev.__dead || prev.__sheet !== undefined || prev.__guard !== undefined) && prevHref === href()) {
     window.history.back();
   }
 }
@@ -255,4 +264,28 @@ export function useSheetOpen(): boolean {
     () => stack.length > 0,
     () => false,
   );
+}
+
+/**
+ * 11.6 · 兜底：直接打开的不是首页（分享的词单链接、桌面快捷方式、通知点进来的学习页…）时，在它下面垫一条首页。
+ * 这样「没有 app 内的上一页」时按返回回到首页，而不是直接退出 app（about:blank）；在首页再按一次才退出。
+ * 只在这一页是第一条 app 记录时垫（刷新 / 已经在 app 里走过的不垫）；欢迎页不垫。必须在路由创建之前调用。
+ */
+export function seedHomeBase() {
+  if (!hasWin) return;
+  try {
+    const raw = window.location.hash.replace(/^#/, "");
+    const path = (raw.split("?")[0] || "/").replace(/\/+$/, "") || "/";
+    if (path === "/" || path === "/welcome") return;
+    const st = cur();
+    if (st.__TSR_index !== undefined && st.__TSR_index !== 0) return;
+    if (st.__TSR_index === 0 && (st as { __home?: 1 }).__home) return;
+    const base = window.location.pathname + window.location.search;
+    const k0 = Math.random().toString(36).slice(2, 10);
+    const k1 = Math.random().toString(36).slice(2, 10);
+    (nativeReplace ?? window.history.replaceState).call(window.history, { key: k0, __TSR_key: k0, __TSR_index: 0, __home: 1 }, "", base + "#/");
+    window.history.pushState({ key: k1, __TSR_key: k1, __TSR_index: 1 }, "", base + "#" + raw);
+  } catch {
+    /* history 不可用 */
+  }
 }

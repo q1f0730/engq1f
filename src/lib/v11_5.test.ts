@@ -49,15 +49,16 @@ describe("R5-1 当天中途改设置：覆盖今天的快照（当天最后生�
     expect(next.goalMet?.includes(T) ?? false).toBe(false);
     expect(autoCredit(next, addDays(T, 1))).toBeNull();
   });
-  it("按时长 10 分钟已经达标（goalMet）→ 换成按词数 20、只学了 3 个：撤掉今天的「任务完成」，第二天不补", () => {
+  // 11.6（r6 R6-1）改了设计：已经完成的今天不收回——换标准之前先替用户打上今天的卡
+  it("按时长 10 分钟已经达标（goalMet）→ 换成按词数 20、只学了 3 个：今天的完成不收回（11.6：替用户打卡）", () => {
     setDayRuleSource(fakeSource);
     replaceState(st0({ goalMet: [T], log: { [T]: L(3, 0, 12 * 60000) }, dayRule: { [T]: { g: 20, r: 0, t: 10 } }, settings: { ...initialState().settings, daily: 20, goalMode: "time", goalMin: 10 } }));
     setSettings({ goalMode: "words" });
     const s = getState();
     expect(s.dayRule?.[T]?.t).toBeUndefined();
     expect(s.dayRule?.[T]?.g).toBe(20);
-    expect(s.goalMet?.includes(T) ?? false).toBe(false);
-    expect(autoCredit(s, addDays(T, 1))).toBeNull();
+    expect(s.checkins).toContain(T);
+    expect(s.goalMet).toContain(T);
   });
   it("快照 g=20、学了 10 个 → 改成 10：今天马上记下任务完成，第二天照常补", () => {
     setDayRuleSource(fakeSource);
@@ -89,15 +90,18 @@ describe("R5-1 当天中途改设置：覆盖今天的快照（当天最后生�
     const r = getState().dayRule?.[T];
     expect(r?.e).toBe(addDays(T, 1));
     expect(r?.x).toBeUndefined();
-    expect(skipDay(getState(), T)).toBe(false);
+    // 11.6（r6 R6-5）：改完之后今天一点任务都没有（g = 0、r = 0、考试是明天）→ 不算断签
+    expect(skipDay(getState(), T)).toBe(true);
   });
   it("词库还没加载（拿不到今天的规则）：作废今天的快照和没打卡的任务完成，回首页时重记", () => {
+    replaceState(st0({ goalMet: [T], log: { [T]: L(10) }, dayRule: { [Y]: { g: 10, r: 0 }, [T]: { g: 10, r: 0 } }, settings: { ...initialState().settings, daily: 10 } }));
     setDayRuleSource(() => null);
-    replaceState(st0({ goalMet: [T], dayRule: { [Y]: { g: 10, r: 0 }, [T]: { g: 10, r: 0 } }, settings: { ...initialState().settings, daily: 10 } }));
     setSettings({ daily: 30 });
     expect(getState().dayRule?.[T]).toBeUndefined();
     expect(getState().dayRule?.[Y]).toBeDefined();
-    expect(getState().goalMet?.includes(T) ?? false).toBe(false);
+    // 11.6（r6 R6-1）：今天已经完成过（goalMet）→ 不撤，替用户打卡
+    expect(getState().goalMet).toContain(T);
+    expect(getState().checkins).toContain(T);
     setDayRuleSource(fakeSource);
   });
 });

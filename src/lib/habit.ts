@@ -111,8 +111,18 @@ const hasSnapNear = (rules: Record<string, DayRule> | undefined, d: string) => {
 export function skipDay(st: HabitState, d: string): boolean {
   if (pausedOn(st, d) || examDayOn(st, d)) return true;
   const r = st.dayRule?.[d];
-  // 11.5 · 只认「考前一天」（x = 1，当天第一份快照里就有）；考试当天由 examDayOn 按快照判断，快照自己的 x = 2 不算
-  return !!r && (!!r.p || (r.x === 1 && r.g === 0 && r.r === 0));
+  // 11.5 · 考试当天由 examDayOn 按快照判断，快照自己的 x = 2 不算
+  return !!r && (!!r.p || idleExamEve(r, d));
+}
+
+/**
+ * 11.6 · 考前一天、当天（最后生效的规则）一点任务都没有：不排新词、也没有复习——界面上说「今天没有要做的」，结算也不算断签。
+ * 认第一份快照里的「考前一天」（x = 1），也认当天才改出来的（快照里记的考试日 e 就是明天）：前一天晚上才改考试日，
+ * 今天变成考前一天、什么都做不了，不能第二天再按断签算（11.5 的已知限制，r6 改掉）。
+ */
+export function idleExamEve(r: DayRule | undefined, d: string): boolean {
+  if (!r || r.g !== 0 || r.r !== 0 || r.p) return false;
+  return r.x === 1 || (!!r.e && r.e === addDays(d, 1));
 }
 
 /** 11.4 · 周历上的「考」/「休」 */

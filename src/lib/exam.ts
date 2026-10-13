@@ -75,6 +75,16 @@ export function capReach(today: string, exam: string, newLeft: number, daily = S
   return Math.min(newLeft, daily * learnDays);
 }
 
+/**
+ * 11.6 · 「考前还能学多少新词」唯一的算法：首页考试卡和统计页都调它（扣掉最后只复习的几天，考前模式不排新词）。
+ * reach = 考前还能学的新词数；left = 来不及的；examMode = 已经到了考前一天 / 考试当天（只复习）。
+ */
+export function examForecast(today: string, exam: string, newLeft: number, daily: number, examMode: boolean): { reach: number; left: number; examMode: boolean } {
+  if (examMode || newLeft <= 0) return { reach: 0, left: Math.max(0, newLeft), examMode };
+  const reach = capReach(today, exam, newLeft, Math.max(daily, 1));
+  return { reach, left: newLeft - reach, examMode };
+}
+
 /** 一次加量最多翻一倍（不到 10 个时先加到 10），取 5 的倍数，不超过 SPRINT_MAX */
 export function stepUp(daily: number, target: number): number {
   const step = Math.max(daily * 2, 10);

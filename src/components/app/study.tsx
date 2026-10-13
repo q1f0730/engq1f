@@ -1027,6 +1027,35 @@ function FlipCard({
   };
   const origin = useRef<{ x: number; y: number; id: number } | null>(null);
   const hint = drag ? swipeRating(drag.x, drag.y, { swap, threshold: 60 }) : null;
+  // 11.6 · 背面右栏（横屏才单独滚动）放不下时：底部渐隐 +「上滑看更多」
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const [more, setMore] = useState(false);
+  const checkMore = useCallback(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const oy = getComputedStyle(el).overflowY;
+    setMore((oy === "auto" || oy === "scroll") && el.scrollHeight - el.clientHeight - el.scrollTop > 8);
+  }, []);
+  useEffect(() => {
+    if (!flipped) {
+      setMore(false);
+      return;
+    }
+    checkMore();
+    const el = bodyRef.current;
+    const ro = typeof ResizeObserver !== "undefined" && el ? new ResizeObserver(() => checkMore()) : null;
+    if (ro && el) {
+      ro.observe(el);
+      for (const c of Array.from(el.children)) ro.observe(c);
+    }
+    window.addEventListener("resize", checkMore);
+    const t = setTimeout(checkMore, 700);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", checkMore);
+      clearTimeout(t);
+    };
+  }, [flipped, word.w, checkMore]);
 
   const onDown = (e: React.PointerEvent) => {
     if (!canSwipe || e.pointerType === "mouse") return;
@@ -1096,8 +1125,8 @@ function FlipCard({
 
   const back = (
     <div className="flex h-full flex-col overflow-y-auto px-6 py-6 text-left" data-testid="card-back">
-      <div className="fs-card my-auto">
-      <div className="flex items-start justify-between gap-3">
+      <div className="fs-card back-grid my-auto">
+      <div className="back-head flex items-start justify-between gap-3" data-testid="back-head">
         <div className="min-w-0">
           <h2 className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight">{word.w}</h2>
           <div className="mt-1 flex items-center gap-2 text-[15px] text-muted-foreground">
@@ -1117,17 +1146,25 @@ function FlipCard({
         </div>
         {ratingTag}
       </div>
-      <div className="my-5 h-px bg-border" />
-      <Meanings word={word} size="lg" />
-      <div className="mt-6 empty:hidden">
-        <Phrases word={word} />
+      <div className="back-rule my-5 h-px bg-border" />
+      {/* 11.6 · 横屏（高度 < 500）：单词在左、释义在右，释义第一行不用滚动就看得见；右栏放不下时底部渐隐 + 「上滑看更多」 */}
+      <div className="back-body" data-testid="back-body" ref={bodyRef} onScroll={checkMore} data-more={more ? 1 : 0}>
+        <Meanings word={word} size="lg" />
+        <div className="mt-6 empty:hidden">
+          <Phrases word={word} />
+        </div>
+        <div className="mt-6 empty:hidden">
+          <Confusables index={index} word={word} accent={accent} />
+        </div>
+        <div className="mt-6 empty:hidden">
+          <Examples word={word} enabled={flipped} />
+        </div>
       </div>
-      <div className="mt-6 empty:hidden">
-        <Confusables index={index} word={word} accent={accent} />
-      </div>
-      <div className="mt-6 empty:hidden">
-        <Examples word={word} enabled={flipped} />
-      </div>
+      {more && (
+        <div className="back-more" data-testid="back-more" aria-hidden>
+          上滑看更多 ↓
+        </div>
+      )}
       </div>
     </div>
   );

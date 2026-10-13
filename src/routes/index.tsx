@@ -68,7 +68,7 @@ import {
 } from "@/lib/store";
 import { MAKEUP_EVERY, MAKEUP_MAX, STREAK_WARN_MIN, WEEKDAY_CN, brokenStreak, canPatch, curStreak, examDayOn, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf, skipKind } from "@/lib/habit";
 import { celebrate } from "@/lib/celebrate";
-import { SPRINT_MAX, capReach, coreUnmastered, daysUntil, effectiveExam, examAdvice, nextExamDate, passedExam, quizDoneOn, recommendPlan, sprintPlan, upcomingExams, type ExamAdvice, type SprintPlan } from "@/lib/exam";
+import { SPRINT_MAX, capReach, coreUnmastered, examForecast, daysUntil, effectiveExam, examAdvice, nextExamDate, passedExam, quizDoneOn, recommendPlan, sprintPlan, upcomingExams, type ExamAdvice, type SprintPlan } from "@/lib/exam";
 import { QUIZ_MIN_LEARNED, RECOVER_RESTART_GAP, homeAdvice, lastActive, recoverGap, recoverPerDay, recoverTick, recoveryPlan, type Advice } from "@/lib/coach";
 import { NEW_CARD_SEC, REVIEW_CARD_SEC } from "@/lib/ux";
 import { backupDue } from "@/lib/persist";
@@ -203,6 +203,8 @@ function Today() {
   const reviewDay = sum.recovering || sum.examMode || sum.paused;
   // 11.3 · 考前模式里一个复习都没有：不显示 100% 的圆环
   const examIdle = sum.examMode && !sum.recovering && sum.reviewed + sum.due === 0;
+  // 11.6 · 考前一天什么都不用做（不排新词、没有复习）：不打卡也不断签，和结算（habit.idleExamEve）一个说法
+  const idleEve = examIdle && !sum.examDay && !sum.paused && !sum.ready && !sum.checked;
   const canCheck = sum.ready && !sum.checked;
   // 11.2 · 没有复习时不放一个「复习 0」的空按钮
   // 11.4 · 考试当天不放「额外学新词」
@@ -213,7 +215,7 @@ function Today() {
   // 「今日一词」单独占一行（前面的小卡是偶数个）时用宽版
   const wodWide = (3 + (sum.due > 0 && !overFirst ? 1 : 0) + (quizOpen && advice?.kind !== "quiz" ? 1 : 0)) % 2 === 0;
   // 11.4 · 连续 3 天以上才说「要断了」
-  const lateOn = late && s >= STREAK_WARN_MIN && !sum.ready && !sum.checked && advice?.kind !== "recover-offer" && advice?.kind !== "recovering";
+  const lateOn = late && s >= STREAK_WARN_MIN && !sum.ready && !sum.checked && !idleEve && advice?.kind !== "recover-offer" && advice?.kind !== "recovering";
   // 11.3 · 连续 0 天不显示补卡说明；昨天刚断（又没补卡可用）时说一句，不悄悄清零
   const showHabit = s > 0;
   // 11.4 · 休息中 / 考完了还没选时不说「断了」；连续 1–2 天不算「连续」
@@ -428,7 +430,7 @@ function Today() {
                     : examIdle
                       ? sum.examDay
                         ? "带好准考证和耳机，好好发挥"
-                        : "考前不用赶新词，可以看看高频词"
+                        : "考前不用赶新词 · 今天不打卡也不断签"
                       : sum.examMode && sum.due
                         ? sum.examDay
                           ? `考前热身：最容易忘的 ${sum.due} 个 · 约 ${etaMin} 分钟，别的不用背了`
@@ -482,6 +484,10 @@ function Today() {
                   >
                     <Share2 className="size-4" /> 分享图
                   </button>
+                </div>
+              ) : idleEve ? (
+                <div className="flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-3 text-[13px] font-semibold text-know" data-testid="checkin-idle-eve">
+                  <GraduationCap className="size-5 shrink-0" /> 考前一天，今天没有要做的：不打卡也不断签，连续 {s} 天保留
                 </div>
               ) : sum.ready ? (
                 <div className="flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-3 text-[13px] font-semibold text-know" data-testid="checkin-ready">
@@ -1180,7 +1186,8 @@ function ExamCard({
   const onTrack = plan.newLeft === 0 || (!plan.tooMany && daily >= plan.daily);
   // 11.2 · 学不完时：诚实的冲刺目标（不报「赶不上考试」的学完日期）
   const capped = !sum.examMode && plan.newLeft > 0 && plan.tooMany;
-  const reach = capped ? capReach(day, exam, plan.newLeft, Math.max(daily, 1)) : 0;
+  // 11.6 · 和统计页同一个函数（examForecast），同一个状态下两个数一样
+  const reach = capped ? examForecast(day, exam, plan.newLeft, daily, sum.examMode).reach : 0;
   void adv;
   const wd = WEEK[new Date(exam + "T12:00:00").getDay()];
   const spare = sum.newLeft ? Math.max(0, diffDays(sum.finish, exam)) : plan.daysLeft;
