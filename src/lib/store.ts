@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { kill, unkill, type Card, type DayLog } from "./srs";
 import { today } from "./clock";
 import type { QuizRecord } from "./exam";
+import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
 
 export type Book = "all" | "core";
 export type Order = "core" | "alpha" | "random";
@@ -47,6 +48,8 @@ export interface AppState {
   backupSnooze?: string;
   /** 模拟小测成绩（旧 → 新） */
   quizzes: QuizRecord[];
+  /** 自定义词单 */
+  lists: WordList[];
 }
 
 export const DAILY_OPTIONS = [10, 20, 30, 50, 80, 100];
@@ -86,6 +89,7 @@ export function initialState(): AppState {
     checkins: [],
     bury: {},
     quizzes: [],
+    lists: [],
   };
 }
 
@@ -118,6 +122,7 @@ export function normalize(raw: unknown): AppState {
     checkins: Array.isArray(r.checkins) ? r.checkins : [],
     bury: r.bury && typeof r.bury === "object" ? r.bury : {},
     quizzes: Array.isArray(r.quizzes) ? r.quizzes.filter((q) => q && typeof q.ok === "number" && typeof q.n === "number" && typeof q.at === "string") : [],
+    lists: normalizeLists(r.lists),
     seed: typeof r.seed === "number" ? r.seed : base.seed,
   };
 }
@@ -261,6 +266,55 @@ export function starWords(words: string[]) {
   const star = { ...state.star };
   for (const w of words) star[w] = 1;
   commit({ ...state, star });
+}
+
+// ---------------------------------------------------------------- v5 · 词单与批量操作
+
+/** 新建词单，返回 id；超过上限返回 null */
+export function createList(name: string, words: string[] = []): string | null {
+  const lists = state.lists ?? [];
+  if (lists.length >= LIST_MAX) return null;
+  const id = "l" + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
+  const list = addWords({ id, name: cleanListName(name, lists.map((l) => l.name)), words: [], at: today() }, words);
+  commit({ ...state, lists: [...lists, list] });
+  return id;
+}
+
+function updateList(id: string, fn: (l: WordList) => WordList) {
+  commit({ ...state, lists: (state.lists ?? []).map((l) => (l.id === id ? fn(l) : l)) });
+}
+
+export function renameList(id: string, name: string) {
+  const others = (state.lists ?? []).filter((l) => l.id !== id).map((l) => l.name);
+  updateList(id, (l) => ({ ...l, name: cleanListName(name, others) }));
+}
+
+export function deleteList(id: string) {
+  commit({ ...state, lists: (state.lists ?? []).filter((l) => l.id !== id) });
+}
+
+export function addToList(id: string, words: string[]) {
+  updateList(id, (l) => addWords(l, words));
+}
+
+export function removeFromList(id: string, words: string[]) {
+  updateList(id, (l) => removeWords(l, words));
+}
+
+/** 批量重置：删掉这些词的学习记录（回到未学） */
+export function batchReset(words: string[]) {
+  const cards = { ...state.cards };
+  for (const w of words) delete cards[w];
+  commit({ ...state, cards });
+}
+
+/** 批量操作前拍快照，撤销时整体恢复（只含批量会改的部分） */
+export type Snapshot = Pick<AppState, "cards" | "star" | "lists">;
+export function snapshot(): Snapshot {
+  return { cards: state.cards, star: state.star, lists: state.lists };
+}
+export function restoreSnapshot(s: Snapshot) {
+  commit({ ...state, ...s });
 }
 
 export function saveTest(est: number) {

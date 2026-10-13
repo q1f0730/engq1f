@@ -18,6 +18,7 @@ import {
   summarize,
   type Notebook,
 } from "@/lib/plan";
+import { listGroup } from "@/lib/lists";
 import { buzz } from "@/lib/haptics";
 import {
   addDays,
@@ -47,7 +48,7 @@ import { ShareSheet } from "./share-sheet";
 import { useShareInfo } from "@/lib/use-share";
 import { useWakeLock } from "@/lib/wakelock";
 
-export type StudyMode = "new" | "review" | "ahead" | "practice" | "speed" | "core" | Notebook;
+export type StudyMode = "new" | "review" | "ahead" | "practice" | "speed" | "core" | "list" | Notebook;
 
 const MODE_TITLE: Record<StudyMode, string> = {
   new: "学新词",
@@ -56,6 +57,7 @@ const MODE_TITLE: Record<StudyMode, string> = {
   practice: "错词再练",
   speed: "速刷",
   core: "核心未掌握",
+  list: "词单学习",
   star: "生词本复习",
   wrong: "错词本复习",
   mastered: "熟词回顾",
@@ -74,6 +76,7 @@ function buildItems(index: WordIndex, mode: StudyMode, words: string[]): Session
     const g = coreGroupWords(index, st, day);
     return g.kind === "new" ? g.words.map((w) => ({ w, kind: "new" as const, mode: "recall" as const })) : reviewItems(index, st, g.words, day);
   }
+  if (mode === "list") return listGroup(index, st, words, day).items;
   return notebookGroup(index, st, mode, day);
 }
 
@@ -86,7 +89,7 @@ function wordSize(w: string) {
 
 type Last = { item: SessionItem; rating: Rating; pick?: number; via: "rate" | "quiz" | "peek" };
 
-export function Study({ index, mode, words = [] }: { index: WordIndex; mode: StudyMode; words?: string[] }) {
+export function Study({ index, mode, words = [], listId, listName }: { index: WordIndex; mode: StudyMode; words?: string[]; listId?: string; listName?: string }) {
   const st = useApp();
   const navigate = useNavigate();
   const accent = st.settings.accent;
@@ -358,7 +361,7 @@ export function Study({ index, mode, words = [] }: { index: WordIndex; mode: Stu
   useWakeLock(!finished && items.length > 0);
 
   if (!items.length) return <Empty mode={mode} />;
-  if (finished) return <Summary session={session} index={index} mode={mode} ms={now() - startedAt.current} />;
+  if (finished) return <Summary session={session} index={index} mode={mode} ms={now() - startedAt.current} listId={listId} />;
   if (!shownItem || !word) return null;
 
   const starred = !!st.star[word.w];
@@ -404,7 +407,7 @@ export function Study({ index, mode, words = [] }: { index: WordIndex; mode: Stu
       </div>
 
       <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-[12px] font-medium text-muted-foreground">
-        <span>{MODE_TITLE[mode]}</span>
+        <span className="max-w-[10em] truncate" data-testid="study-title">{mode === "list" && listName ? `词单 · ${listName}` : MODE_TITLE[mode]}</span>
         {relearn && <span className="rounded-full bg-forget-soft px-2 py-px text-forget" data-testid="relearn-tag">再来一遍</span>}
         {isQuiz && <span className="rounded-full bg-secondary px-2 py-px">{MODE_LABEL[shownItem.mode]}</span>}
         {word.c && <span className="rounded-full bg-brand-soft px-2 py-px text-primary">核心</span>}
@@ -1133,6 +1136,7 @@ function Empty({ mode }: { mode: StudyMode }) {
     practice: ["没有需要再练的词", "这一组全部一次答对，太强了。"],
     speed: ["没有要速刷的词", "到期复习的词会出现在这里，先去学点新词吧。"],
     core: ["核心词全部掌握了", "2607 个核心词都已掌握，四级稳了。"],
+    list: ["这个词单没有可学的词", "词单是空的或者全部斩完了，去词库加点词吧。"],
     hard: ["没有顽固词", "遗忘 3 次以上的词会出现在这里。"],
     star: ["生词本是空的", "学习时按 S 或点星标收藏生词。"],
     wrong: ["错词本是空的", "选择题答错或点「不认识」的词会自动进来。"],
@@ -1152,7 +1156,7 @@ function Empty({ mode }: { mode: StudyMode }) {
   );
 }
 
-function Summary({ session, index, mode, ms }: { session: Session; index: WordIndex; mode: StudyMode; ms: number }) {
+function Summary({ session, index, mode, ms, listId }: { session: Session; index: WordIndex; mode: StudyMode; ms: number; listId?: string }) {
   const st = useApp();
   const navigate = useNavigate();
   const day = today();
@@ -1251,7 +1255,16 @@ function Summary({ session, index, mode, ms }: { session: Session; index: WordIn
             {sum.remainingGoal > 0 ? "下一组" : "再学一组"}
           </button>
         ) : null}
-        {sum.due > 0 ? (
+        {mode === "list" && listId ? (
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/study", search: { mode: "list", list: listId, t: Date.now() } })}
+            data-testid="list-again"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-secondary py-3.5 font-semibold"
+          >
+            <RotateCcw className="size-4" /> 继续词单
+          </button>
+        ) : sum.due > 0 ? (
           <button
             type="button"
             onClick={() => restart(mode === "speed" ? "speed" : "review")}

@@ -340,3 +340,87 @@ html [data-sonner-toaster][data-y-position="bottom"] [data-sonner-toast][data-mo
 html [data-sonner-toaster][data-y-position="top"] [data-sonner-toast][data-mounted="false"] {
   --y: translateY(-24px) scale(0.96);
 }
+
+/* ---------------------------------------------------------------- v5 · 打印词单 */
+#print-root {
+  display: none;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm 10mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  body > *:not(#print-root) {
+    display: none !important;
+  }
+  #print-root {
+    display: block;
+    color: #000;
+    font: 9pt/1.35 "Noto Sans SC", "Noto Sans CJK SC", "PingFang SC", system-ui, sans-serif;
+  }
+  .print-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1.5pt solid #000;
+    padding-bottom: 3pt;
+    margin-bottom: 6pt;
+    font-size: 10pt;
+  }
+  .print-head b {
+    font-size: 13pt;
+  }
+  .print-cols {
+    columns: 3;
+    column-gap: 8mm;
+    column-rule: 0.5pt solid #ccc;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .print-item {
+    display: grid;
+    grid-template-columns: 2.1em 1fr;
+    break-inside: avoid;
+    padding: 2pt 0 2.5pt;
+    border-bottom: 0.4pt solid #e2e2e2;
+  }
+  .print-no {
+    padding-top: 2pt;
+    color: #888;
+    font-size: 7pt;
+    font-variant-numeric: tabular-nums;
+  }
+  .print-body {
+    min-width: 0;
+  }
+  .print-word {
+    font-weight: 700;
+    font-size: 10pt;
+    white-space: nowrap;
+  }
+  .print-ipa {
+    margin-left: 4pt;
+    color: #555;
+    font-size: 7.5pt;
+    white-space: nowrap;
+  }
+  .print-mean {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    color: #222;
+    font-size: 8pt;
+  }
+  .print-blank {
+    display: block;
+    height: 13pt;
+    border-bottom: 0.6pt dashed #999;
+  }
+}

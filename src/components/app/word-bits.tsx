@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, Play, Star, Swords, Undo2, Volume2 } from "lucide-react";
+import { ChevronLeft, ListPlus, Play, Star, Swords, Undo2, Volume2 } from "lucide-react";
 import { confusables } from "@/lib/confusables";
 import { sayEnglish, speak } from "@/lib/audio";
 import { useExamples } from "@/lib/examples";
@@ -9,6 +9,7 @@ import { getState, killWord, resetWord, toggleStar, unkillWord, useApp } from "@
 import { today } from "@/lib/clock";
 import { cn } from "@/lib/utils";
 import { BottomSheet } from "./sheet";
+import { ListPicker } from "./lists";
 
 export function Phonetic({ word, accent, className }: { word: Word; accent: "us" | "uk"; className?: string }) {
   if (!word.p) return null;
@@ -207,6 +208,7 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
   const st = useApp();
   // 从形近词跳转过来的词（可以返回）
   const [trail, setTrail] = useState<Word[]>([]);
+  const [picker, setPicker] = useState(false);
   useEffect(() => setTrail([]), [base?.w, open]);
   const word = trail.length ? trail[trail.length - 1] : base;
   if (!word) return null;
@@ -309,6 +311,20 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
             重新学
           </button>
         </div>
+        <button
+          type="button"
+          data-testid="sheet-list"
+          onClick={() => setPicker(true)}
+          className="mt-2 flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-secondary text-[13px] font-semibold"
+        >
+          <ListPlus className="size-4" />
+          加入词单
+          {(() => {
+            const n = (st.lists ?? []).filter((l) => l.words.includes(word.w)).length;
+            return n ? <span className="text-muted-foreground" data-testid="sheet-list-n">· 已在 {n} 个</span> : null;
+          })()}
+        </button>
+        <ListPicker open={picker} onOpenChange={setPicker} words={[word.w]} />
       </div>
     </BottomSheet>
   );
