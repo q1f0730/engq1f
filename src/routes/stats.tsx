@@ -125,7 +125,7 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
         </PanelTitle>
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           <Tile icon={<Target className="size-4" />} label="考前能学完" value={`${projected}/${book}`}
-            small={String(projected).length + String(book).length > 7} sub={fcx.examMode ? "考前模式：只复习" : projected >= book ? `按每天 ${st.settings.daily} 个能学完` : (
+            small={String(projected).length + String(book).length > 7} sub={fcx.examMode ? nb("考前模式：", "只复习") : projected >= book ? nb(`按每天 ${st.settings.daily} 个`, "能学完") : (
               // 11.7 · 窄屏按「还能学 N 个 / 剩 M 个来不及」两段换行，不会有一两个字单独成行（r7 R7-7）
               <>
                 <span className="whitespace-nowrap">还能学 {fcx.reach} 个</span>，<span className="whitespace-nowrap">剩 {fcx.left} 个来不及</span>
@@ -136,7 +136,7 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
             icon={<Repeat2 className="size-4" />}
             label="近 7 天记得住"
             value={fmtPct(ret7f)}
-            sub={keepTail(fmtPctDelta(ret7f, retPrevF) ?? "复习满一周后显示变化")}
+            sub={keepTail(fmtPctDelta(ret7f, retPrevF)) ?? nb("复习满一周后", "显示变化")}
             tone="text-vague bg-vague-soft"
             testid="outlook-retention"
           />
@@ -481,12 +481,26 @@ function QStat({ label, value, unit, testid }: { label: string; value: number; u
 }
 
 /** 11.7 · 「比上周低 6 个百分点」：「6 个百分点」不拆开（360 宽下不再剩一个「点」单独一行，r7 R7-7） */
-function keepTail(s: string): React.ReactNode {
+function keepTail(s: string | null): React.ReactNode {
+  if (s === null) return null;
   const m = /^(.*\S)\s(\d+ 个百分点)$/.exec(s);
   if (!m) return s;
   return (
     <>
       {m[1]} <span className="whitespace-nowrap">{m[2]}</span>
+    </>
+  );
+}
+
+/** 11.7 · 几段各自不折行：窄屏只在段与段之间换行（没有一两个字单独成行） */
+function nb(...parts: string[]): React.ReactNode {
+  return (
+    <>
+      {parts.map((p, i) => (
+        <span key={i} className="whitespace-nowrap">
+          {p}
+        </span>
+      ))}
     </>
   );
 }

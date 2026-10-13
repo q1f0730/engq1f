@@ -437,7 +437,7 @@ function Today() {
                     : sum.timeMode
                     ? `还差 ${Math.max(0, sum.goalMin - minutes)} 分钟就能打卡`
                     : noPass && examIdle
-                      ? "离上一场考试不到 30 天，今天照常打卡 · 额外学一组就算"
+                      ? "离上次考试不到 30 天 · 学一组就能打卡"
                     : examIdle
                       ? sum.examDay
                         ? "带好准考证和耳机，好好发挥"
