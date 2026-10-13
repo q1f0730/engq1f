@@ -419,7 +419,7 @@ function Today() {
                     ? `还差 ${Math.max(0, sum.goalMin - minutes)} 分钟就能打卡`
                     : examIdle
                       ? sum.examDay
-                        ? "今天考试，加油！不用再背了"
+                        ? "带好准考证和耳机，好好发挥"
                         : "考前不用赶新词，可以看看高频词"
                       : sum.examMode && sum.due
                         ? sum.examDay
