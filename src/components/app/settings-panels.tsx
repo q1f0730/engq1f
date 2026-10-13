@@ -2,7 +2,7 @@ import { finePointer } from "@/lib/pointer";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Accessibility, Database, Scale, BellRing, CalendarDays, Check, ChevronDown, Contrast, MonitorDown, SlidersHorizontal, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
 import { BottomSheet } from "@/components/app/sheet";
 import { ShortcutsSheet } from "@/components/app/shortcuts";
@@ -454,7 +454,11 @@ export function AlgoPanel() {
         options={RETENTION_OPTIONS.map((v) => ({ value: v, label: `${v}%` }))}
       />
       <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground" data-testid="retention-hint">
-        {ret === 90 ? "默认：复习间隔不缩放" : ret > 90 ? `间隔 ×${scale.toFixed(2)}：复习更勤，记得更牢，每天复习更多` : `间隔 ×${scale.toFixed(2)}：复习更少，代价是忘得多一些`}
+        {ret === 90
+          ? "默认 90%：大约十个词里忘一个"
+          : ret > 90
+            ? `${ret}%：大约二十个词里忘一个；复习更勤（间隔是默认的 ${Math.round(scale * 100)}%），每天要复习的更多`
+            : `${ret}%：大约七个词里忘一个；复习更少（间隔是默认的 ${Math.round(scale * 100)}%），代价是忘得多一些`}
       </p>
       <div className="mt-3 border-t border-border/60 pt-1">
         <Row label="间隔随机扰动" hint="间隔 ±5%，同一天学的词不会同一天扎堆">
@@ -484,8 +488,8 @@ export function AlgoPanel() {
           label="初始难度拟合"
           hint={
             fit.ok
-              ? `新词首答正确率 ${Math.round((fit.acc ?? 0) * 100)}% → 新词初始系数 ${fit.ease.toFixed(2)}`
-              : `再学 ${FIT_MIN - fit.n} 个新词后生效（需 ${FIT_MIN} 次首答）`
+              ? `新词第一次就答对 ${Math.round((fit.acc ?? 0) * 100)}%：新词的间隔按你的记性调整（系数 ${fit.ease.toFixed(2)}）`
+              : `再答 ${FIT_MIN - fit.n} 个新词后，按你的记性调整新词的间隔`
           }
         >
           <Switch checked={!!s.fitEase} onCheckedChange={(v) => setSettings({ fitEase: v })} aria-label="初始难度拟合" data-testid="fit-switch" />

@@ -51,6 +51,8 @@ export interface CleanReport {
   repaired: string[];
   /** 其他被丢掉或修正的条目（日志、打卡、生词本…） */
   other: number;
+  /** 11.3 · 从坏掉的原始数据里抢救出来的单词记录数（原文完好时没有） */
+  salvaged?: number;
 }
 
 export const emptyReport = (): CleanReport => ({ dropped: [], repaired: [], other: 0 });

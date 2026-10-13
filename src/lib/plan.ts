@@ -2,8 +2,8 @@ import type { WordIndex, Word } from "./data";
 import { posOf } from "./data";
 import { confusables, editDistance, isInflection } from "./confusables";
 import type { AppState, Settings } from "./store";
-import { timeReached } from "./habit";
-import { examModeOn } from "./examdate";
+import { pausedOn, timeReached } from "./habit";
+import { daysUntil, effectiveExam, examModeOn } from "./examdate";
 import { hasExampleCloze } from "./examples";
 import { chooseMode, practiceMode } from "./modes";
 import {
@@ -83,6 +83,30 @@ export interface TodaySummary {
   cut: boolean;
   /** 11.1 · 回归恢复期（新词暂停） */
   recovering: boolean;
+  /** 11.3 · 考试当天（考前模式里的那一天） */
+  examDay: boolean;
+  /** 11.3 · 考后「先休息」中：不排新词，复习只留维持量 */
+  paused: boolean;
+}
+
+/** 11.3 · 考前一天最多复习多少（最容易忘的先来）；考试当天只给一组热身；休息期间的维持量 */
+export const EXAM_EVE_CAP = 60;
+export const EXAM_DAY_CAP = 20;
+export const PAUSE_CAP = 20;
+
+/** 11.3 · 考前模式 / 休息期间今天最多复习多少（Infinity = 不另外限制） */
+export function specialCap(st: AppState, day: string): number {
+  if (pausedOn(st, day)) return PAUSE_CAP;
+  if (st.examPause || !examModeOn(day, st.settings.examDate)) return Infinity;
+  const cap = st.settings.reviewCap ?? 0;
+  if (daysUntil(day, effectiveExam(day, st.settings.examDate).day) === 0) return EXAM_DAY_CAP;
+  return cap > 0 ? Math.min(cap, EXAM_EVE_CAP) : EXAM_EVE_CAP;
+}
+
+/** 11.3 · 考前 / 休息：最容易忘的先复习（忘得多的、间隔短的、逾期久的在前） */
+export function forgetFirst(st: AppState, words: string[]): string[] {
+  const c = st.cards;
+  return [...words].sort((a, b) => c[b].l - c[a].l || c[a].i - c[b].i || (c[a].d < c[b].d ? -1 : c[a].d > c[b].d ? 1 : 0) || (a < b ? -1 : 1));
 }
 
 export function summarize(index: WordIndex, st: AppState, day: string): TodaySummary {
@@ -98,7 +122,10 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
   const due = Math.min(cappedDue(st, day, dueList.length), recoverQuota);
   // 11.2 · 考前模式（考试当天 / 前一天）：只复习，新词不设目标
   const examMode = !st.examPause && examModeOn(day, st.settings.examDate);
-  const goal = recovering || examMode ? 0 : st.newCut?.d === day ? Math.min(st.settings.daily, st.newCut.n) : st.settings.daily;
+  const examDay = examMode && daysUntil(day, effectiveExam(day, st.settings.examDate).day) === 0;
+  const paused = pausedOn(st, day);
+  // 11.3 · 恢复期和考试撞了、选了「边复习边学新词」：恢复期也有新词目标
+  const goal = paused || examMode ? 0 : recovering ? (st.recover!.mix ?? 0) : st.newCut?.d === day ? Math.min(st.settings.daily, st.newCut.n) : st.settings.daily;
   const remainingGoal = Math.max(0, goal - log.n);
   const timeMode = st.settings.goalMode === "time";
   const goalMin = st.settings.goalMin || 20;
@@ -116,11 +143,13 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
     started: bookTotal - left,
     checked: st.checkins.includes(day),
     // 考前模式没有新词目标：至少学 / 复习过一个才算完成（不给什么都没做的一天打勾）
-    ready: timeMode ? timeReached(log.ms, goalMin) : canCheckIn({ learnedToday: log.n, goal, newLeft: left, due }) && (!examMode || recovering || log.n + log.r > 0),
+    ready: timeMode ? timeReached(log.ms, goalMin) : canCheckIn({ learnedToday: log.n, goal, newLeft: left, due }) && (!(examMode || paused) || recovering || log.n + log.r > 0),
     finish: remainingGoal > 0 ? finishDate(day, left, st.settings.daily) : finishDate(addDays(day, 1), left, st.settings.daily),
     cut: goal < st.settings.daily,
     recovering,
     examMode,
+    examDay,
+    paused,
     remainingGoal,
     timeMode,
     ms: log.ms,
@@ -147,7 +176,10 @@ export function nextNewGroup(index: WordIndex, st: AppState, day: string): Sessi
 
 /** 复习上限：今天还能复习多少（0 = 不限） */
 export function cappedDue(st: AppState, day: string, dueAll: number): number {
-  const cap = st.settings.reviewCap ?? 0;
+  const cap0 = st.settings.reviewCap ?? 0;
+  // 11.3 · 考前一天 / 考试当天 / 休息期间另有上限
+  const sp = specialCap(st, day);
+  const cap = sp === Infinity ? cap0 : cap0 ? Math.min(cap0, sp) : sp;
   if (!cap) return dueAll;
   const done = st.log[day]?.r ?? 0;
   return Math.min(dueAll, Math.max(0, cap - done));
@@ -193,7 +225,8 @@ function modeFor(index: WordIndex, st: AppState, w: string, day: string): Sessio
 }
 
 export function reviewGroup(index: WordIndex, st: AppState, day: string): SessionItem[] {
-  const list = dueWords(st.cards, day);
+  const all = dueWords(st.cards, day);
+  const list = specialCap(st, day) === Infinity ? all : forgetFirst(st, all);
   return list
     .slice(0, Math.min(REVIEW_GROUP, cappedDue(st, day, list.length)))
     .map((w) => ({ w, kind: "review" as const, mode: modeFor(index, st, w, day) }));

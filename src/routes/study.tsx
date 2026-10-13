@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { today } from "@/lib/clock";
 import { Spinner } from "@/components/app/shell";
 import { Study, type StudyMode } from "@/components/app/study";
@@ -38,7 +38,8 @@ function NewGate({ index, t }: { index: NonNullable<ReturnType<typeof useWords>[
   const st = useApp();
   const day = today();
   const [confirm, setConfirm] = useState(false);
-  const recovering = !!st.recover && day >= st.recover.from && day <= st.recover.until;
+  // 11.3 · 选了「边复习边学新词」的恢复期可以学新词
+  const recovering = !!st.recover && day >= st.recover.from && day <= st.recover.until && !st.recover.mix;
   if (!recovering) return <Study key={`new-${t ?? 0}`} index={index} mode="new" />;
   return (
     <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center px-6 text-center" data-testid="new-paused">

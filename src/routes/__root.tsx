@@ -1,12 +1,16 @@
 import { Navigate, Outlet, createRootRoute, redirect, useRouter, useRouterState } from "@tanstack/react-router";
-import { Toaster } from "@/components/ui/sonner";
+import { lazy, Suspense } from "react";
+import { useToasterWanted, wantToaster } from "@/lib/toast";
+// 11.3 · 提示条第一次用到时才加载
+const Toaster = lazy(() => import("@/components/ui/sonner"));
 import { AppShell } from "@/components/app/shell";
-import { exportBackup, getState, resolvedTheme, unlockBadges, useApp } from "@/lib/store";
+import { creditMissed, exportBackup, getState, resolvedTheme, unlockBadges, useApp } from "@/lib/store";
+import { addDays } from "@/lib/srs";
 import { ACTIVE_PROFILE } from "@/lib/profiles";
 import { BADGES, badgeCtx, newlyEarned } from "@/lib/stats";
 import { getWordsSync } from "@/lib/data";
 import { today } from "@/lib/clock";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { applyUpdate, useSwUpdate } from "@/lib/sw";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,7 +18,7 @@ import { useEffect, useRef } from "react";
 import { requestPersist } from "@/lib/persist";
 import { useAppBadge, useReminder } from "@/lib/nudge";
 import { MilestoneOverlay } from "@/components/app/milestone";
-import { LoadFailed, Rescue, isChunkError } from "@/components/app/rescue";
+import { LoadFailed, Rescue, clearRetry, isChunkError } from "@/components/app/rescue";
 import { useSheetOpen } from "@/lib/back-stack";
 import { onExternalChange } from "@/lib/store";
 
@@ -79,6 +83,38 @@ function Root() {
       ),
     [],
   );
+  // 11.3 · 任务达标 = 打卡：打开（或切回前台）时把最近几天达标却没点打卡的日子补上，并说一声
+  useEffect(() => {
+    if (!st.onboarded) return;
+    const run = () => {
+      const d = today();
+      const r = creditMissed(d);
+      if (!r.days.length) return;
+      const y = r.days.includes(addDays(d, -1));
+      const md = (x: string) => `${Number(x.slice(5, 7))}/${Number(x.slice(8))}`;
+      toast.success(y && r.days.length === 1 ? "昨天的任务完成了，已帮你打卡" : `${r.days.map(md).join("、")} 的任务完成了，已帮你补上打卡`, {
+        id: "auto-credit",
+        description: r.streak > 0 ? `连续 ${r.streak} 天` : undefined,
+        duration: 3200,
+      });
+    };
+    run();
+    const vis = () => document.visibilityState === "visible" && run();
+    document.addEventListener("visibilitychange", vis);
+    window.addEventListener("focus", vis);
+    return () => {
+      document.removeEventListener("visibilitychange", vis);
+      window.removeEventListener("focus", vis);
+    };
+    // 换页面时也看一眼（学完一组、过了 0 点直接点回首页）
+  }, [st.onboarded, path]);
+  // 11.3 · 页面成功打开了：清掉「加载失败自动重试」的计数
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!document.querySelector('[data-testid="load-failed"]')) clearRetry();
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [path]);
   // 申请持久化存储，避免浏览器清理学习记录
   useEffect(() => {
     void requestPersist();
@@ -115,6 +151,12 @@ function Root() {
       document.removeEventListener("visibilitychange", vis);
     };
   }, [st.onboarded]);
+  // 11.3 · 提示条：第一次 toast 时加载；首页空闲 4 秒后也预热一下（第一次提示不用等下载）
+  const toasterOn = useToasterWanted();
+  useEffect(() => {
+    const t = setTimeout(wantToaster, 4000);
+    return () => clearTimeout(t);
+  }, []);
   // 学习提醒（到点发通知）与图标角标（待复习数）
   useReminder(st.settings.remindAt ?? "", st.onboarded);
   useAppBadge(st);
@@ -124,13 +166,17 @@ function Root() {
       <UpdatePrompt bare={bare} />
       <MilestoneOverlay />
       {/* 有底栏的页面：底部居中、浮在标签栏之上；学习/测试页底部是作答按钮，放顶部（让开刘海） */}
-      <Toaster
-        position={top ? "top-center" : "bottom-center"}
-        offset={top ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
-        mobileOffset={top ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
-        theme={resolvedTheme(theme)}
-        duration={1600}
-      />
+      {toasterOn && (
+        <Suspense fallback={null}>
+          <Toaster
+            position={top ? "top-center" : "bottom-center"}
+            offset={top ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
+            mobileOffset={top ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
+            theme={resolvedTheme(theme)}
+            duration={1600}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

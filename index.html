@@ -16,7 +16,8 @@
       html.light, html.light body { background-color: #faf7f2; color: #1f2230; }
       html.contrast, html.contrast body { background-color: #ffffff; color: #000000; }
       html.dark, html.dark body { background-color: #16171d; color: #f3f0ea; }
-      #boot { position: fixed; inset: 0; display: grid; place-items: center; font: 600 15px/1.4 -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif; letter-spacing: .08em; opacity: .55; }
+      #boot { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background-color: inherit; color: inherit; font: 600 15px/1.4 -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif; letter-spacing: .08em; }
+      #boot::after { content: ""; position: absolute; top: calc(50% + 24px); left: calc(50% - 28px); width: 56px; height: 3px; border-radius: 3px; background: currentColor; opacity: .18; }
     </style>
     <script>
       // React 加载前设置主题，避免闪烁（用户设置优先；iframe 内跟随父窗口）
@@ -41,7 +42,9 @@
     </script>
   </head>
   <body>
-    <div id="root"><div id="boot">四级单词打卡</div></div>
+    <div id="root"></div>
+    <!-- 11.3 · 启动画面盖在最上面，直到第一个页面渲染出来才撤掉（中间不闪白） -->
+    <div id="boot">四级单词打卡</div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

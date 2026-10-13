@@ -2,7 +2,7 @@ import { finePointer } from "@/lib/pointer";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Accessibility, Database, Scale, BellRing, CalendarDays, Check, ChevronDown, Contrast, MonitorDown, SlidersHorizontal, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
 import { BottomSheet } from "@/components/app/sheet";
 import { ShortcutsSheet } from "@/components/app/shortcuts";
@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
 import { download, fmtDate } from "@/lib/format";
-import { summarize } from "@/lib/plan";
+import { newWordsLeft, summarize } from "@/lib/plan";
 import {
   DAILY_OPTIONS,
   REVIEW_CAP_OPTIONS,
@@ -25,7 +25,7 @@ import {
   type Theme,
 } from "@/lib/store";
 import { usePersist } from "@/lib/persist";
-import { capReach, daysUntil, effectiveExam, sprintPlan, upcomingExams } from "@/lib/exam";
+import { capReach, daysUntil, effectiveExam, examAdvice, sprintPlan, upcomingExams } from "@/lib/exam";
 import { MAKEUP_EVERY, MAKEUP_MAX, REST_OPTIONS, TIME_GOALS, WEEKDAY_CN, type GoalMode } from "@/lib/habit";
 import { askNotify, badgeSupported, notifyPermission, notifySupported } from "@/lib/nudge";
 import { FONT_LABEL, FONT_SIZES, MOTION_LABEL, type FontSize, type Motion } from "@/lib/ux";
@@ -64,6 +64,10 @@ function MePage() {
   const exam = effectiveExam(day, s.examDate);
   const examPick = !exam.custom || s.examDate === exams[0].day ? 0 : s.examDate === exams[1].day ? 1 : 2;
   const plan = sprintPlan(day, exam.day, sum.newLeft);
+  // 11.3 · 全部词每天要 >50 个：推荐改学核心词（和首页冲刺卡、引导同一条规则），不推荐 95 个 / 天
+  const coreNewLeft = s.book === "core" ? sum.newLeft : newWordsLeft(index, { ...st, settings: { ...s, book: "core" } }, day).length;
+  const examAdv = examAdvice(day, exam.day, { book: s.book, daily: s.daily, newLeft: sum.newLeft, coreNewLeft });
+  const sw = examAdv?.kind === "switch" ? examAdv : null;
 
   const reg = readRegistry();
   const profile = reg.list.find((p) => p.id === ACTIVE_PROFILE);
@@ -138,6 +142,20 @@ function MePage() {
               </label>
             </div>
             </div>
+            {/* 11.3 · 词书决定「赶不赶得上考试」：放在顶层，紧挨着考试日期 */}
+            <Label>词书</Label>
+            <Segmented<Book>
+              value={s.book}
+              onChange={(v) => {
+                setSettings({ book: v });
+                toast.success(v === "core" ? `改学核心词（${index.coreCount} 个）` : `改学全部词（${index.list.length} 个）`);
+              }}
+              testid="me-book"
+              options={[
+                { value: "core", label: `核心词 ${index.coreCount}` },
+                { value: "all", label: `全部词 ${index.list.length}` },
+              ]}
+            />
             <Label>每日新词</Label>
             <div className={cn("grid gap-1.5", dailyOpts.length > 6 ? "grid-cols-7" : "grid-cols-6")} data-testid="daily">
               {dailyOpts.map((n) => (
@@ -160,11 +178,17 @@ function MePage() {
                   "新词已经全部学过，考前专心复习。"
                 ) : sum.examMode ? (
                   "考前模式：只复习学过的词，不再排新词。"
+                ) : sw ? (
+                  <>
+                    <b className="text-[14px] text-foreground">按考试算：改学核心词，每天 {sw.to} 个</b>
+                    <br />
+                    全部词每天要 {sw.need} 个才学得完{sw.to < sw.target ? `；核心词先每天 ${sw.to} 个，适应了再加到 ${sw.target} 个` : `；核心词${fmtDate(sw.finish)}学完`}
+                  </>
                 ) : plan.tooMany ? (
                   <>
                     <b className="text-[14px] text-foreground">每天 100 个，考前能学 {capReach(day, exam.day, plan.newLeft)} 个</b>
                     <br />
-                    剩下的 {plan.newLeft - capReach(day, exam.day, plan.newLeft)} 个考前来不及{s.book === "all" ? "，建议在「高级 → 词书」换核心词" : ""}
+                    剩下的 {plan.newLeft - capReach(day, exam.day, plan.newLeft)} 个考前来不及
                   </>
                 ) : (
                   <>
@@ -174,7 +198,21 @@ function MePage() {
                   </>
                 )}
               </div>
-              {plan.newLeft > 0 && !sum.examMode && (
+              {plan.newLeft > 0 && !sum.examMode && sw && (
+                <button
+                  type="button"
+                  data-testid="me-sprint-apply"
+                  data-core="1"
+                  onClick={() => {
+                    setSettings({ book: "core", daily: sw.to });
+                    toast.success(`改学核心词，每天 ${sw.to} 个`);
+                  }}
+                  className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-[13px] font-bold text-primary-foreground"
+                >
+                  改学核心词
+                </button>
+              )}
+              {plan.newLeft > 0 && !sum.examMode && !sw && (
                 <button
                   type="button"
                   data-testid="me-sprint-apply"

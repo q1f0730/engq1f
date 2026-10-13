@@ -6,10 +6,11 @@ import { today } from "./clock";
 import type { QuizRecord } from "./exam";
 import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
 import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
-import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, parseHM, type CheckInResult, type GoalMode, type PatchResult } from "./habit";
+import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, autoCredit, parseHM, type CheckInResult, type GoalMode, type PatchResult } from "./habit";
 import type { ShareTpl } from "./share";
 import { cleanFontSize, cleanMotion, motionReduced, type FontSize, type Motion } from "./ux";
 import { ACTIVE_PROFILE, revKeyOf, stateKeyOf } from "./profiles";
+import { isRawDump, unwrapRaw } from "./salvage";
 import { cleanCards, cleanDayMap, cleanDays, cleanFlags, cleanLog, emptyReport, isDay, optDay, type CleanReport } from "./validate";
 
 export type { CleanReport };
@@ -126,7 +127,7 @@ export interface AppState {
   /** v10 · 新词自适应建议关掉的那天 */
   newCutSeen?: string;
   /** 11.1 · 回归恢复计划：from–until 这几天只清积压、新词暂停 */
-  recover?: { from: string; until: string; n: number; perDay?: number; spread?: string; shifted?: number };
+  recover?: { from: string; until: string; n: number; perDay?: number; spread?: string; shifted?: number; mix?: number; asked?: boolean };
   /** 11.1 · 欢迎回来卡片关掉的那天 */
   recoverSeen?: string;
   /** 11.2 · 冲刺卡今天处理过（应用 / 关掉）：当天不再出现 */
@@ -137,6 +138,10 @@ export interface AppState {
   examDone?: string;
   /** 11.2 · 考完选了「先休息」：不排考试计划，直到重新选考试日期 */
   examPause?: boolean;
+  /** 11.3 · 记下「任务完成」的日子（最近 14 天）：过了 0 点 / 没点打卡也照样算打卡 */
+  goalMet?: string[];
+  /** 11.3 · 考后「先休息」：from 起不排新词、复习只留维持量、不算断签；until = 结束休息的那天 */
+  pause?: { from: string; until?: string };
   /** 11.2 · 整份替换（清空 / 覆盖导入 / 回滚）时换一个新值：别的窗口据此知道「记录被整份换掉了」，不再往上合并 */
   epoch?: string;
 }
@@ -320,6 +325,8 @@ export function normalize(raw: unknown, has?: (w: string) => boolean, rep: Clean
             ...(Number.isInteger(r.recover.perDay) && (r.recover.perDay as number) > 0 ? { perDay: r.recover.perDay } : {}),
             ...(isDay(r.recover.spread) ? { spread: r.recover.spread } : {}),
             ...(Number.isInteger(r.recover.shifted) && (r.recover.shifted as number) > 0 ? { shifted: r.recover.shifted } : {}),
+            ...(Number.isInteger(r.recover.mix) && (r.recover.mix as number) > 0 ? { mix: r.recover.mix } : {}),
+            ...(r.recover.asked === true ? { asked: true } : {}),
           }
         : undefined,
     recoverSeen: optDay(r.recoverSeen),
@@ -327,6 +334,8 @@ export function normalize(raw: unknown, has?: (w: string) => boolean, rep: Clean
     sprintOff: optDay(r.sprintOff),
     examDone: optDay(r.examDone),
     examPause: r.examPause === true ? true : undefined,
+    goalMet: Array.isArray(r.goalMet) ? r.goalMet.filter(isDay).slice(-14) : undefined,
+    pause: r.pause && typeof r.pause === "object" && isDay(r.pause.from) ? { from: r.pause.from, ...(isDay(r.pause.until) ? { until: r.pause.until } : {}) } : undefined,
     epoch: str(r.epoch),
   };
 }
@@ -607,7 +616,7 @@ export function applyLook(s: Pick<Settings, "fontSize" | "motion">) {
 
 export function setSettings(patch: Partial<Settings>) {
   // 11.2 · 重新选了考试日期 = 结束「先休息」
-  commit({ ...state, ...("examDate" in patch ? { examPause: undefined } : {}), settings: { ...state.settings, ...patch } });
+  commit({ ...state, ...("examDate" in patch ? { examPause: undefined, ...(state.pause && !state.pause.until ? { pause: { ...state.pause, until: today() } } : {}) } : {}), settings: { ...state.settings, ...patch } });
 }
 
 /** extra：引导里已经看过的计划提示（当天不再弹冲刺卡等） */
@@ -704,6 +713,20 @@ export function checkIn(day: string): CheckInResult {
   const r = applyCheckIn(state, day);
   if (r.checkins !== state.checkins) commit({ ...state, checkins: r.checkins, makeup: r.makeup, makeupEarned: r.makeupEarned });
   return r;
+}
+
+/** 11.3 · 记下「这一天的任务完成了」（之后没点打卡、过了 0 点也照样算打卡） */
+export function markGoalMet(day: string) {
+  if (state.goalMet?.includes(day)) return;
+  commit({ ...state, goalMet: [...(state.goalMet ?? []), day].sort().slice(-14) });
+}
+
+/** 11.3 · 打开时补记最近几天达标却没打卡的日子；返回补上的日子（没有就是空数组） */
+export function creditMissed(day: string): { days: string[]; streak: number } {
+  const r = autoCredit(state, day);
+  if (!r) return { days: [], streak: 0 };
+  commit({ ...state, checkins: r.checkins, makeup: r.makeup, makeupEarned: r.makeupEarned });
+  return { days: r.days, streak: r.streak };
 }
 
 /** 用 1 张补卡补昨天 */
@@ -828,9 +851,41 @@ export function dismissSprint(day: string, offExam?: string) {
   commit({ ...state, sprintSeen: day, ...(offExam ? { sprintOff: offExam } : {}) });
 }
 
-/** 11.2 · 考完了：next = 备考下一场（examDate 清空 = 自动下一场）；rest = 先休息 */
-export function ackExam(passed: string, choice: "next" | "rest") {
-  commit({ ...state, examDone: passed, examPause: choice === "rest" ? true : undefined, settings: { ...state.settings, examDate: "" } });
+/**
+ * 11.2 · 考完了：next = 备考下一场（examDate 清空 = 自动下一场；plan = 按新日期重新推荐的词书和每日新词）；
+ * 11.3 · rest = 真的休息：不排新词、复习只留维持量、休息期间不算断签（pause）
+ */
+export function ackExam(passed: string, choice: "next" | "rest", day = today(), plan?: { book: Book; daily: number }) {
+  commit({
+    ...state,
+    examDone: passed,
+    examPause: choice === "rest" ? true : undefined,
+    pause: choice === "rest" ? { from: day } : state.pause,
+    sprintSeen: choice === "next" ? day : state.sprintSeen,
+    settings: { ...state.settings, examDate: "", ...(plan ? { book: plan.book, daily: plan.daily } : {}) },
+  });
+}
+
+/**
+ * 11.3 · 结束休息：休息期间攒下的复习从今天起按天摊开（cards / until 由调用方算好；没有积压就不摊），
+ * 休息那几天照样不算断签（pause.until = 今天）。
+ */
+export function endPause(day: string, spread?: { cards: Record<string, Card>; until: string; n: number; perDay: number }) {
+  const pause = state.pause ? { from: state.pause.from, until: day } : undefined;
+  commit({
+    ...state,
+    examPause: undefined,
+    pause,
+    ...(spread ? { cards: spread.cards, recover: { from: day, until: spread.until, n: spread.n, perDay: spread.perDay, spread: day }, recoverSeen: day } : {}),
+  });
+}
+
+/** 11.3 · 恢复期和考试撞了：mix = 边复习边每天学几个新词；0 = 先清积压（只问一次） */
+export function chooseRecoverMix(mix: number) {
+  if (!state.recover) return;
+  const { mix: _old, ...rest } = state.recover;
+  void _old;
+  commit({ ...state, recover: { ...rest, ...(mix > 0 ? { mix } : {}), asked: true } });
 }
 
 export function dismissRecover(day: string) {
@@ -850,6 +905,7 @@ export function exportBackup(): string {
 }
 
 export const NEWER_MSG = "这份备份来自更新的版本，请先更新 app 再导入";
+export const RAW_DEAD_MSG = "这份原始数据坏得太厉害，一个单词记录都没救出来";
 
 /** 解析明文备份（不提交）：文件 / 剪贴板 / 快照共用。has 给了就丢掉词库里没有的词；rep 收集丢掉 / 修正的条数 */
 export function parseBackup(text: string, has?: (w: string) => boolean, rep: CleanReport = emptyReport()): AppState {
@@ -859,8 +915,15 @@ export function parseBackup(text: string, has?: (w: string) => boolean, rep: Cle
   } catch {
     throw new Error("文件不是有效的 JSON");
   }
-  const p = parsed as { app?: string; version?: unknown; state?: unknown };
+  let p = parsed as { app?: string; version?: unknown; state?: unknown; salvaged?: unknown };
+  // 11.3 · 救援页导出的原始数据：能读就读，坏了就逐条抢救
+  if (isRawDump(p)) {
+    const u = unwrapRaw(p.raw);
+    if (!u) throw new Error(RAW_DEAD_MSG);
+    p = { app: p.app, version: BACKUP_VERSION, state: u.state, salvaged: u.salvaged };
+  }
   if (p?.app !== "cet4-vocab" || !p.state || typeof p.state !== "object") throw new Error("这不是四级单词打卡的备份文件");
+  if (typeof p.salvaged === "number") rep.salvaged = p.salvaged;
   const sv = (p.state as { v?: unknown }).v;
   if ((typeof p.version === "number" && p.version > BACKUP_VERSION) || (typeof sv === "number" && sv > STATE_VERSION)) throw new Error(NEWER_MSG);
   return normalize(p.state, has, rep);

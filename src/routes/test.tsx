@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Check, Gauge, Timer, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Spinner } from "@/components/app/shell";
 import { now } from "@/lib/clock";
 import { shortMeaning, useWords, type Word, type WordIndex } from "@/lib/data";

@@ -1,6 +1,6 @@
 import { Check, Download, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { SHARE_TPLS, canShareFile, drawShareCard, shareImage, type ShareInfo, type ShareTpl } from "@/lib/share";
 import { setSettings, useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";

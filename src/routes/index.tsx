@@ -25,28 +25,32 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { toast } from "@/lib/toast";
 import { Ring, WeekStrip } from "@/components/app/charts";
 import { Logo, Panel, PanelTitle, Spinner } from "@/components/app/shell";
 import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 import { INSTALL_SNOOZE_DAYS, installVisible } from "@/lib/ux";
-import { ShareSheet } from "@/components/app/share-sheet";
-import { WordSheet } from "@/components/app/word-bits";
+// 11.3 · 分享图 / 单词详情只在点开时才加载（首屏 JS 预算）
+const ShareSheet = lazy(() => import("@/components/app/share-sheet").then((m) => ({ default: m.ShareSheet })));
+const WordSheet = lazy(() => import("@/components/app/word-bits").then((m) => ({ default: m.WordSheet })));
 import { speak } from "@/lib/audio";
 import { now, today } from "@/lib/clock";
 import { getWordsSync, shortMeaning, useWords, type WordIndex } from "@/lib/data";
-import { newWordsLeft, notebookWords, summarize, wordOfDay } from "@/lib/plan";
-import { addDays, diffDays } from "@/lib/srs";
+import { PAUSE_CAP, newWordsLeft, notebookWords, summarize, wordOfDay } from "@/lib/plan";
+import { addDays, diffDays, dueWords } from "@/lib/srs";
 import {
   ackExam,
   checkIn,
   dismissNewCut,
   dismissSprint,
+  chooseRecoverMix,
   dismissRecover,
   dismissWeekReport,
+  endPause,
   endRecover,
   getState,
+  markGoalMet,
   patchYesterday,
   respreadRecover,
   setNewCut,
@@ -57,10 +61,10 @@ import {
   useApp,
   type AppState,
 } from "@/lib/store";
-import { MAKEUP_EVERY, MAKEUP_MAX, WEEKDAY_CN, canPatch, curStreak, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf } from "@/lib/habit";
+import { MAKEUP_EVERY, MAKEUP_MAX, WEEKDAY_CN, brokenStreak, canPatch, curStreak, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf } from "@/lib/habit";
 import { celebrate } from "@/lib/celebrate";
-import { capReach, coreUnmastered, effectiveExam, examAdvice, nextExamDate, passedExam, quizDoneOn, sprintPlan, upcomingExams, type ExamAdvice, type SprintPlan } from "@/lib/exam";
-import { QUIZ_MIN_LEARNED, homeAdvice, lastActive, recoverPerDay, recoverTick, recoveryPlan, type Advice } from "@/lib/coach";
+import { SPRINT_MAX, capReach, coreUnmastered, daysUntil, effectiveExam, examAdvice, nextExamDate, passedExam, quizDoneOn, recommendPlan, sprintPlan, upcomingExams, type ExamAdvice, type SprintPlan } from "@/lib/exam";
+import { QUIZ_MIN_LEARNED, RECOVER_RESTART_GAP, homeAdvice, lastActive, recoverGap, recoverPerDay, recoverTick, recoveryPlan, type Advice } from "@/lib/coach";
 import { NEW_CARD_SEC, REVIEW_CARD_SEC } from "@/lib/ux";
 import { backupDue } from "@/lib/persist";
 import { useShareInfo } from "@/lib/use-share";
@@ -87,6 +91,8 @@ function Today() {
   const [share, setShare] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [justChecked, setJustChecked] = useState(false);
+  // 11.3 · 考前 / 休息时额外学新词：先确认
+  const [extraAsk, setExtraAsk] = useState(false);
   const checking = useRef(false);
   const info = useShareInfo(index);
   const canPrompt = useInstallPrompt();
@@ -94,24 +100,37 @@ function Today() {
   useLayoutEffect(() => {
     const s0 = getState();
     const d = today();
+    // 11.3 · 恢复期中途断了好几天：先问（欢迎回来卡），不悄悄顺延
+    if (s0.recoverSeen !== d && recoverGap(s0.recover, lastActive(s0.log, s0.checkins, d), d) >= RECOVER_RESTART_GAP) return;
     const t = recoverTick(s0.cards, s0.recover, d, s0.settings.reviewCap ?? 0, s0.log[d]?.r ?? 0);
     if (t) respreadRecover(t.cards, t.until, t.n, t.shifted, d);
-  }, [st.recover, st.cards]);
+  }, [st.recover, st.cards, st.recoverSeen]);
+  // 11.3 · 今天的任务完成了就记下来：没点打卡、过了 0 点，这一天照样算打卡
+  useEffect(() => {
+    const idx = getWordsSync();
+    if (!idx) return;
+    const d = today();
+    const s0 = summarize(idx, getState(), d);
+    if (s0.ready && !s0.checked) markGoalMet(d);
+  }, [st.log, st.checkins, index]);
   if (error) return <div className="p-8 text-center text-sm text-muted-foreground">{error}</div>;
-  if (!index) return <Spinner />;
+  if (!index) return <TodaySkeleton />;
 
   const day = today();
   const sum = summarize(index, st, day);
   const s = curStreak(st, day);
   const rest = restOf(st);
   const restToday = isRestDay(day, rest);
-  const late = lateWarning(new Date(now()).getHours(), sum.checked, restToday);
+  const late = lateWarning(new Date(now()).getHours(), sum.checked, restToday || sum.paused);
   const patchable = canPatch(st, day);
   const timePct = Math.min(1, sum.ms / (sum.goalMin * 60000));
   const minutes = Math.floor(sum.ms / 60000);
   const wod = wordOfDay(index, day);
   const pct = sum.timeMode ? Math.min(1, sum.ms / (sum.goalMin * 60000)) : sum.goal ? Math.min(1, sum.learned / sum.goal) : sum.due === 0 ? 1 : 0;
-  const learnLabel = sum.newLeft === 0 ? "词书已学完" : sum.examMode ? "多学一组" : sum.learned === 0 ? "开始学习" : sum.remainingGoal > 0 ? "学下一组" : "再学一组";
+  // 11.3 · 考前模式 / 休息期间不排新词：额外学一组要说清楚、要确认
+  const extraNew = sum.examMode || sum.paused;
+  const learnLabel = sum.newLeft === 0 ? "词书已学完" : extraNew ? "额外学一组新词" : sum.learned === 0 ? "开始学习" : sum.remainingGoal > 0 ? "学下一组" : "再学一组";
+  const nightOwl = new Date(now()).getHours() < 5;
   const exam = effectiveExam(day, st.settings.examDate);
   const official = upcomingExams(day, 3).find((e) => e.day === exam.day)?.official ?? false;
   const plan = sprintPlan(day, exam.day, sum.newLeft);
@@ -142,12 +161,14 @@ function Today() {
     examDay: exam.day,
     examMode: sum.examMode,
     examPause: st.examPause,
+    paused: sum.paused,
     examOver,
     sprintSeen: st.sprintSeen === day,
     sprintOff: st.sprintOff === exam.day,
     last: lastActive(st.log, st.checkins, day),
     recover: st.recover,
     recoverSeen: st.recoverSeen,
+    recoverGap: recoverGap(st.recover, lastActive(st.log, st.checkins, day), day),
     cut: st.newCut?.d === day ? st.newCut.n : null,
     cutSeen: st.newCutSeen === day,
     patchable,
@@ -159,19 +180,29 @@ function Today() {
     week: showWeekReport(st.log, day, st.weekSeen),
   });
   // 现在该干嘛：有到期复习先复习（旧词不巩固会越积越多），否则学新词
-  const reviewFirst = sum.due > 0 && (sum.learned > 0 || sum.recovering || sum.examMode || sum.newLeft === 0 || sum.due >= 10);
+  const reviewFirst = sum.due > 0 && (sum.learned > 0 || sum.recovering || sum.examMode || sum.paused || sum.newLeft === 0 || sum.due >= 10);
   const etaMin = Math.max(1, Math.round((Math.min(sum.remainingGoal, sum.newLeft) * NEW_CARD_SEC + sum.due * REVIEW_CARD_SEC) / 60));
   // 11.2 · 「还剩」一行：只拼有的部分（复习为 0 时不会多出一个点）
   const leftParts = [sum.due ? `复习 ${sum.due}` : "", sum.remainingGoal && sum.newLeft ? `新词 ${Math.min(sum.remainingGoal, sum.newLeft)}` : ""].filter(Boolean);
   // 恢复期 / 考前模式：主卡的大数字是「今天复习 x / 今天的量」
-  const reviewDay = sum.recovering || sum.examMode;
+  const reviewDay = sum.recovering || sum.examMode || sum.paused;
+  // 11.3 · 考前模式里一个复习都没有：不显示 100% 的圆环
+  const examIdle = sum.examMode && !sum.recovering && sum.reviewed + sum.due === 0;
   const canCheck = sum.ready && !sum.checked;
   // 11.2 · 没有复习时不放一个「复习 0」的空按钮
   const noSecond = !canCheck && !reviewFirst && sum.due === 0;
   const urgent = advice && (advice.kind === "recover-offer" || advice.kind === "recovering" || advice.kind === "exam-over" || advice.kind === "makeup");
   const lateOn = late && s > 0 && !sum.ready && !sum.checked && advice?.kind !== "recover-offer" && advice?.kind !== "recovering";
-  const showHabit = s > 0 || (st.makeup ?? 0) > 0 || st.checkins.length > 0 || rest >= 0;
+  // 11.3 · 连续 0 天不显示补卡说明；昨天刚断（又没补卡可用）时说一句，不悄悄清零
+  const showHabit = s > 0;
+  const lost = s === 0 && !patchable ? brokenStreak(st, day) : 0;
 
+  const guardNew = (isNew: boolean) => (e: React.MouseEvent) => {
+    if (isNew && extraNew && sum.newLeft > 0) {
+      e.preventDefault();
+      setExtraAsk(true);
+    }
+  };
   const doCheckIn = () => {
     // 11.1 · 连点只算一次：第一次点下去就锁住，toast 用固定 id 去重
     if (checking.current || getState().checkins.includes(day)) return;
@@ -202,7 +233,7 @@ function Today() {
         <div
           className={cn(
             "flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[14px] font-bold",
-            s > 0 ? "bg-brand-soft text-primary" : "bg-secondary text-muted-foreground",
+            s > 0 ? "bg-brand-soft text-primary" : "hidden",
           )}
           data-testid="streak"
           data-streak={s}
@@ -215,7 +246,7 @@ function Today() {
       <div className="grid gap-4 md:grid-cols-[1.3fr_1fr] md:gap-5">
         <div className="min-w-0 space-y-4 md:space-y-5">
           {/* 主卡片：现在该干嘛（11.2 · 第一屏只有这一张；断签提醒并进主卡，不再是单独的红色横幅） */}
-          <section className="hero-gradient relative overflow-hidden rounded-[32px] p-6 text-white shadow-[0_24px_60px_-28px_rgba(200,60,30,0.65)]" data-testid="hero" data-mode={sum.recovering ? "recover" : sum.examMode ? "exam" : "normal"}>
+          <section className="hero-gradient relative overflow-hidden rounded-[32px] p-6 text-white shadow-[0_24px_60px_-28px_rgba(200,60,30,0.65)]" data-testid="hero" data-mode={sum.recovering ? "recover" : sum.paused ? "pause" : sum.examMode ? "exam" : "normal"}>
             <div className="pointer-events-none absolute -bottom-24 -left-16 size-64 rounded-full bg-white/[0.07]" />
             {lateOn && <LateStrip sum={sum} streak={s} />}
             <div className="relative flex items-center justify-between gap-4">
@@ -231,11 +262,11 @@ function Today() {
                 ) : reviewDay ? (
                   <>
                     <div className="text-[13px] font-semibold text-white/80" data-testid="hero-label">
-                      {sum.recovering ? "恢复期 · 今天复习" : "考前模式 · 只复习"}
+                      {sum.recovering ? "恢复期 · 今天复习" : sum.paused ? "休息中 · 只做维持复习" : sum.examDay ? "今天考试 · 考前热身" : "考前模式 · 只复习"}
                     </div>
                     {sum.reviewed + sum.due === 0 && !sum.recovering ? (
                       <div className="mt-1 font-display text-[34px] font-extrabold leading-tight tracking-tight" data-testid="hero-review" data-done={0} data-total={0}>
-                        {plan.daysLeft === 0 ? "今天考试" : "明天考试"}
+                        {sum.paused ? "休息中" : plan.daysLeft === 0 ? "今天考试，加油" : "明天考试"}
                       </div>
                     ) : (
                       <div className="mt-1 flex items-baseline gap-1.5" data-testid="hero-review" data-done={sum.reviewed} data-total={sum.reviewed + sum.due}>
@@ -256,21 +287,31 @@ function Today() {
                   </>
                 )}
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-white/85">
-                  {(sum.timeMode || reviewDay) && <span data-testid={reviewDay && !sum.timeMode ? "learned" : undefined}>{sum.timeMode ? `新词 ${sum.learned}` : reviewDay ? (sum.recovering ? "新词暂停" : "不排新词") : ""}</span>}
+                  {(sum.timeMode || reviewDay) && (
+                    <span data-testid={reviewDay && !sum.timeMode ? "learned" : undefined}>
+                      {sum.timeMode ? `新词 ${sum.learned}` : reviewDay ? (sum.recovering ? (sum.goal ? `新词 ${sum.learned}/${sum.goal}` : "新词暂停") : sum.learned ? `额外新词 ${sum.learned}` : "不排新词") : ""}
+                    </span>
+                  )}
                   <span data-testid="due-count">待复习 {sum.due}</span>
                   {!reviewDay && <span>已复习 {sum.reviewed}</span>}
                   {sum.deferred > 0 && (
                     <span className="rounded-full bg-white/18 px-2 text-[12px] font-semibold" data-testid="deferred">
-                      {sum.recovering ? `顺延 ${sum.deferred}` : `已达上限 · 顺延 ${sum.deferred}`}
+                      {sum.recovering ? `顺延 ${sum.deferred}` : sum.examMode || sum.paused ? `其余 ${sum.deferred} 个不急` : `已达上限 · 顺延 ${sum.deferred}`}
                     </span>
                   )}
                 </div>
               </div>
-              <Ring value={reviewDay && !sum.timeMode ? (sum.reviewed + sum.due ? sum.reviewed / (sum.reviewed + sum.due) : 1) : pct} size={96} stroke={10} className="shrink-0 text-white" track="rgba(255,255,255,0.22)">
-                <span className="text-[13px] font-bold">{Math.round((reviewDay && !sum.timeMode ? (sum.reviewed + sum.due ? sum.reviewed / (sum.reviewed + sum.due) : 1) : pct) * 100)}%</span>
-              </Ring>
+              {examIdle || (sum.paused && sum.reviewed + sum.due === 0) ? (
+                <span className="grid size-24 shrink-0 place-items-center rounded-full bg-white/14 ring-1 ring-white/25" data-testid="hero-ring-idle">
+                  {sum.paused ? <Coffee className="size-9" /> : <GraduationCap className="size-10" />}
+                </span>
+              ) : (
+                <Ring value={reviewDay && !sum.timeMode ? (sum.reviewed + sum.due ? sum.reviewed / (sum.reviewed + sum.due) : 1) : pct} size={96} stroke={10} className="shrink-0 text-white" track="rgba(255,255,255,0.22)">
+                  <span className="text-[13px] font-bold" data-testid="hero-pct">{Math.round((reviewDay && !sum.timeMode ? (sum.reviewed + sum.due ? sum.reviewed / (sum.reviewed + sum.due) : 1) : pct) * 100)}%</span>
+                </Ring>
+              )}
             </div>
-            <div className={cn("relative mt-5 grid gap-2.5", sum.recovering || noSecond ? "grid-cols-1" : "grid-cols-[1.4fr_1fr]")} data-testid="hero-actions" data-next={canCheck ? "checkin" : reviewFirst ? "review" : "new"}>
+            <div className={cn("relative mt-5 grid gap-2.5", (sum.recovering && !sum.goal) || noSecond ? "grid-cols-1" : "grid-cols-[1.4fr_1fr]")} data-testid="hero-actions" data-next={canCheck ? "checkin" : reviewFirst ? "review" : "new"}>
               {canCheck ? (
                 <button
                   type="button"
@@ -280,7 +321,7 @@ function Today() {
                 >
                   <CalendarCheck className="size-5" /> 完成了，打卡
                 </button>
-              ) : sum.recovering && sum.due === 0 ? (
+              ) : sum.recovering && sum.due === 0 && !(sum.goal > 0 && sum.remainingGoal > 0) ? (
                 <div className="flex h-13 items-center justify-center gap-2 rounded-2xl bg-white/16 py-3.5 text-[15px] font-bold ring-1 ring-white/25" data-testid="recover-today-done">
                   <Check className="size-4" strokeWidth={3} /> 今天的积压清完了
                 </div>
@@ -288,6 +329,7 @@ function Today() {
                 <Link
                   to="/study"
                   search={{ mode: reviewFirst ? "review" : "new" }}
+                  onClick={guardNew(!reviewFirst)}
                   disabled={!reviewFirst && sum.newLeft === 0}
                   data-testid={reviewFirst ? "start-review" : "start-learn"}
                   className={cn(
@@ -300,24 +342,26 @@ function Today() {
                 </Link>
               )}
               {/* 恢复期只有一个主按钮：新词入口在下面的恢复卡里（「提前恢复新词」，要确认） */}
-              {!sum.recovering &&
+              {!(sum.recovering && !sum.goal) &&
                 !noSecond &&
                 (canCheck ? (
                   <Link
                     to="/study"
                     search={{ mode: sum.due > 0 ? "review" : "new" }}
+                    onClick={guardNew(sum.due === 0)}
                     data-testid={sum.due > 0 ? "start-review" : "start-learn"}
                     className={cn(
                       "flex items-center justify-center gap-1.5 rounded-2xl bg-white/16 py-3.5 text-[15px] font-bold text-white ring-1 ring-white/25 backdrop-blur transition active:scale-[0.98]",
                       sum.due === 0 && sum.newLeft === 0 && "pointer-events-none opacity-60",
                     )}
                   >
-                    {sum.due > 0 ? `复习 ${sum.due}` : sum.newLeft === 0 ? "词书已学完" : "再学一组"}
+                    {sum.due > 0 ? `复习 ${sum.due}` : sum.newLeft === 0 ? "词书已学完" : extraNew ? "额外学一组新词" : "再学一组"}
                   </Link>
                 ) : (
                   <Link
                     to="/study"
                     search={{ mode: reviewFirst ? "new" : "review" }}
+                    onClick={guardNew(reviewFirst)}
                     disabled={reviewFirst && sum.newLeft === 0}
                     data-testid={reviewFirst ? "start-learn" : "start-review"}
                     className={cn(
@@ -331,17 +375,43 @@ function Today() {
                   </Link>
                 ))}
             </div>
+            {extraAsk && (
+              <div className="relative mt-3 rounded-2xl bg-black/18 p-3 text-[13px]" data-testid="extra-new-confirm">
+                <p className="leading-snug text-white/90">{sum.examMode ? "考前不排新词，现在背的新词考场上多半还记不牢。" : "休息期间不排新词。"}确定额外学 10 个新词吗？</p>
+                <div className="mt-2.5 grid grid-cols-2 gap-2">
+                  <button type="button" data-testid="extra-new-cancel" onClick={() => setExtraAsk(false)} className="h-10 rounded-xl bg-white/16 font-semibold ring-1 ring-white/25">
+                    算了
+                  </button>
+                  <Link to="/study" search={{ mode: "new" }} data-testid="extra-new-go" className="flex h-10 items-center justify-center rounded-xl bg-white font-bold text-[oklch(0.5_0.19_30)]">
+                    学 10 个新词
+                  </Link>
+                </div>
+              </div>
+            )}
             <p className="relative mt-3 text-center text-[12.5px] font-medium text-white/85" data-testid="hero-now">
               {sum.checked
-                ? "今天已打卡 ✓ 想多学可以再来一组"
+                ? extraNew ? "今天已打卡 ✓" : "今天已打卡 ✓ 想多学可以再来一组"
                 : sum.ready
                   ? "今天的任务完成了 ✓"
                   : sum.timeMode
                     ? `还差 ${Math.max(0, sum.goalMin - minutes)} 分钟就能打卡`
-                    : leftParts.length
-                      ? `还剩 ${leftParts.join(" · ")} · 约 ${etaMin} 分钟`
-                      : "今天没有要做的了"}
+                    : examIdle
+                      ? sum.examDay
+                        ? "今天考试，加油！不用再背了"
+                        : "考前不用赶新词，可以看看高频词"
+                      : sum.examMode && sum.due
+                        ? sum.examDay
+                          ? `考前热身：最容易忘的 ${sum.due} 个 · 约 ${etaMin} 分钟，别的不用背了`
+                          : `考前最后一天：先复习最容易忘的 ${sum.due} 个 · 约 ${etaMin} 分钟`
+                        : leftParts.length
+                          ? `还剩 ${leftParts.join(" · ")} · 约 ${etaMin} 分钟`
+                          : "今天没有要做的了"}
             </p>
+            {nightOwl && !sum.ready && !sum.checked && leftParts.length > 0 && etaMin > 10 && (
+              <p className="relative mt-1 text-center text-[12px] text-white/75" data-testid="hero-night">
+                太晚了，先做 10 分钟，剩下的明天再说
+              </p>
+            )}
           </section>
 
           {advice && urgent && <AdviceCard advice={advice} day={day} st={st} index={index} onPatch={doPatch} patchedStreak={patchable ? patchedStreak(st, day) : 0} logs={st.log} />}
@@ -415,6 +485,11 @@ function Today() {
                 </div>
               )}
             </div>
+            {lost > 0 && !sum.checked && (
+              <p className="mt-3 border-t border-border/60 pt-3 text-[12px] leading-snug text-muted-foreground" data-testid="streak-lost" data-n={lost}>
+                昨天没完成任务，连续 {lost} 天断了。今天学完重新开始{(st.makeup ?? 0) === 0 ? "；每连续 7 天得 1 张补卡，下次漏了能补" : ""}。
+              </p>
+            )}
             {showHabit && (
               <div className="mt-3 flex items-center gap-2 border-t border-border/60 pt-3 text-[12px] text-muted-foreground" data-testid="habit-row">
                 <span className="flex items-center gap-1 rounded-full bg-vague-soft px-2.5 py-1 font-bold text-vague" data-testid="makeup-count" data-n={st.makeup ?? 0}>
@@ -486,8 +561,25 @@ function Today() {
         </div>
       </div>
 
-      <ShareSheet open={share} onOpenChange={setShare} info={info} />
-      <WordSheet word={wod} open={sheet} onOpenChange={setSheet} />
+      <Suspense fallback={null}>
+        {share && <ShareSheet open={share} onOpenChange={setShare} info={info} />}
+        {sheet && <WordSheet word={wod} open={sheet} onOpenChange={setSheet} />}
+      </Suspense>
+    </div>
+  );
+}
+
+/** 11.3 · 词库还在下载：先给首页的骨架（不是空白 + 转圈） */
+function TodaySkeleton() {
+  return (
+    <div data-testid="today-skeleton" aria-busy="true" aria-label="正在加载词库">
+      <div className="pb-4 pt-6 md:pt-8">
+        <div className="h-3.5 w-24 animate-pulse rounded bg-secondary" />
+        <div className="mt-2 h-8 w-32 animate-pulse rounded-lg bg-secondary" />
+      </div>
+      <div className="hero-gradient h-[236px] animate-pulse rounded-[32px] opacity-60" />
+      <div className="mt-4 h-[150px] animate-pulse rounded-3xl bg-secondary/70" />
+      <p className="mt-3 text-center text-[12px] text-muted-foreground">正在准备词库…</p>
     </div>
   );
 }
@@ -546,9 +638,9 @@ function AdviceCard({
         </section>
       );
     case "recovering":
-      return <RecoveringCard advice={advice} day={day} st={st} />;
+      return <RecoveringCard advice={advice} day={day} st={st} index={index} />;
     case "exam-over":
-      return <ExamOverCard advice={advice} />;
+      return <ExamOverCard advice={advice} index={index} st={st} day={day} />;
     case "makeup":
       return (
         <Notice
@@ -565,7 +657,7 @@ function AdviceCard({
         />
       );
     case "sprint":
-      return <SprintCard adv={advice.advice} exam={advice.exam} st={st} day={day} />;
+      return <SprintCard adv={advice.advice} exam={advice.exam} st={st} day={day} curFinish={summarize(index, st, day).finish} />;
     case "adaptive-cut":
       return (
         <Notice
@@ -616,7 +708,7 @@ function AdviceCard({
           icon={<HardDriveDownload className="size-5" />}
           tone="bg-vague-soft text-vague"
           title={st.lastBackup ? `${advice.days} 天没备份了` : "还没备份过学习记录"}
-          sub="记录只在这台手机上，清理浏览器就没了"
+          sub="记录只存在这台手机上：删掉图标、卸载或清理浏览器，记录就全没了"
           action={
             <div className="flex shrink-0 items-center gap-1">
               <button type="button" data-testid="backup-snooze" onClick={() => snoozeBackup(addDays(day, 3))} className="rounded-full px-2.5 py-2 text-[13px] font-semibold text-muted-foreground">
@@ -680,16 +772,21 @@ const summarizeDue = (st: AppState, day: string) => {
 const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
 
 /** 11.2 · 恢复期进度：漏了一天会自动顺延；新词入口是「提前恢复新词」，要确认，确认后结束恢复计划 */
-function RecoveringCard({ advice, day, st }: { advice: Extract<Advice, { kind: "recovering" }>; day: string; st: AppState }) {
+function RecoveringCard({ advice, day, st, index }: { advice: Extract<Advice, { kind: "recovering" }>; day: string; st: AppState; index: WordIndex }) {
   const [confirm, setConfirm] = useState(false);
+  // 11.3 · 恢复期和考试撞了（新词要停到考前不到 14 天）：问一次，边复习边学新词还是先清积压
+  const examDay = effectiveExam(day, st.settings.examDate).day;
+  const mixTo = Math.max(5, Math.min(st.settings.daily, 20));
+  const clash = !st.recover?.asked && !st.examPause && diffDays(advice.until, examDay) < 14 && newWordsLeft(index, st, day).length > 0;
+  const mix = st.recover?.mix ?? 0;
   const last = lastActive(st.log, st.checkins, day);
   const missed = last && last >= (st.recover?.from ?? day) ? diffDays(last, day) - 1 : 0;
   const shiftedToday = advice.shifted > 0 && st.recover?.spread === day;
   const sub = shiftedToday
     ? `${missed > 0 ? `漏了 ${missed} 天` : "昨天没清完"}，已顺延到 ${md(advice.until)} · 今天清 ${advice.due} 个`
     : advice.due
-      ? `今天清 ${advice.due} 个积压，新词暂停`
-      : "今天的积压清完了，新词暂停";
+      ? `今天清 ${advice.due} 个积压，${mix ? `新词每天 ${mix} 个` : "新词暂停"}`
+      : `今天的积压清完了，${mix ? `新词每天 ${mix} 个` : "新词暂停"}`;
   return (
     <section className="rounded-3xl border border-border/70 bg-card p-3.5 pr-4" data-testid="recovering" data-shifted={shiftedToday ? advice.shifted : 0} data-until={advice.until}>
       <div className="flex items-center gap-3">
@@ -704,12 +801,43 @@ function RecoveringCard({ advice, day, st }: { advice: Extract<Advice, { kind: "
             {sub}
           </div>
         </div>
-        {!confirm && (
+        {!confirm && !clash && !mix && (
           <button type="button" data-testid="recover-end" onClick={() => setConfirm(true)} className="shrink-0 rounded-full bg-secondary px-3 py-2 text-[12.5px] font-bold">
             提前恢复新词
           </button>
         )}
       </div>
+      {clash && (
+        <div className="mt-3 rounded-2xl bg-vague-soft p-3 text-[12.5px]" data-testid="recover-clash">
+          <p className="font-semibold text-vague">
+            新词要停到 {md(advice.until)}，那时离考试只剩 {Math.max(0, diffDays(advice.until, examDay))} 天。怎么安排？
+          </p>
+          <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              data-testid="recover-mix"
+              onClick={() => {
+                chooseRecoverMix(mixTo);
+                toast.success(`边复习边学新词：每天 ${mixTo} 个`);
+              }}
+              className="h-10 rounded-xl bg-vague px-1 text-[12.5px] font-bold text-white dark:text-[oklch(0.2_0.03_80)]"
+            >
+              边复习边每天 {mixTo} 个新词
+            </button>
+            <button
+              type="button"
+              data-testid="recover-clear"
+              onClick={() => {
+                chooseRecoverMix(0);
+                toast("先清积压，清完新词自动恢复");
+              }}
+              className="h-10 rounded-xl bg-card text-[12.5px] font-semibold"
+            >
+              先清积压
+            </button>
+          </div>
+        </div>
+      )}
       {confirm && (
         <div className="mt-3 rounded-2xl bg-secondary/70 p-3 text-[12.5px]" data-testid="recover-end-sheet">
           <p className="text-muted-foreground">结束恢复计划？没清完的积压会按正常复习安排，可能一天比较多。</p>
@@ -735,45 +863,87 @@ function RecoveringCard({ advice, day, st }: { advice: Extract<Advice, { kind: "
   );
 }
 
-/** 11.2 · 考完了：问一句再换计划 */
-function ExamOverCard({ advice }: { advice: Extract<Advice, { kind: "exam-over" }> }) {
+/**
+ * 11.2 · 考完了：问一句再换计划。
+ * 11.3 · 「备考下一场」先按新日期重新推荐一次（和引导同一个引擎），卡片上给出「X 词，每天 N 个 · 应用」；
+ *        「先休息」真的休息：不排新词、复习只留维持量、不算断签。
+ */
+function ExamOverCard({ advice, index, st, day }: { advice: Extract<Advice, { kind: "exam-over" }>; index: WordIndex; st: AppState; day: string }) {
+  const [step, setStep] = useState<"ask" | "plan">("ask");
+  const allLeft = newWordsLeft(index, { ...st, settings: { ...st.settings, book: "all" } }, day).length;
+  const coreLeft = newWordsLeft(index, { ...st, settings: { ...st.settings, book: "core" } }, day).length;
+  const rec = recommendPlan(day, advice.next, { all: allLeft, core: coreLeft });
+  const left = rec.book === "all" ? allLeft : coreLeft;
+  const recDaily = left === 0 ? st.settings.daily : rec.plan.tooMany ? SPRINT_MAX : rec.plan.daily;
+  const bookName = rec.book === "all" ? "全部词" : "核心词";
+  const recLine =
+    left === 0
+      ? `${bookName}都学过了，考前专心复习`
+      : rec.plan.tooMany
+        ? `${bookName}每天 ${SPRINT_MAX} 个，考前能学 ${capReach(day, advice.next, left)} / ${left} 个`
+        : `${bookName}，每天 ${recDaily} 个，考前 ${rec.plan.spare} 天学完`;
   return (
-    <section className="rounded-3xl border border-primary/30 bg-card p-4" data-testid="exam-over" data-exam={advice.exam}>
+    <section className="rounded-3xl border border-primary/30 bg-card p-4" data-testid="exam-over" data-exam={advice.exam} data-step={step}>
       <div className="flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
           <GraduationCap className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[16px] font-extrabold leading-tight">四级考完了，辛苦了</div>
-          <div className="mt-1 text-[13px] leading-snug text-muted-foreground">
-            {advice.custom ? `你设的考试日 ${fmtDate(advice.exam)} 已经过了。` : `${fmtDate(advice.exam)} 那场已经考完。`}接下来怎么安排？
+          <div className="text-[16px] font-extrabold leading-tight">{step === "ask" ? "四级考完了，辛苦了" : `备考 ${fmtDate(advice.next, true)}`}</div>
+          <div className="mt-1 text-[13px] leading-snug text-muted-foreground" data-testid="exam-over-sub">
+            {step === "ask" ? (
+              <>{advice.custom ? `你设的考试日 ${fmtDate(advice.exam)} 已经过了。` : `${fmtDate(advice.exam)} 那场已经考完。`}接下来怎么安排？</>
+            ) : (
+              <>
+                还有 {daysUntil(day, advice.next)} 天。按新日期重新算了一下：<b className="text-foreground" data-testid="exam-next-plan" data-book={rec.book} data-daily={recDaily}>{recLine}</b>
+              </>
+            )}
           </div>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
-        <button
-          type="button"
-          data-testid="exam-next"
-          onClick={() => {
-            ackExam(advice.exam, "next");
-            toast.success(`改为备考 ${fmtDate(advice.next, true)}`);
-          }}
-          className="h-11 rounded-2xl bg-primary text-[14px] font-bold text-primary-foreground"
-        >
-          备考下一场（{Number(advice.next.slice(5, 7))} 月）
-        </button>
-        <button
-          type="button"
-          data-testid="exam-rest"
-          onClick={() => {
-            ackExam(advice.exam, "rest");
-            toast("先休息一下", { description: "考试计划暂停，想备考时在「我的」选考试日期" });
-          }}
-          className="h-11 rounded-2xl bg-secondary text-[14px] font-semibold"
-        >
-          先休息
-        </button>
-      </div>
+      {step === "ask" ? (
+        <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
+          <button type="button" data-testid="exam-next" onClick={() => setStep("plan")} className="h-11 rounded-2xl bg-primary text-[14px] font-bold text-primary-foreground">
+            备考下一场（{Number(advice.next.slice(5, 7))} 月）
+          </button>
+          <button
+            type="button"
+            data-testid="exam-rest"
+            onClick={() => {
+              ackExam(advice.exam, "rest", day);
+              toast("先休息一下", { description: `不排新词，每天最多 ${PAUSE_CAP} 个维持复习，休息期间不算断签` });
+            }}
+            className="h-11 rounded-2xl bg-secondary text-[14px] font-semibold"
+          >
+            先休息
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
+          <button
+            type="button"
+            data-testid="exam-next-apply"
+            onClick={() => {
+              ackExam(advice.exam, "next", day, left === 0 ? undefined : { book: rec.book, daily: recDaily });
+              toast.success(`改为备考 ${fmtDate(advice.next, true)}`, { description: left === 0 ? undefined : `${bookName}，每天 ${recDaily} 个` });
+            }}
+            className="h-11 rounded-2xl bg-primary text-[14px] font-bold text-primary-foreground"
+          >
+            应用这个计划
+          </button>
+          <button
+            type="button"
+            data-testid="exam-next-keep"
+            onClick={() => {
+              ackExam(advice.exam, "next", day);
+              toast.success(`改为备考 ${fmtDate(advice.next, true)}`, { description: `保持每天 ${st.settings.daily} 个，可以在「我的」调整` });
+            }}
+            className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold"
+          >
+            保持现在的
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -782,7 +952,7 @@ function ExamOverCard({ advice }: { advice: Extract<Advice, { kind: "exam-over" 
  * 考试计划落后时的建议（11.2）：和新手引导同一个引擎（examAdvice）。
  * 每个按钮点下去状态一定会变；已经是上限时只给一张能关掉的信息卡。
  */
-function SprintCard({ adv, exam, st, day }: { adv: ExamAdvice; exam: string; st: AppState; day: string }) {
+function SprintCard({ adv, exam, st, day, curFinish }: { adv: ExamAdvice; exam: string; st: AppState; day: string; curFinish: string }) {
   const daily = st.settings.daily;
   const bookName = st.settings.book === "core" ? "核心词" : "词";
   let title: string;
@@ -802,11 +972,21 @@ function SprintCard({ adv, exam, st, day }: { adv: ExamAdvice; exam: string; st:
     };
   } else if (adv.kind === "raise") {
     target = adv.to;
-    title = `冲刺计划：每天 ${adv.target} 词`;
-    sub =
-      adv.to < adv.target
-        ? `现在每天 ${daily} 个会来不及 · 先加到 ${adv.to} 个，适应了再加到 ${adv.target} 个`
-        : `现在每天 ${daily} 个会来不及 · 改成 ${adv.to} 个，${fmtDate(adv.finish)}学完${adv.spare ? `，考前留 ${adv.spare} 天复习` : ""}`;
+    // 11.3 · 现在的量能在考前学完、只是复习时间少：不说「来不及」（和考试卡、引导同一个判定）
+    const curSpare = diffDays(curFinish, exam);
+    if (curSpare >= 0) {
+      title = `每天 ${daily} 个能在考前 ${curSpare} 天学完`;
+      sub =
+        adv.to < adv.target
+          ? `想多留时间复习：先加到 ${adv.to} 个，适应了再加到 ${adv.target} 个（考前留 ${adv.spare} 天）`
+          : `改成 ${adv.to} 个，${fmtDate(adv.finish)}学完，能多留 ${Math.max(1, adv.spare - curSpare)} 天复习`;
+    } else {
+      title = `冲刺计划：每天 ${adv.target} 词`;
+      sub =
+        adv.to < adv.target
+          ? `现在每天 ${daily} 个考前学不完 · 先加到 ${adv.to} 个，适应了再加到 ${adv.target} 个`
+          : `现在每天 ${daily} 个考前学不完 · 改成 ${adv.to} 个，${fmtDate(adv.finish)}学完${adv.spare ? `，考前留 ${adv.spare} 天复习` : ""}`;
+    }
     label = `改成每天 ${adv.to} 个`;
     apply = () => {
       setSettings({ daily: adv.to });
@@ -896,11 +1076,17 @@ function ExamCard({
 }) {
   if (paused)
     return (
-      <Link to="/me" className="flex items-center gap-3 rounded-3xl border border-border/70 bg-card p-4" data-testid="exam-card" data-paused="1">
-        <GraduationCap className="size-5 text-muted-foreground" />
-        <span className="min-w-0 flex-1 text-[13px] text-muted-foreground">考试计划已暂停 · 想备考时选一场考试</span>
-        <ChevronRight className="size-5 text-muted-foreground" />
-      </Link>
+      <section className="rounded-3xl border border-border/70 bg-card p-4" data-testid="exam-card" data-paused="1">
+        <div className="flex items-center gap-3">
+          <Coffee className="size-5 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 text-[13px] leading-snug text-muted-foreground">
+            {sum.paused ? `休息中：不排新词，每天最多 ${PAUSE_CAP} 个维持复习，不算断签` : "考试计划已暂停 · 想备考时选一场考试"}
+          </span>
+        </div>
+        <button type="button" data-testid="pause-end" onClick={() => resumeFromPause(day)} className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-secondary text-[14px] font-bold">
+          休息够了，开始备考下一场
+        </button>
+      </section>
     );
   const onTrack = plan.newLeft === 0 || (!plan.tooMany && daily >= plan.daily);
   // 11.2 · 学不完时：诚实的冲刺目标（不报「赶不上考试」的学完日期）
@@ -967,6 +1153,21 @@ function ExamCard({
       )}
     </section>
   );
+}
+
+/** 11.3 · 结束休息：攒下的复习从今天起摊开（每天额度以内），不弹「积压 N 个」 */
+function resumeFromPause(day: string) {
+  const s0 = getState();
+  const per = recoverPerDay(s0.settings.reviewCap ?? 0);
+  const backlog = dueWords(s0.cards, day).length;
+  if (backlog > per) {
+    const r = recoveryPlan(s0.cards, day, per);
+    endPause(day, { cards: r.cards, until: r.until, n: r.days, perDay: per });
+    toast.success("欢迎回来，开始备考下一场", { description: `休息期间攒了 ${backlog} 个复习，分 ${r.days} 天清完，每天 ${per} 个以内` });
+  } else {
+    endPause(day);
+    toast.success("欢迎回来，开始备考下一场");
+  }
 }
 
 /** 周一的上周周报：与前一周对比 */
@@ -1057,7 +1258,7 @@ function InstallCard({ day, installed, snooze }: { day: string; installed?: bool
         <Logo className="size-12 shrink-0 drop-shadow-[0_6px_12px_rgba(200,60,30,0.3)]" />
         <div className="min-w-0 flex-1">
           <div className="text-[15px] font-bold leading-tight">添加到桌面</div>
-          <div className="mt-0.5 text-[12px] leading-snug text-muted-foreground">从桌面图标全屏打开，没网也能背</div>
+          <div className="mt-0.5 text-[12px] leading-snug text-muted-foreground" data-testid="install-warn">从桌面图标全屏打开，没网也能背。记录只存在这台手机上，删掉图标会连记录一起删，记得定期导出备份</div>
         </div>
         <button
           type="button"
@@ -1074,7 +1275,7 @@ function InstallCard({ day, installed, snooze }: { day: string; installed?: bool
         data-testid="install-go"
         onClick={async () => {
           const r = await promptInstall();
-          if (r === "accepted") toast.success("已添加到桌面", { description: "以后从桌面图标打开就行" });
+          if (r === "accepted") toast.success("已添加到桌面", { description: "删掉图标会连记录一起删，记得在「我的 → 数据与备份」定期导出", duration: 4000 });
           else if (r === "dismissed") snoozeInstall(addDays(day, INSTALL_SNOOZE_DAYS));
         }}
         className="relative mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[14px] font-bold text-primary-foreground shadow-md shadow-primary/20 transition active:scale-[0.98]"

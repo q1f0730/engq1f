@@ -66,7 +66,7 @@ export function examModeOn(today: string, setting?: string): boolean {
 export const EXAM_OVER_WINDOW = 30;
 
 /**
- * 刚考完的那一场：自定日期已经过了；或者自动场次在 30 天内过去、而用户考前一个月在学。
+ * 刚考完的那一场：自定日期已经过了；或者自动场次已经过去、用户考前在用（考后 30 天内，或者考后还没打开过）。
  * 已经确认过（examDone）的不再返回。
  */
 export function passedExam(today: string, setting: string | undefined, done: string | undefined, activeIn: (from: string, to: string) => boolean): { day: string; custom: boolean } | null {
@@ -74,7 +74,13 @@ export function passedExam(today: string, setting: string | undefined, done: str
   const y = Number(today.slice(0, 4));
   const cands = [examOf(y - 1, 12), examOf(y, 6), examOf(y, 12)].map((e) => e.day).filter((d) => d < today);
   const last = cands.sort().pop();
-  if (!last || last === done || diffDays(last, today) > EXAM_OVER_WINDOW) return null;
-  const from = addDays(last, -30);
-  return activeIn(from, last) ? { day: last, custom: false } : null;
+  if (!last || last === done) return null;
+  // 11.3 · 考前半年里用过就算在备考这一场（不再要求「考前一个月在学」）；
+  // 考后 30 天内问；更久才回来、考后一次都没打开过的也问（不静默换成下一场）
+  if (!activeIn(addDays(last, -EXAM_PREP_DAYS), last)) return null;
+  const within = diffDays(last, today) <= EXAM_OVER_WINDOW;
+  return within || !activeIn(addDays(last, 1), addDays(today, -1)) ? { day: last, custom: false } : null;
 }
+
+/** 11.3 · 考前多少天内用过 app 就算在备考这一场 */
+export const EXAM_PREP_DAYS = 180;

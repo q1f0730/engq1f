@@ -1,12 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, CalendarDays, Check, Gauge, RotateCcw, ShieldCheck, WifiOff, Zap } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, FileUp, Gauge, RotateCcw, ShieldCheck, WifiOff, Zap } from "lucide-react";
+import { Suspense, lazy, useRef, useState } from "react";
 import { useBackClose } from "@/lib/back-stack";
-import { Logo, Spinner } from "@/components/app/shell";
+import { Logo } from "@/components/app/shell";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
 import { fmtDate } from "@/lib/format";
-import { bookSize } from "@/lib/plan";
 import { diffDays, finishDate } from "@/lib/srs";
 import { DAILY_OPTIONS, completeOnboarding, getState, type Book } from "@/lib/store";
 import { SPRINT_MAX, capReach, daysUntil, effectiveExam, recommendPlan, reserveDays, sprintPlan, upcomingExams } from "@/lib/exam";
@@ -14,6 +13,9 @@ import { NEW_CARD_SEC, REVIEW_CARD_SEC } from "@/lib/ux";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/welcome")({ component: Welcome });
+
+// 11.3 · 从备份恢复：点了才加载导入流程
+const ImportFlow = lazy(() => import("@/components/app/import-flow").then((m) => ({ default: m.ImportFlow })));
 
 function Welcome() {
   const { index } = useWords();
@@ -26,15 +28,17 @@ function Welcome() {
   const [exam, setExam] = useState(() => effectiveExam(day, init.examDate).day);
   const [book, setBook] = useState<Book | null>(null);
   const [daily, setDaily] = useState<number | null>(null);
+  const file = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState<string | null>(null);
   // 11.2 · 每一步压一条 history：返回键回到上一步，不直接离开 app
   useBackClose(step >= 1, () => setStep(0));
   useBackClose(step >= 2, () => setStep(1));
 
-  if (!index) return <Spinner />;
-  const sizes = { all: index.list.length, core: index.coreCount };
+  // 11.3 · 不等词库：词库大小构建时就知道，欢迎页和引导先显示，词库在后台下载
+  const sizes = index ? { all: index.list.length, core: index.coreCount } : { all: __WORDS_ALL__, core: __WORDS_CORE__ };
   const rec = recommendPlan(day, exam, sizes);
   const curBook: Book = book ?? rec.book;
-  const size = bookSize(index, curBook);
+  const size = curBook === "all" ? sizes.all : sizes.core;
   const bookPlan = sprintPlan(day, exam, size);
   const curDaily = daily ?? bookPlan.daily;
   const days = Math.ceil(size / curDaily);
@@ -86,7 +90,7 @@ function Welcome() {
               <span className="text-primary">考前</span>稳稳背完。
             </h1>
             <p className="mt-4 text-[16px] leading-relaxed text-muted-foreground">
-              {index.list.length} 个四级词汇，按你的考试日期排好每天学多少。忘了的词明天再来，记住的词越隔越久。
+              {sizes.all} 个四级词汇，按你的考试日期排好每天学多少。忘了的词明天再来，记住的词越隔越久。
             </p>
             <div className="mt-8 grid grid-cols-2 gap-2.5">
               <Feature icon={<ShieldCheck className="size-4" />} label="不用注册" />
@@ -98,6 +102,38 @@ function Welcome() {
           <Primary onClick={() => setStep(1)} testid="welcome-next">
             开始制定计划 <ArrowRight className="size-5" />
           </Primary>
+          {/* 11.3 · 重装 / 换手机：直接从备份恢复，恢复后跳过引导 */}
+          <button
+            type="button"
+            data-testid="welcome-restore"
+            onClick={() => file.current?.click()}
+            className="-mt-2 mb-3 flex h-11 items-center justify-center gap-2 text-[14px] font-semibold text-muted-foreground"
+          >
+            <FileUp className="size-4" /> 我有备份，恢复记录
+          </button>
+          <input
+            ref={file}
+            type="file"
+            accept="application/json,.json,text/plain"
+            className="hidden"
+            data-testid="welcome-restore-file"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) setPending(await f.text());
+            }}
+          />
+          {pending !== null && (
+            <Suspense fallback={null}>
+              <ImportFlow
+                text={pending}
+                onDone={() => {
+                  setPending(null);
+                  if (getState().onboarded) navigate({ to: "/", replace: true });
+                }}
+              />
+            </Suspense>
+          )}
         </div>
       )}
 
@@ -160,7 +196,7 @@ function Welcome() {
                     setDaily(null);
                   }}
                   title={b === "all" ? "四级全部词汇" : "四级核心词汇"}
-                  sub={`${sz} 词 · ${p.daysLeft <= 1 ? "考前来不及系统背，先过一遍最要紧的" : p.tooMany ? `学不完：每天 ${SPRINT_MAX} 个，考前能学 ${capReach(day, exam, sz)} 个` : `每天 ${p.daily} 个，考前 ${p.spare} 天学完`}`}
+                  sub={`${sz} 词 · ${p.daysLeft <= 1 ? "考前来不及系统背，先过一遍最要紧的" : p.tooMany ? `每天 ${SPRINT_MAX} 个，考前能学 ${capReach(day, exam, sz)} / ${sz} 个` : `每天 ${p.daily} 个，考前 ${p.spare} 天学完`}`}
                   badge={rec.book === b ? "推荐" : undefined}
                   testid={`book-${b}`}
                 />

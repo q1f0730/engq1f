@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Check, ChevronRight, Link2, ListPlus, Pencil, Play, Plus, Star, Trash2 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { today } from "@/lib/clock";
 import type { WordIndex } from "@/lib/data";
 import { LIST_MAX, LIST_NAME_MAX, listGroup, listProgress, listStepLabel, type WordList } from "@/lib/lists";

@@ -6,33 +6,106 @@
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { KEY, REV_KEY, parseBackup } from "@/lib/store";
 import { ACTIVE_PROFILE } from "@/lib/profiles";
+import { dayKey } from "@/lib/srs";
 import { isChunkError } from "@/lib/chunk-error";
 export { isChunkError };
 import type { SnapMeta } from "@/lib/snapshots";
 
 export const RESCUE_KEY = "cet4v-rescue-v1";
 
-/** 网络 / 加载失败：重试；联网后自动再试一次 */
+/** 11.3 · 自动重试的间隔（秒）：5 / 15 / 30 秒退避，之后只在联网时再试 */
+export const RETRY_STEPS = [5, 15, 30];
+const RETRY_KEY = "cet4v-retry-n";
+
+/** 网络 / 加载失败：重试；5 / 15 / 30 秒自动再试，联网时也会马上再试 */
+/** 出错页一出来就撤掉启动画面 */
+const useUnboot = () => useEffect(() => document.getElementById("boot")?.remove(), []);
+
 export function LoadFailed({ onRetry, message }: { onRetry: () => void; message?: string }) {
+  useUnboot();
+  // 重试一般是整页重新加载：第几次自动重试记在 sessionStorage 里，成功打开页面后清掉
+  const [n] = useState(() => {
+    try {
+      return Number(sessionStorage.getItem(RETRY_KEY) || 0);
+    } catch {
+      return 0;
+    }
+  });
+  const wait = RETRY_STEPS[n];
+  const [left, setLeft] = useState(wait ?? 0);
   useEffect(() => {
     const on = () => onRetry();
     window.addEventListener("online", on);
     return () => window.removeEventListener("online", on);
   }, [onRetry]);
+  useEffect(() => {
+    if (wait === undefined) return;
+    const t0 = Date.now();
+    const id = window.setInterval(() => {
+      const l = Math.max(0, wait - Math.floor((Date.now() - t0) / 1000));
+      setLeft(l);
+      if (l === 0) {
+        window.clearInterval(id);
+        try {
+          sessionStorage.setItem(RETRY_KEY, String(n + 1));
+        } catch {
+          /* 照样重试 */
+        }
+        onRetry();
+      }
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [wait, n, onRetry]);
   return (
-    <div className="grid min-h-[70dvh] place-items-center p-6" data-testid="load-failed">
+    <div className="grid min-h-[70dvh] place-items-center p-6" data-testid="load-failed" data-auto={wait ?? 0}>
       <div className="w-full max-w-sm text-center">
         <h1 className="text-xl font-bold">网络不好，页面没加载出来</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">学习记录都在，没有受影响。连上网后点重试，或者稍等一下自动重试。</p>
-        <button type="button" data-testid="load-retry" onClick={onRetry} className="mt-5 h-12 w-full rounded-2xl bg-primary font-semibold text-primary-foreground">
-          重试
+        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground" data-testid="load-failed-body">
+          学习记录都在，没有受影响。
+          {wait !== undefined ? <span data-testid="load-countdown">{left} 秒后自动重试</span> : "连上网后会自动重试，也可以点下面的重试。"}
+        </p>
+        <button
+          type="button"
+          data-testid="load-retry"
+          onClick={() => {
+            try {
+              sessionStorage.removeItem(RETRY_KEY);
+            } catch {
+              /* 照样重试 */
+            }
+            onRetry();
+          }}
+          className="mt-5 h-12 w-full rounded-2xl bg-primary font-semibold text-primary-foreground"
+        >
+          现在重试
         </button>
         <button type="button" onClick={() => (location.hash = "#/")} className="mt-2 h-11 w-full rounded-2xl text-[14px] font-semibold text-muted-foreground">
           回首页
         </button>
-        {message && <p className="mt-3 break-all text-[11px] text-muted-foreground/70" data-testid="load-failed-msg">{message}</p>}
+        {message && <TechDetail testid="load-failed-msg" message={message} />}
       </div>
     </div>
+  );
+}
+
+/** 页面成功打开后清掉自动重试的计数 */
+export function clearRetry() {
+  try {
+    sessionStorage.removeItem(RETRY_KEY);
+  } catch {
+    /* 忽略 */
+  }
+}
+
+/** 11.3 · 技术报错收进「详细信息」里，反馈问题时再展开 */
+function TechDetail({ message, testid }: { message: string; testid: string }) {
+  return (
+    <details className="mt-3 text-left text-[12px] text-muted-foreground">
+      <summary className="cursor-pointer select-none text-center font-semibold">详细信息</summary>
+      <p className="mt-1.5 break-all text-[11px] leading-snug text-muted-foreground/80" data-testid={testid}>
+        {message}
+      </p>
+    </details>
   );
 }
 
@@ -67,7 +140,8 @@ function exportRaw() {
   const blob = new Blob([rawDump()], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `四级单词打卡-原始数据-${new Date().toISOString().slice(0, 10)}.json`;
+  // 11.3 · 文件名用本地日期
+  a.download = `四级单词打卡-原始数据-${dayKey(new Date())}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -99,6 +173,7 @@ async function restoreSnap(id: string) {
 }
 
 export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
+  useUnboot();
   const [snaps, setSnaps] = useState<SnapMeta[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -127,12 +202,14 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
         <h1 className="text-xl font-bold">{boot ? "学习记录读不出来" : "出了点问题"}</h1>
         <p className="mt-2 text-[15px] leading-relaxed" data-testid="rescue-body">
           {boot ? "存在这台设备上的记录格式坏了，app 读不懂它。" : "有一部分记录 app 读不懂，页面打不开。"}
-          {snaps === null || newest ? "你的记录没有被删掉：可以先导出原始数据留底，再回滚到最近一次自动快照。" : "你的记录没有被删掉：先导出原始数据留底（以后可以在「数据与备份」里导入）。"}
+          {snaps === null
+            ? "你的记录没有被删掉。"
+            : newest
+              ? "你的记录没有被删掉：可以先导出原始数据留底，再回滚到最近一次自动快照。"
+              : "你的记录没有被删掉：先导出原始数据留底。以后在「我的 → 数据与备份 → 从文件恢复」导入这个文件，能读的部分（单词记录、打卡）都会救回来。"}
         </p>
-        {/* 技术细节小字放在后面，给反馈问题用 */}
-        <p className="mt-2 break-all text-[11px] leading-snug text-muted-foreground/80" data-testid="rescue-msg">
-          {message}
-        </p>
+        {/* 11.3 · 技术细节收进「详细信息」，给反馈问题用 */}
+        <TechDetail testid="rescue-msg" message={message} />
         <div className="mt-5 space-y-2">
           {(snaps === null || newest) && (
             <button

@@ -39,13 +39,21 @@ export function usePersist(): PersistState | null {
 
 export const BACKUP_EVERY = 7;
 export const BACKUP_MIN_CARDS = 10;
+/** 11.3 · 从没备份过：学满 3 天或 50 个词就第一次提醒（不用等 7 天） */
+export const FIRST_BACKUP_DAYS = 3;
+export const FIRST_BACKUP_WORDS = 50;
 
 /** 需要提醒备份时返回「多少天没备份」，否则 null */
-export function backupDue(st: Pick<AppState, "cards" | "lastBackup" | "backupSnooze">, day: string): number | null {
+export function backupDue(st: Pick<AppState, "cards" | "lastBackup" | "backupSnooze"> & { log?: AppState["log"] }, day: string): number | null {
   const cards = Object.values(st.cards);
   if (cards.length < BACKUP_MIN_CARDS) return null;
   if (st.backupSnooze && st.backupSnooze > day) return null;
   const ref = st.lastBackup ?? cards.reduce((m, c) => (c.f < m ? c.f : m), day);
   const n = diffDays(ref, day);
-  return n >= BACKUP_EVERY ? n : null;
+  if (n >= BACKUP_EVERY) return n;
+  if (!st.lastBackup) {
+    const days = Object.values(st.log ?? {}).filter((l) => l.n + l.r > 0).length;
+    if (days >= FIRST_BACKUP_DAYS || cards.length >= FIRST_BACKUP_WORDS) return n;
+  }
+  return null;
 }

@@ -1,5 +1,9 @@
 @import "tailwindcss" source(none);
 @source "../src";
+/* 11.3 · 没用到的 shadcn 组件不扫描（它们的类名会把 CSS 撑大，慢网下首屏要多等） */
+@source not "./components/ui";
+@source "./components/ui/switch.tsx";
+@source "./components/ui/sonner.tsx";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -656,6 +660,8 @@ html[data-motion="reduce"] .checkin-burst {
     grid-column: 2;
     margin-top: 0;
     align-content: start;
+    /* 11.3 · 行高按内容算（答完多出一行释义时不压扁、不贴边），放不下就在列里滚动 */
+    grid-auto-rows: max-content;
     overflow-y: auto;
     gap: 6px;
   }

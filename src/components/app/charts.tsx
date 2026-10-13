@@ -270,6 +270,7 @@ export function WeekStrip({
   const dow = (t.getDay() + 6) % 7;
   const monday = addDays(today, -dow);
   return (
+    // 11.3 · 圆圈直径跟着列宽走（最大 2.25rem）：系统字号放大到 130% 时也不挤在一起
     <div className="grid grid-cols-7 gap-1.5" data-testid="week-strip">
       {names.map((n, k) => {
         const d = addDays(monday, k);
@@ -279,11 +280,11 @@ export function WeekStrip({
         const isPatch = checked && patchSet.has(d);
         const isRest = !checked && rest >= 0 && new Date(d + "T12:00:00").getDay() === rest;
         return (
-          <div key={d} className="flex flex-col items-center gap-1.5" data-day={d} data-state={isPatch ? "patched" : checked ? "checked" : isRest ? "rest" : studied ? "studied" : "none"}>
+          <div key={d} className="flex min-w-0 flex-col items-center gap-1.5" data-day={d} data-state={isPatch ? "patched" : checked ? "checked" : isRest ? "rest" : studied ? "studied" : "none"}>
             <span className={cn("text-[11px]", isToday ? "font-bold text-foreground" : "text-muted-foreground")}>{n}</span>
             <span
               className={cn(
-                "grid size-9 place-items-center rounded-full text-[12px] font-semibold tnum",
+                "grid aspect-square w-[calc(100%-2px)] max-w-9 place-items-center rounded-full text-[12px] font-semibold tnum",
                 isPatch
                   ? "bg-primary/60 text-primary-foreground"
                   : checked

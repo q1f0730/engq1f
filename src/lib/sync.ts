@@ -9,7 +9,8 @@
  *  - 自动快照：每天一份、保留最近 7 份的取舍规则
  */
 import type { Card, DayLog } from "./srs";
-import { BACKUP_VERSION, NEWER_MSG, type AppState } from "./store";
+import { BACKUP_VERSION, NEWER_MSG, RAW_DEAD_MSG, type AppState } from "./store";
+import { isRawDump, unwrapRaw } from "./salvage";
 import { LIST_MAX, LIST_WORDS_MAX, addWords, cleanListName, type WordList } from "./lists";
 import { REV_MAX, isRevEntry, type RevEntry } from "./stats";
 import type { QuizRecord } from "./exam";
@@ -237,6 +238,12 @@ export function sniffBackup(text: string): ParsedBackup {
     if (e.v !== 1 || typeof e.salt !== "string" || typeof e.iv !== "string" || typeof e.ct !== "string" || !Number.isInteger(e.iter) || e.iter < 1000 || e.iter > 5_000_000)
       throw new Error("加密备份格式不对");
     return { kind: "enc", enc: e, exportedAt: at };
+  }
+  // 11.3 · 救援页导出的原始数据：转成普通备份格式（坏掉的逐条抢救，记下救回几个词）
+  if (isRawDump(p)) {
+    const u = unwrapRaw(p.raw);
+    if (!u) throw new Error(RAW_DEAD_MSG);
+    return { kind: "plain", text: JSON.stringify({ app: "cet4-vocab", version: BACKUP_VERSION, exportedAt: at, state: u.state, ...(u.salvaged !== undefined ? { salvaged: u.salvaged } : {}) }), exportedAt: at };
   }
   if (!p.state) throw new Error("这不是四级单词打卡的备份");
   return { kind: "plain", text: text.trim(), exportedAt: at };

@@ -1,7 +1,7 @@
 /** v11 · 导入备份：加密备份先输口令；本机已有记录时选「合并」或「覆盖」；动手前先给本机存一份快照 */
 import { Eye, EyeOff, GitMerge, Lock, Replace, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { today } from "@/lib/clock";
 import { fmtDate } from "@/lib/format";
 import { dayKey } from "@/lib/srs";
@@ -25,6 +25,7 @@ export function parseChecked(plain: string): { remote: AppState; rep: CleanRepor
 
 export function repText(rep: CleanReport): string {
   const parts: string[] = [];
+  if (rep.salvaged !== undefined) parts.push(`原始数据坏了，从里面救回 ${rep.salvaged} 个词`);
   if (rep.dropped.length) parts.push(`丢掉 ${rep.dropped.length} 条损坏 / 词库里没有的单词记录`);
   if (rep.repaired.length) parts.push(`修正 ${rep.repaired.length} 条`);
   if (rep.other) parts.push(`另有 ${rep.other} 条日志 / 打卡等坏数据已清理`);
@@ -81,7 +82,7 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
     if (hasProgress(getState())) setPhase({ k: "choose", remote, at, rep });
     else {
       await applyReplace(remote);
-      if (bad) toast.warning("备份里有坏数据，已跳过", { description: bad, duration: 4000 });
+      if (bad) toast.warning(rep.salvaged !== undefined ? `救回 ${rep.salvaged} 个词` : "备份里有坏数据，已跳过", { description: bad, duration: 4000 });
       finish();
     }
   };
@@ -175,9 +176,9 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
               <Side label="这台设备" words={Object.keys(local.cards).length} days={local.checkins.length} sub="当前记录" />
             </div>
             {bad && (
-              <p className="mt-3 flex gap-2 rounded-2xl bg-vague-soft px-3 py-2.5 text-[12px] font-medium text-vague" data-testid="import-dropped" data-n={phase.k === "choose" ? phase.rep.dropped.length : 0}>
+              <p className="mt-3 flex gap-2 rounded-2xl bg-vague-soft px-3 py-2.5 text-[12px] font-medium text-vague" data-testid="import-dropped" data-n={phase.k === "choose" ? phase.rep.dropped.length : 0} data-salvaged={phase.k === "choose" ? (phase.rep.salvaged ?? "") : ""}>
                 <TriangleAlert className="mt-px size-4 shrink-0" />
-                备份里有坏数据：{bad}。
+                {phase.k === "choose" && phase.rep.salvaged !== undefined ? `${bad}，坏掉的部分丢掉了。` : `备份里有坏数据：${bad}。`}
               </p>
             )}
             <button

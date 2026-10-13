@@ -22,7 +22,7 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { PageHeader, Panel, PanelTitle, Spinner } from "@/components/app/shell";
 import { BottomSheet } from "@/components/app/sheet";
 import { ImportFlow } from "@/components/app/import-flow";
@@ -52,6 +52,7 @@ import type { SnapMeta } from "@/lib/snapshots";
 import { drawReport, reportData } from "@/lib/report";
 import { canShareFile, shareImage } from "@/lib/share";
 import { dayKey } from "@/lib/srs";
+import { isRawDump, unwrapRaw } from "@/lib/salvage";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/data")({ component: DataPage });
@@ -914,10 +915,18 @@ function RescueDumpPanel() {
   if (!raw) return null;
   let at = "";
   let restorable = false;
+  let salvaged: number | undefined;
   try {
     const j = JSON.parse(raw) as { exportedAt?: string; state?: unknown };
-    at = j.exportedAt ? j.exportedAt.slice(0, 10) : "";
-    restorable = !!j.state;
+    // 11.3 · 本地日期（不再用 toISOString 的 UTC 日期）
+    at = j.exportedAt && !Number.isNaN(Date.parse(j.exportedAt)) ? dayKey(new Date(j.exportedAt)) : "";
+    if (j.state) restorable = true;
+    else if (isRawDump(j)) {
+      // 11.3 · 原始数据格式：原文能读就能恢复；坏了就看能救回几个词
+      const u = unwrapRaw(j.raw);
+      restorable = !!u;
+      salvaged = u?.salvaged;
+    }
   } catch {
     /* 原样保存的坏数据 */
   }
@@ -926,15 +935,22 @@ function RescueDumpPanel() {
       <PanelTitle>救援时另存的原始数据</PanelTitle>
       <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">
         {at ? `${at} 救援时留下的一份。` : "救援时留下的一份。"}
-        {restorable ? "可以导出成文件，或者恢复回来（会先让你选合并还是覆盖）。" : "格式坏了，只能导出成文件留底。"}
+        {restorable
+          ? salvaged !== undefined
+            ? `格式坏了，能读出 ${salvaged} 个词：可以导出成文件，或者把能读的部分恢复回来（会先让你选合并还是覆盖）。`
+            : "可以导出成文件，或者恢复回来（会先让你选合并还是覆盖）。"
+          : "坏得太厉害，一个词都读不出来，只能导出成文件留底（求助时可以发给开发者）。"}
       </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className={cn("grid gap-2", restorable ? "grid-cols-3" : "grid-cols-2")}>
         <button type="button" data-testid="rescue-dump-export" onClick={() => download(`四级单词打卡-救援原始数据-${at || today()}.json`, raw)} className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold">
           导出
         </button>
-        <button type="button" data-testid="rescue-dump-restore" disabled={!restorable} onClick={() => setPending(raw)} className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold disabled:opacity-50">
-          恢复
-        </button>
+        {/* 11.3 · 能恢复才显示「恢复」，不再放一个永远灰着的按钮 */}
+        {restorable && (
+          <button type="button" data-testid="rescue-dump-restore" onClick={() => setPending(raw)} className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold">
+            恢复
+          </button>
+        )}
         <button
           type="button"
           data-testid="rescue-dump-delete"

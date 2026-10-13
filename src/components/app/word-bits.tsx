@@ -8,7 +8,7 @@ import { diffDays, isLeech, type Card } from "@/lib/srs";
 import { getState, killWord, resetWord, toggleStar, unkillWord, useApp } from "@/lib/store";
 import { today } from "@/lib/clock";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { BottomSheet } from "./sheet";
 import { ListPicker } from "./lists";
 import { WordTrack } from "./track";

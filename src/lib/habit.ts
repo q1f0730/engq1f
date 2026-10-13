@@ -28,7 +28,12 @@ interface HabitState {
   makeupEarned?: string;
   patched?: string[];
   settings: { restDay?: number };
+  /** 11.3 · 考后「先休息」：from 起（到 until 之前）这些天不打卡也不断连续 */
+  pause?: { from: string; until?: string };
 }
+
+/** 11.3 · 这一天在「先休息」期间（不算断签） */
+export const pausedOn = (st: Pick<HabitState, "pause">, d: string) => !!st.pause && d >= st.pause.from && (!st.pause.until || d < st.pause.until);
 
 export const restOf = (st: { settings: { restDay?: number } }) => {
   const r = st.settings.restDay;
@@ -38,7 +43,7 @@ export const restOf = (st: { settings: { restDay?: number } }) => {
 export const isRestDay = (day: string, rest: number) => rest >= 0 && weekdayOf(day) === rest;
 
 /** 当前连续天数（算上休息日） */
-export const curStreak = (st: HabitState, day: string) => streak(st.checkins, day, restOf(st));
+export const curStreak = (st: HabitState, day: string) => streak(st.checkins, day, restOf(st), st.pause ? (d) => pausedOn(st, d) : undefined);
 export const bestStreak = (st: HabitState) => longestStreak(st.checkins, restOf(st));
 
 /** 连续天数从 prev 变成 next 时跨过了哪个里程碑 */
@@ -62,12 +67,11 @@ export interface CheckInResult {
 
 /** 打卡：写入日期；连续天数到 7 的倍数时得 1 张补卡（上限 3，同一天只发一次） */
 export function applyCheckIn(st: HabitState, day: string): CheckInResult {
-  const rest = restOf(st);
-  const prev = streak(st.checkins, day, rest);
+  const prev = curStreak(st, day);
   const have = Math.max(0, Math.min(MAKEUP_MAX, st.makeup ?? 0));
   if (st.checkins.includes(day)) return { checkins: st.checkins, makeup: have, makeupEarned: st.makeupEarned, streak: prev, earned: false, milestone: null };
   const checkins = [...st.checkins, day].sort();
-  const next = streak(checkins, day, rest);
+  const next = curStreak({ ...st, checkins }, day);
   const earned = next > 0 && next % MAKEUP_EVERY === 0 && st.makeupEarned !== day && have < MAKEUP_MAX;
   return {
     checkins,
@@ -82,12 +86,12 @@ export function applyCheckIn(st: HabitState, day: string): CheckInResult {
 /** 能不能补昨天：昨天没打卡、不是休息日、手里有补卡 */
 export function canPatch(st: HabitState, day: string): boolean {
   const y = addDays(day, -1);
-  return (st.makeup ?? 0) > 0 && !st.checkins.includes(y) && !isRestDay(y, restOf(st));
+  return (st.makeup ?? 0) > 0 && !st.checkins.includes(y) && !isRestDay(y, restOf(st)) && !pausedOn(st, y);
 }
 
 /** 补上昨天之后的连续天数（预览用） */
 export function patchedStreak(st: HabitState, day: string): number {
-  return streak([...st.checkins, addDays(day, -1)], day, restOf(st));
+  return curStreak({ ...st, checkins: [...st.checkins, addDays(day, -1)] }, day);
 }
 
 export interface PatchResult {
@@ -102,10 +106,9 @@ export interface PatchResult {
 export function applyPatch(st: HabitState, day: string): PatchResult | null {
   if (!canPatch(st, day)) return null;
   const y = addDays(day, -1);
-  const rest = restOf(st);
-  const prev = streak(st.checkins, day, rest);
+  const prev = curStreak(st, day);
   const checkins = [...st.checkins, y].sort();
-  const next = streak(checkins, day, rest);
+  const next = curStreak({ ...st, checkins }, day);
   return {
     checkins,
     patched: [...new Set([...(st.patched ?? []), y])].sort(),
@@ -188,4 +191,57 @@ export function dayDetail(log: RevEntry[], cards: Record<string, Card>, day: str
   }
   const reviewed = [...rev.entries()].filter(([w]) => !seenNew.has(w)).map(([w, g]) => ({ w, g }));
   return { learned, reviewed };
+}
+
+// ---------------------------------------------------------------- 11.3 · 任务达标 = 打卡
+
+interface MetState extends HabitState {
+  log: Record<string, { n: number; r: number; ms?: number } | undefined>;
+  goalMet?: string[];
+  newCut?: { d: string; n: number };
+  settings: { restDay?: number; daily: number; goalMode?: GoalMode; goalMin?: number };
+}
+
+/** 往回看几天：这几天里任务达标、却没点打卡的，打开时自动补记 */
+export const AUTO_CREDIT_DAYS = 7;
+
+/**
+ * 某一天的任务达标了吗：当天记下过「任务完成」（goalMet），或者当天的日志达到了目标
+ * （按词数：新学 ≥ 当天的新词目标；按时长：学满目标分钟）。
+ */
+export function dayMet(st: MetState, d: string): boolean {
+  if (st.goalMet?.includes(d)) return true;
+  const log = st.log[d];
+  if (!log) return false;
+  if (st.settings.goalMode === "time") return (log.ms ?? 0) >= (st.settings.goalMin || 20) * 60000;
+  const goal = st.newCut?.d === d ? Math.min(st.settings.daily, st.newCut.n) : st.settings.daily;
+  return goal > 0 && log.n >= goal;
+}
+
+/**
+ * 11.3 · 打开时补记：最近 7 天（不含今天）里任务达标、却没打卡的日子，按日期先后补上打卡
+ * （跨 0 点学完、学完直接锁屏都算）。返回补上的日子和补完后的打卡状态；没有要补的返回 null。
+ */
+export function autoCredit(st: MetState, day: string): { days: string[]; checkins: string[]; makeup: number; makeupEarned?: string; streak: number } | null {
+  const days: string[] = [];
+  let cur: MetState = st;
+  for (let k = AUTO_CREDIT_DAYS; k >= 1; k--) {
+    const d = addDays(day, -k);
+    if (cur.checkins.includes(d) || !dayMet(cur, d)) continue;
+    const r = applyCheckIn(cur, d);
+    cur = { ...cur, checkins: r.checkins, makeup: r.makeup, makeupEarned: r.makeupEarned };
+    days.push(d);
+  }
+  if (!days.length) return null;
+  return { days, checkins: cur.checkins, makeup: cur.makeup ?? 0, makeupEarned: cur.makeupEarned, streak: curStreak(cur, day) };
+}
+
+/**
+ * 11.3 · 连续天数刚断（昨天没完成、不是休息日、前天之前有连续）：给出断之前的天数，用来说一句话 / 提供补卡。
+ * 没断返回 0。
+ */
+export function brokenStreak(st: HabitState, day: string): number {
+  const y = addDays(day, -1);
+  if (st.checkins.includes(y) || isRestDay(y, restOf(st)) || pausedOn(st, y)) return 0;
+  return curStreak(st, y);
 }

@@ -2,7 +2,7 @@ import { LeaveSheet, useLeaveGuard } from "@/components/app/leave";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, ChevronDown, ClipboardCheck, RotateCcw, Star, Timer, Trophy, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Spinner } from "@/components/app/shell";
 import { ChoiceList, QuizPrompt } from "@/components/app/study";
 import { Meanings } from "@/components/app/word-bits";

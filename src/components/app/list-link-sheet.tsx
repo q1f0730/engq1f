@@ -1,6 +1,6 @@
 import { Copy, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { WordList } from "@/lib/lists";
 import { encodeList, listLinkUrl, LINK_MAX_WORDS } from "@/lib/sync";
 import { cn } from "@/lib/utils";

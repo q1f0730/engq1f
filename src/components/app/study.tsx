@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, CalendarClock, Check, CircleHelp, ClipboardCheck, Dumbbell, Flame, Keyboard, Maximize, Minimize, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarClock, Check, CircleHelp, ClipboardCheck, Dumbbell, Flame, HardDriveDownload, Keyboard, Maximize, Minimize, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { speak } from "@/lib/audio";
 import { now, today } from "@/lib/clock";
 import { shortMeaning, type Word, type WordIndex } from "@/lib/data";
@@ -41,7 +41,7 @@ import {
   type Session,
   type SessionItem,
 } from "@/lib/srs";
-import { applyAnswer, checkIn, getState, onExternalChange, previewKill, setBury, toggleStar, useApp } from "@/lib/store";
+import { applyAnswer, checkIn, getState, markGoalMet, onExternalChange, previewKill, setBury, toggleStar, useApp } from "@/lib/store";
 import { PostQuiz, PreviewList } from "./study-extra";
 import { postQuizWords, postSummary, retryWords } from "@/lib/learnflow";
 import { curStreak } from "@/lib/habit";
@@ -202,7 +202,8 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardKey, phase, previewing]);
 
-  const day = today();
+  // 11.3 · 一组学到一半跨过 0 点：整组都记在开始的那一天（打卡、今日新学都按这一天算）
+  const [day] = useState(() => today());
 
   const doAnswer = useCallback(
     (rating: Rating, via: Last["via"], pick?: number, easy = false) => {
@@ -247,11 +248,18 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     [head, isQuiz, phase, peek, doAnswer, cnFirst, accent, speedMode, say, practice, day, session],
   );
 
+  // 11.3 · 同一道题只接受第一次选择：两根手指同时按、手掌误触，同一帧里的多次点击都只算一次（同步锁，不等 React 重新渲染）
+  const pickLock = useRef<string | null>(null);
+  useEffect(() => {
+    if (phase === "front") pickLock.current = null;
+  }, [cardKey, phase]);
   const pick = useCallback(
     (k: number) => {
       if (!head || !isQuiz || phase !== "front" || !word) return;
+      if (pickLock.current === cardKey) return;
       const opt = options[k];
       if (!opt) return;
+      pickLock.current = cardKey;
       const ok = opt.correct;
       const r = doAnswer(ok ? "know" : "forget", "quiz", k);
       if (!r) return;
@@ -261,18 +269,20 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       setPhase("back");
       if (shownItem?.mode === "cn2en" || shownItem?.mode === "audio" || shownItem?.mode === "listen" || shownItem?.mode === "cloze" || shownItem?.mode === "example" || shownItem?.mode === "cnphrase") speak(word.w, accent);
     },
-    [head, isQuiz, phase, word, options, doAnswer, shownItem, accent, say],
+    [head, isQuiz, phase, word, options, doAnswer, shownItem, accent, say, cardKey],
   );
 
   const giveUp = useCallback(() => {
     if (!isQuiz || phase !== "front" || !word) return;
+    if (pickLock.current === cardKey) return;
+    pickLock.current = cardKey;
     const r = doAnswer("forget", "quiz", -1);
     if (!r) return;
     say(quizAnnouncement(false, word.w, options.find((o) => o.correct)?.text ?? word.w, true));
     setLast({ item: r.it, rating: "forget", pick: -1, via: "quiz" });
     setPhase("back");
     speak(word.w, accent);
-  }, [isQuiz, phase, word, doAnswer, accent, options, say]);
+  }, [isQuiz, phase, word, doAnswer, accent, options, say, cardKey]);
 
   const next = useCallback(() => {
     if (speedMode) {
@@ -510,6 +520,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         ms={now() - startedAt.current}
         listId={listId}
         postRes={postRes}
+        day={day}
         onPostQuiz={postWords.length && post === "idle" ? () => setPost("run") : undefined}
       />
     );
@@ -1325,8 +1336,10 @@ export function ChoiceList({
   shakeKey?: number;
   onPick: (k: number) => void;
 }) {
+  // 11.3 · 数字角标是键盘快捷键提示：和评分按钮一样，只在有鼠标 / 触控板的设备上显示（答完的 ✓ / ✗ 照常显示）
+  const fine = useFinePointer();
   return (
-    <div key={shakeKey} className={cn("mt-3 grid shrink-0 gap-2", wrong && "shake")} data-testid="quiz-options">
+    <div key={shakeKey} className={cn("mt-3 grid min-w-0 shrink-0 gap-2", wrong && "shake")} data-testid="quiz-options" data-keys={fine ? 1 : 0}>
       {choices.map((o, k) => {
         const isCorrect = o.correct;
         const picked = pick === k;
@@ -1339,23 +1352,26 @@ export function ChoiceList({
             data-testid={`opt-${k + 1}`}
             data-correct={isCorrect ? 1 : 0}
             className={cn(
-              "flex min-h-[52px] items-center gap-3 rounded-2xl border px-4 py-2.5 text-left text-[15px] transition active:scale-[0.99]",
+              "flex min-h-[52px] w-full min-w-0 items-center gap-3 rounded-2xl border px-4 py-2.5 text-left text-[15px] transition active:scale-[0.99]",
               !done && "border-border/80 bg-card hover:border-primary/50",
               done && isCorrect && "border-know bg-know-soft text-foreground",
               done && picked && !isCorrect && "border-forget bg-forget-soft",
               done && !isCorrect && !picked && "border-border/60 bg-card opacity-55",
             )}
           >
-            <span
-              className={cn(
-                "grid size-6 shrink-0 place-items-center rounded-lg bg-secondary text-[12px] font-bold text-muted-foreground",
-                done && isCorrect && "bg-know text-white",
-                done && picked && !isCorrect && "bg-forget text-white",
-              )}
-            >
-              {done && isCorrect ? <Check className="size-3.5" /> : done && picked ? <X className="size-3.5" /> : k + 1}
-            </span>
-            <span className={cn("fs-card min-w-0", o.en ? "font-display text-[17px] font-semibold" : "line-clamp-2")}>
+            {(fine || (done && (isCorrect || picked))) && (
+              <span
+                data-testid="choice-badge"
+                className={cn(
+                  "grid size-6 shrink-0 place-items-center rounded-lg bg-secondary text-[12px] font-bold text-muted-foreground",
+                  done && isCorrect && "bg-know text-white",
+                  done && picked && !isCorrect && "bg-forget text-white",
+                )}
+              >
+                {done && isCorrect ? <Check className="size-3.5" /> : done && picked ? <X className="size-3.5" /> : k + 1}
+              </span>
+            )}
+            <span className={cn("fs-card min-w-0 flex-1 leading-snug", o.en ? "font-display text-[17px] font-semibold" : "line-clamp-2")}>
               {o.text}
               {done && o.sub && (
                 <span className="mt-0.5 block truncate font-sans text-[12px] font-normal text-muted-foreground" data-testid={subTestId}>
@@ -1433,11 +1449,13 @@ function Summary({
   listId,
   postRes,
   onPostQuiz,
+  day,
 }: {
   session: Session;
   index: WordIndex;
   mode: StudyMode;
   ms: number;
+  day: string;
   listId?: string;
   postRes?: Record<string, boolean> | null;
   onPostQuiz?: () => void;
@@ -1445,8 +1463,11 @@ function Summary({
   const st = useApp();
   const navigate = useNavigate();
   const router = useRouter();
-  const day = today();
   const sum = summarize(index, st, day);
+  // 11.3 · 任务完成就记下来：不点打卡、过了 0 点再回首页，这一天照样算打卡
+  useEffect(() => {
+    if (sum.ready && !sum.checked) markGoalMet(day);
+  }, [sum.ready, sum.checked, day]);
   const acc = Math.round(sessionAccuracy(session) * 100);
   const words = Object.entries(session.firsts);
   const [share, setShare] = useState(false);
@@ -1484,6 +1505,17 @@ function Summary({
           {MODE_TITLE[mode]} {words.length} 词 · 首次正确率 {acc}% · 用时 {Math.max(1, Math.round(ms / 60000))} 分钟
         </p>
       </div>
+
+      {/* 11.3 · 第一组学完就说清楚：数据只存在本机 */}
+      {firstEver && (
+        <div className="mt-5 flex gap-3 rounded-3xl border border-vague/30 bg-vague-soft px-4 py-3.5 text-left" data-testid="local-only-warning">
+          <HardDriveDownload className="mt-0.5 size-5 shrink-0 text-vague" />
+          <div className="min-w-0 text-[13px] leading-snug">
+            <b className="block text-[14px] text-vague">数据只存在本机，卸载 / 清除会丢失</b>
+            <span className="text-muted-foreground">不用注册、不上传。删掉桌面图标、卸载或清理浏览器，学习记录会一起删掉。学几天后记得在「我的 → 数据与备份」导出一份。</span>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-3 gap-2.5 text-center">
         {sum.timeMode ? (

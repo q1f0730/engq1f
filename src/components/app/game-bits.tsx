@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { RotateCcw, Sparkles, Star, Trophy, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { shortMeaning, type WordIndex } from "@/lib/data";
 import { starWords, useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";

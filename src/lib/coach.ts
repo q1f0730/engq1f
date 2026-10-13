@@ -100,6 +100,15 @@ export function recoverTick(
   return { cards: out, until, n: diffDays(rec.from, until) + 1, shifted: Math.max(0, diffDays(rec.until, until)) };
 }
 
+/** 11.3 · 恢复期中途又断了几天（从上次打开 / 恢复开始那天算，不含今天）；不在恢复期返回 0 */
+export function recoverGap(rec: { from: string } | undefined, last: string | null, day: string): number {
+  if (!rec || day <= rec.from) return 0;
+  const ref = last && last > rec.from ? last : rec.from;
+  return Math.max(0, diffDays(ref, day) - 1);
+}
+/** 恢复期中途断了这么多天：回来时重新给一张欢迎回来卡（从第 1 天重新算） */
+export const RECOVER_RESTART_GAP = 3;
+
 export interface AdviceInput {
   day: string;
   /** 全部到期（未截断） */
@@ -121,6 +130,8 @@ export interface AdviceInput {
   /** 考试当天 / 前一天 */
   examMode?: boolean;
   examPause?: boolean;
+  /** 11.3 · 考后「先休息」中：不弹欢迎回来 / 积压 */
+  paused?: boolean;
   examOver?: { day: string; custom: boolean; next: string } | null;
   /** 冲刺卡今天处理过 */
   sprintSeen?: boolean;
@@ -130,6 +141,8 @@ export interface AdviceInput {
   last: string | null;
   recover?: { from: string; until: string; n: number; shifted?: number };
   recoverSeen?: string;
+  /** 11.3 · 恢复期中途断了几天（recoverGap） */
+  recoverGap?: number;
   cut: number | null;
   cutSeen: boolean;
   patchable: boolean;
@@ -144,13 +157,18 @@ export interface AdviceInput {
 export function homeAdvice(x: AdviceInput): Advice | null {
   // 11.2 · 考完了：先问一句，用户选了才换计划
   if (x.examOver) return { kind: "exam-over", exam: x.examOver.day, custom: x.examOver.custom, next: x.examOver.next };
+  // 11.3 · 恢复期中途又断了 ≥ 3 天、积压还不少：重新给一张欢迎回来卡（重新算天数，从第 1 天开始）
+  if (x.recover && (x.recoverGap ?? 0) >= RECOVER_RESTART_GAP && x.recoverSeen !== x.day && x.dueAll >= RETURN_MIN_BACKLOG && !x.examMode && !x.paused) {
+    const perDay = recoverPerDay(x.reviewCap);
+    return { kind: "recover-offer", backlog: x.dueAll, perDay, days: Math.ceil(x.dueAll / perDay), gap: (x.recoverGap ?? 0) + 1 };
+  }
   // 回归：正在恢复
   if (x.recover && x.day >= x.recover.from && x.day <= x.recover.until)
     return { kind: "recovering", day: diffDays(x.recover.from, x.day) + 1, days: x.recover.n, due: x.due, until: x.recover.until, shifted: x.recover.shifted ?? 0 };
   // 回归：隔了 ≥ 7 天、积压一大堆 → 只给欢迎回来
   const gap = x.last ? diffDays(x.last, x.day) : 0;
   // 考试当天 / 前一天不摊恢复计划（考前模式只复习）
-  if (gap >= RETURN_GAP && x.dueAll >= RETURN_MIN_BACKLOG && x.recoverSeen !== x.day && !x.examMode) {
+  if (gap >= RETURN_GAP && x.dueAll >= RETURN_MIN_BACKLOG && x.recoverSeen !== x.day && !x.examMode && !x.paused) {
     const perDay = recoverPerDay(x.reviewCap);
     return { kind: "recover-offer", backlog: x.dueAll, perDay, days: Math.ceil(x.dueAll / perDay), gap };
   }

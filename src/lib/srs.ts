@@ -355,13 +355,13 @@ export const weekdayOf = (day: string) => new Date(day + "T12:00:00").getDay();
  * 连续打卡天数：截止今天（或昨天，今天还没打也不断）。
  * rest = 每周休息日（0 = 周日 … 6 = 周六，-1 = 无）：没打卡的休息日跳过，不断也不计数。
  */
-export function streak(checkins: string[], today: string, rest = -1): number {
+export function streak(checkins: string[], today: string, rest = -1, skip?: (d: string) => boolean): number {
   const set = new Set(checkins);
   let day = set.has(today) ? today : addDays(today, -1);
   let n = 0;
   for (let guard = 0; guard < 5000; guard++) {
     if (set.has(day)) n++;
-    else if (!(rest >= 0 && weekdayOf(day) === rest)) break;
+    else if (!(rest >= 0 && weekdayOf(day) === rest) && !skip?.(day)) break;
     day = addDays(day, -1);
   }
   return n;

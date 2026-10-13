@@ -1,9 +1,17 @@
-import { Toaster as Sonner } from "sonner";
+import { useEffect } from "react";
+import { Toaster as Sonner, toast as realToast, type ToasterProps } from "sonner";
+import { toasterReady } from "@/lib/toast";
 
-type ToasterProps = React.ComponentProps<typeof Sonner>;
+// 11.3 · sonner 整个按需加载：这个文件只在第一次 toast 时才被下载（见 lib/toast.ts）
+function Ready() {
+  useEffect(() => {
+    toasterReady(realToast as never);
+  }, []);
+  return null;
+}
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  return (
+const Inner = (props: ToasterProps) => (
+  <>
     <Sonner
       className="toaster group"
       style={
@@ -25,7 +33,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       {...props}
     />
-  );
-};
+    <Ready />
+  </>
+);
 
-export { Toaster };
+export default Inner;

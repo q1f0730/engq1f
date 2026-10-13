@@ -3,10 +3,12 @@ import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, type Plugin, type Rollup } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string };
+// 11.3 · 词库大小在构建时写进代码：欢迎页 / 引导不用等 1.2MB 的词库下载完就能显示
+const words = JSON.parse(readFileSync(new URL("./public/data/cet4.json", import.meta.url), "utf8")) as { c?: 1 }[];
 
 /**
  * 生成 service worker：预缓存构建产物（app shell）+ 词库数据。
@@ -34,6 +36,40 @@ function serviceWorker(): Plugin {
 }
 
 /**
+ * 11.3 · 还没完成引导的新用户：HTML 一到就并行预加载欢迎页的代码块（不用等入口脚本跑起来再去要），
+ * 慢网下欢迎页早几秒能点。已经在用的人不预加载（不占首页的流量）。
+ */
+function welcomePreload(): Plugin {
+  return {
+    name: "cet4v-welcome-preload",
+    apply: "build",
+    transformIndexHtml: {
+      order: "post",
+      handler(html, ctx) {
+        const bundle = ctx.bundle;
+        if (!bundle) return html;
+        const chunks = Object.values(bundle).filter((c): c is Rollup.OutputChunk => c.type === "chunk");
+        const welcome = chunks.find((c) => Object.keys(c.modules).some((m) => /routes\/welcome\.tsx\?tsr-split/.test(m)));
+        if (!welcome) return html;
+        const files = new Set<string>();
+        const walk = (c: Rollup.OutputChunk) => {
+          if (c.isEntry || files.has(c.fileName)) return;
+          files.add(c.fileName);
+          for (const f of c.imports) {
+            const d = bundle[f];
+            if (d && d.type === "chunk") walk(d);
+          }
+        };
+        walk(welcome);
+        const list = JSON.stringify([...files]);
+        const script = `<script>(function(){try{var s=localStorage.getItem('cet4v-state-v1');if(s&&/"onboarded"\\s*:\\s*true/.test(s))return;}catch(e){}${list}.forEach(function(f){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href='./'+f;document.head.appendChild(l);});})();</script>`;
+        return html.replace("</head>", `    ${script}\n  </head>`);
+      },
+    },
+  };
+}
+
+/**
  * React + Vite 构建配置
  *
  * 硬约束：
@@ -47,6 +83,7 @@ export default defineConfig({
     viteReact(),
     tsConfigPaths(),
     serviceWorker(),
+    welcomePreload(),
   ],
   server: {
     host: "0.0.0.0",
@@ -64,6 +101,8 @@ export default defineConfig({
   base: "./",
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    __WORDS_ALL__: JSON.stringify(words.length),
+    __WORDS_CORE__: JSON.stringify(words.filter((w) => w.c).length),
   },
   build: {
     outDir: "dist",
@@ -74,6 +113,10 @@ export default defineConfig({
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
         assetFileNames: "assets/[name]-[hash][extname]",
+        // 11.3 · 图标合成一个块：不再是几十个 0.2KB 的小文件（慢网下每个请求都要多等一个往返，HTTP/1.1 同时只开 6 个连接）
+        manualChunks(id) {
+          if (id.includes("lucide-react")) return "icons";
+        },
       },
     },
   },
