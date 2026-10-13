@@ -105,7 +105,7 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
   const daysLeft = daysUntil(day, exam.day);
   // 11.6 · 和首页考试卡同一个算法（exam.examForecast）：扣掉最后只复习的几天，考前模式只复习
   const sumT = summarize(index, st, day);
-  const fcx = examForecast(day, exam.day, sumT.newLeft, st.settings.daily, sumT.examMode);
+  const fcx = examForecast(day, exam.day, sumT.newLeft, st.settings.daily, sumT.examMode, sumT.remainingGoal);
   const projected = Math.min(book, book - sumT.newLeft + fcx.reach);
   const ret7 = retention(st.revlog ?? [], day, 7);
   const retPrev = retention(st.revlog ?? [], addDays(day, -7), 7);
@@ -125,7 +125,12 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
         </PanelTitle>
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           <Tile icon={<Target className="size-4" />} label="考前能学完" value={`${projected}/${book}`}
-            small={String(projected).length + String(book).length > 7} sub={fcx.examMode ? "考前模式：只复习" : projected >= book ? `按每天 ${st.settings.daily} 个能学完` : `考前还能学 ${fcx.reach} 个，剩 ${fcx.left} 个来不及`} tone="text-primary bg-brand-soft" testid="outlook-learn" />
+            small={String(projected).length + String(book).length > 7} sub={fcx.examMode ? "考前模式：只复习" : projected >= book ? `按每天 ${st.settings.daily} 个能学完` : (
+              // 11.7 · 窄屏按「还能学 N 个 / 剩 M 个来不及」两段换行，不会有一两个字单独成行（r7 R7-7）
+              <>
+                <span className="whitespace-nowrap">还能学 {fcx.reach} 个</span>，<span className="whitespace-nowrap">剩 {fcx.left} 个来不及</span>
+              </>
+            )} tone="text-primary bg-brand-soft" testid="outlook-learn" />
           <Tile icon={<Sparkles className="size-4" />} label="已掌握" value={String(m.mastered)} sub={`占词书 ${Math.round((Math.min(m.mastered, book) / Math.max(1, book)) * 100)}%`} tone="text-know bg-know-soft" testid="outlook-mastered" />
           <Tile
             icon={<Repeat2 className="size-4" />}
@@ -475,17 +480,18 @@ function QStat({ label, value, unit, testid }: { label: string; value: number; u
   );
 }
 
-function Tile({ icon, label, value, sub, tone, testid, small }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone: string; testid?: string; small?: boolean }) {
+function Tile({ icon, label, value, sub, tone, testid, small }: { icon: React.ReactNode; label: string; value: string; sub?: React.ReactNode; tone: string; testid?: string; small?: boolean }) {
   return (
     <div className="rounded-3xl border border-border/70 bg-card p-4" data-testid={testid}>
-      <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-        <span className={`grid size-7 place-items-center rounded-lg ${tone}`}>{icon}</span>
+      {/* 11.7 · 标签不折行（360 宽下「近 7 天记得住」不再把「住」挤到第二行） */}
+      <div className="flex items-center gap-2 whitespace-nowrap text-[13px] text-muted-foreground" data-testid={testid ? `${testid}-label` : undefined}>
+        <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${tone}`}>{icon}</span>
         {label}
       </div>
       <div className={`tnum mt-2.5 [overflow-wrap:anywhere] font-extrabold leading-tight tracking-tight ${small ? "text-[21px]" : "text-[26px]"}`} data-value={value}>
         {value}
       </div>
-      {sub && <div className="text-[12px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="text-[12px] text-muted-foreground" data-testid={testid ? `${testid}-sub` : undefined}>{sub}</div>}
     </div>
   );
 }

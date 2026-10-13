@@ -740,9 +740,20 @@ html[data-motion="reduce"] .checkin-burst {
     gap: 6px;
     min-width: 0;
   }
+  /* 11.7 · 左栏按栏宽量（container），单词的子元素撑满栏宽（不再按内容宽度溢出到右栏）；
+     长词按字母数缩小（--wl，和正面卡同一个思路），实在放不下就在字母之间换行，绝不越过分栏线（r7 R7-2） */
+  .back-grid > .back-head {
+    container-type: inline-size;
+    align-items: stretch;
+  }
+  .back-grid > .back-head > div {
+    width: 100%;
+  }
   .back-grid > .back-head h2 {
-    font-size: max(20px, min(7.5vh, 30px)) !important;
+    font-size: max(16px, min(7.5vh, 30px, calc(100cqi / (0.66 * var(--wl, 8))))) !important;
     line-height: 1.15;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   .back-grid > .back-rule {
     display: none;

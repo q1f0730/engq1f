@@ -11,7 +11,7 @@ import { seedHomeBase } from "./lib/back-stack";
 import "./styles.css";
 
 // 11.6 · 直接打开的不是首页：先在下面垫一条首页（返回回首页，不直接退出 app）
-seedHomeBase();
+seedHomeBase(getState().onboarded);
 const router = getRouter();
 applyTheme(getState().settings.theme);
 applyLook(getState().settings);

@@ -1128,7 +1128,7 @@ function FlipCard({
       <div className="fs-card back-grid my-auto">
       <div className="back-head flex items-start justify-between gap-3" data-testid="back-head">
         <div className="min-w-0">
-          <h2 className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight">{word.w}</h2>
+          <h2 className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight" data-testid="back-word" style={{ "--wl": word.w.length } as React.CSSProperties}>{word.w}</h2>
           <div className="mt-1 flex items-center gap-2 text-[15px] text-muted-foreground">
             <Phonetic word={word} accent={accent} />
             <button

@@ -47,7 +47,7 @@ describe("R6-1 今天已经完成：之后调高任务不收回", () => {
     expect(s.checkins).toContain(T);
     expect(s.goalMet).toContain(T);
     expect(s.dayRule?.[T]?.g).toBe(40);
-    expect(takeFreeze()).toEqual({ day: T, streak: 13 });
+    expect(takeFreeze()).toEqual({ day: T, streak: 13, milestone: null });
     const D1 = addDays(T, 1);
     expect(brokenStreak(s, D1)).toBe(0);
     expect(curStreak({ ...s, checkins: [...s.checkins, D1] }, D1)).toBe(14);

@@ -78,10 +78,17 @@ export function capReach(today: string, exam: string, newLeft: number, daily = S
 /**
  * 11.6 · 「考前还能学多少新词」唯一的算法：首页考试卡和统计页都调它（扣掉最后只复习的几天，考前模式不排新词）。
  * reach = 考前还能学的新词数；left = 来不及的；examMode = 已经到了考前一天 / 考试当天（只复习）。
+ * 11.7 · todayLeft = 今天还没学的新词目标（summarize.remainingGoal）：今天只算剩下的那部分，其余学习日每天 daily 个。
+ * 学完今天的目标之后「已学 + reach」不变、「来不及」也不变，第二天也一样（r7 R7-4：不再 900 → 920 → 900）。
+ * 不传 todayLeft = 今天按整天算（旧行为）。
  */
-export function examForecast(today: string, exam: string, newLeft: number, daily: number, examMode: boolean): { reach: number; left: number; examMode: boolean } {
+export function examForecast(today: string, exam: string, newLeft: number, daily: number, examMode: boolean, todayLeft?: number): { reach: number; left: number; examMode: boolean } {
   if (examMode || newLeft <= 0) return { reach: 0, left: Math.max(0, newLeft), examMode };
-  const reach = capReach(today, exam, newLeft, Math.max(daily, 1));
+  const d = Math.max(daily, 1);
+  const daysLeft = daysUntil(today, exam);
+  const learnDays = Math.max(1, daysLeft - reserveDays(daysLeft));
+  const cap = todayLeft === undefined ? d * learnDays : Math.max(0, Math.min(todayLeft, d)) + d * (learnDays - 1);
+  const reach = Math.min(newLeft, cap);
   return { reach, left: newLeft - reach, examMode };
 }
 

@@ -4,6 +4,7 @@ import { kill, unkill, type Card, type DayLog, type QuizMode } from "./srs";
 import { cleanOffModes } from "./modes";
 import { today } from "./clock";
 import { toast } from "./toast";
+import { celebrate } from "./celebrate";
 import type { QuizRecord } from "./exam";
 import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
 import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
@@ -659,15 +660,20 @@ function withTodayRule(prev: AppState, next: AppState): AppState {
 function freezeDone(st: AppState, d: string): AppState {
   const r = applyCheckIn(st, d);
   const goalMet = st.goalMet?.includes(d) ? st.goalMet : [...(st.goalMet ?? []), d].sort().slice(-14);
-  lastFreeze = { day: d, streak: r.streak };
+  lastFreeze = { day: d, streak: r.streak, milestone: r.milestone };
   const n = r.streak;
-  const say = () => toast.success(`今天的任务已完成，已帮你打卡${n > 0 ? ` · 连续 ${n} 天` : ""}`, { id: "freeze-done", description: "新目标从明天开始算，今天再学的算额外的" });
+  const ms = r.milestone;
+  // 11.7 · 替用户打卡正好跨过 7 / 30 / 100 天：和手动打卡一样全屏庆祝（r7 R7-3），toast 照常说明今天已打卡
+  const say = () => {
+    toast.success(`今天的任务已完成，已帮你打卡${n > 0 ? ` · 连续 ${n} 天` : ""}`, { id: "freeze-done", description: "新目标从明天开始算，今天再学的算额外的" });
+    celebrate(ms);
+  };
   if (typeof queueMicrotask === "function") queueMicrotask(say);
   else say();
   return { ...st, checkins: r.checkins, makeup: r.makeup, makeupEarned: r.makeupEarned, goalMet };
 }
 /** 11.6 · 最近一次「已完成 → 调高任务 → 替用户打卡」（测试 / 界面读） */
-let lastFreeze: { day: string; streak: number } | null = null;
+let lastFreeze: { day: string; streak: number; milestone: number | null } | null = null;
 export const takeFreeze = () => {
   const f = lastFreeze;
   lastFreeze = null;

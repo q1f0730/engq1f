@@ -73,13 +73,12 @@ export function snapExamOn(rules: Record<string, DayRule> | undefined, d: string
   return r.x === 1 && addDays(best, 1) === d;
 }
 
-/** 11.5 · 快照里能确认、已经过去（早于 today）的考试日：写进 examDays，快照只留 21 天也不丢 */
+/** 11.5 · 快照里能确认、已经过去（早于 today）的考试日：写进 examDays，快照只留 21 天也不丢。
+ * 11.7 · 只收「算数」的那几场（customExamOk：和上一场记下的考试日隔够 EXAM_GAP 天，官方 / 预估场次不受限） */
 export function harvestExamDays(rules: Record<string, DayRule> | undefined, prev: string[] | undefined, today: string): string[] | undefined {
   const out = new Set(prev ?? []);
-  for (const [k, r] of Object.entries(rules ?? {})) {
-    const cand = r.e ?? (r.x === 1 ? addDays(k, 1) : undefined);
-    if (cand && cand > k && cand < today && snapExamOn(rules, cand)) out.add(cand);
-  }
+  const ok = acceptedSnapExams({ dayRule: rules, examDays: prev });
+  for (const cand of ok) if (cand < today) out.add(cand);
   if (!out.size) return prev;
   const list = [...out].sort().slice(-EXAM_DAYS_KEEP);
   return prev && list.length === prev.length && list.every((d, i) => d === prev[i]) ? prev : list;
@@ -92,11 +91,52 @@ export const EXAM_DAYS_KEEP = 12;
  * 没有任何快照的老数据（d 和它之前 21 天都没有快照）才退回去看设置里的日期。
  */
 export function examDayOn(st: Pick<HabitState, "settings" | "examDone" | "dayRule" | "examDays">, d: string): boolean {
-  if (d === st.examDone || st.examDays?.includes(d) || snapExamOn(st.dayRule, d)) return true;
-  if (st.settings.examDate && d === st.settings.examDate && !hasSnapNear(st.dayRule, d)) return true;
+  if (d === st.examDone || st.examDays?.includes(d) || officialDay(d)) return true;
+  if (snapExamOn(st.dayRule, d)) return acceptedSnapExams(st).has(d);
+  return !!st.settings.examDate && d === st.settings.examDate && !hasSnapNear(st.dayRule, d);
+}
+
+/** 官方 / 预估的四级场次（6 月、12 月各一场） */
+export function officialDay(d: string): boolean {
   const m = d.slice(5, 7);
   if (m !== "06" && m !== "12") return false;
   return examOf(Number(d.slice(0, 4)), m === "06" ? 6 : 12).day === d;
+}
+
+/**
+ * 11.7 · 自定的考试日（按快照）和上一场记下的考试日至少隔这么多天，才算一场考试（不打卡也不断签、记进 examDays）。
+ * 四级一年两场：「每天把考试日改成明天」最多换来一场（考前一天 + 考试当天），之后照常要打卡（r7 R7-6）。
+ */
+export const EXAM_GAP = 30;
+
+const acceptCache = new WeakMap<object, { ed?: string[]; done?: string; set: Set<string> }>();
+/**
+ * 11.7 · 快照里出现过、算数的考试日：按日期先后看每个候选（某天快照里记的 e / 旧数据的 x = 1 → 第二天，且 snapExamOn 成立），
+ * 官方 / 预估场次直接算；自定的要和它之前 EXAM_GAP 天内记下的（examDays、examDone、前面已经算数的候选）都不撞。
+ */
+export function acceptedSnapExams(st: Pick<HabitState, "dayRule" | "examDays"> & { examDone?: string }): Set<string> {
+  const rules = st.dayRule;
+  if (!rules) return new Set();
+  const hit = acceptCache.get(rules);
+  if (hit && hit.ed === st.examDays && hit.done === st.examDone) return hit.set;
+  const cands = new Set<string>();
+  for (const [k, r] of Object.entries(rules)) {
+    const c = r.e ?? (r.x === 1 ? addDays(k, 1) : undefined);
+    if (c && c > k && snapExamOn(rules, c)) cands.add(c);
+  }
+  const prior = [...(st.examDays ?? []), ...(st.examDone ? [st.examDone] : [])];
+  const set = new Set<string>();
+  for (const c of [...cands].sort()) {
+    if (officialDay(c) || prior.includes(c)) {
+      set.add(c);
+      continue;
+    }
+    const lo = addDays(c, -(EXAM_GAP - 1));
+    const clash = prior.some((x) => x < c && x >= lo) || [...set].some((x) => x < c && x >= lo);
+    if (!clash) set.add(c);
+  }
+  acceptCache.set(rules, { ed: st.examDays, done: st.examDone, set });
+  return set;
 }
 
 const hasSnapNear = (rules: Record<string, DayRule> | undefined, d: string) => {
@@ -112,7 +152,18 @@ export function skipDay(st: HabitState, d: string): boolean {
   if (pausedOn(st, d) || examDayOn(st, d)) return true;
   const r = st.dayRule?.[d];
   // 11.5 · 考试当天由 examDayOn 按快照判断，快照自己的 x = 2 不算
-  return !!r && (!!r.p || idleExamEve(r, d));
+  return !!r && (!!r.p || eveFree(st, d));
+}
+
+/**
+ * 11.7 · 考前一天免打卡的唯一规则（结算 skipDay 和首页主卡 / 打卡卡片都调它）：当天最后生效的规则一点任务都没有（idleExamEve），
+ * 而且明天真的算一场考试（examDayOn：官方 / 预估场次，或者和上一场隔够 EXAM_GAP 天的自定日期）。
+ * 按词数、按时长一个说法：时长模式的考前一天同样不打卡也不断签（r7 R7-1）。rule 不传 = 读今天的快照。
+ */
+export function eveFree(st: HabitState, d: string, rule: DayRule | undefined = st.dayRule?.[d]): boolean {
+  if (!idleExamEve(rule, d)) return false;
+  const withRule = rule === st.dayRule?.[d] ? st : { ...st, dayRule: { ...(st.dayRule ?? {}), [d]: rule! } };
+  return examDayOn(withRule, addDays(d, 1));
 }
 
 /**

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, FileUp, Gauge, RotateCcw, ShieldCheck, WifiOff, Zap } from "lucide-react";
 import { Suspense, lazy, useRef, useState } from "react";
-import { useBackClose } from "@/lib/back-stack";
+import { rewindToFirst, useBackClose } from "@/lib/back-stack";
 import { Logo } from "@/components/app/shell";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
@@ -59,6 +59,8 @@ function Welcome() {
   const finishSetup = (to: "/" | "/test") => {
     // 引导里已经把计划说清楚了：当天不再弹冲刺卡；学不完的信息卡这一场也不再弹
     completeOnboarding({ book: curBook, daily: curDaily, examDate: exam === exams[0].day ? "" : exam }, { sprintSeen: day, ...(cap || soon ? { sprintOff: exam } : {}), ...(!cap && !soon && spare < 0 ? { paceOk: day } : {}) });
+    // 11.7 · 回首页时退回第一条 app 记录（首页下面不留引导步骤 / 词单链接页，按一次返回就退出）
+    if (to === "/" && rewindToFirst()) return;
     navigate({ to, replace: true });
   };
 
@@ -129,7 +131,7 @@ function Welcome() {
                 text={pending}
                 onDone={() => {
                   setPending(null);
-                  if (getState().onboarded) navigate({ to: "/", replace: true });
+                  if (getState().onboarded && !rewindToFirst()) navigate({ to: "/", replace: true });
                 }}
               />
             </Suspense>

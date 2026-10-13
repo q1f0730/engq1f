@@ -271,12 +271,17 @@ export function useSheetOpen(): boolean {
  * 这样「没有 app 内的上一页」时按返回回到首页，而不是直接退出 app（about:blank）；在首页再按一次才退出。
  * 只在这一页是第一条 app 记录时垫（刷新 / 已经在 app 里走过的不垫）；欢迎页不垫。必须在路由创建之前调用。
  */
-export function seedHomeBase() {
+/** 11.7 · 认得的页面（不认得的地址会被路由改写成首页，不能再在下面垫一条首页，否则首页按返回白按一次：r7 R7-5） */
+const KNOWN = ["/advanced", "/algo", "/data", "/judge", "/lab", "/list-link", "/match", "/me", "/quiz", "/stats", "/study", "/syn", "/tape", "/test", "/words"];
+
+export function seedHomeBase(onboarded = true) {
   if (!hasWin) return;
   try {
     const raw = window.location.hash.replace(/^#/, "");
     const path = (raw.split("?")[0] || "/").replace(/\/+$/, "") || "/";
-    if (path === "/" || path === "/welcome") return;
+    if (path === "/" || path === "/welcome" || !KNOWN.includes(path)) return;
+    // 还没完成引导：除了词单链接 / 水平测试，别的页面都会被改写成欢迎页，垫的首页也会变成欢迎页（返回白按一次）
+    if (!onboarded && path !== "/list-link" && path !== "/test") return;
     const st = cur();
     if (st.__TSR_index !== undefined && st.__TSR_index !== 0) return;
     if (st.__TSR_index === 0 && (st as { __home?: 1 }).__home) return;
@@ -287,5 +292,25 @@ export function seedHomeBase() {
     window.history.pushState({ key: k1, __TSR_key: k1, __TSR_index: 1 }, "", base + "#" + raw);
   } catch {
     /* history 不可用 */
+  }
+}
+
+/**
+ * 11.7 · 完成引导（直接打开 / 从词单链接进来）后回首页：引导两步压的条目、词单链接页、垫的首页都还在 history 里，
+ * 直接 replace 到首页的话，在首页按返回要白按一到两次才退出（r7 R7-5）。这里退回到第一条 app 记录（序号 0：
+ * 欢迎页会被路由改写成首页，垫的那条本来就是首页），首页下面不再有 app 内的条目，按一次返回就退出。
+ * 已经在第一条（序号 0 / 没有序号）时返回 false，由调用方自己 replace 到首页。
+ */
+export function rewindToFirst(): boolean {
+  if (!hasWin) return false;
+  const i = idx(cur());
+  if (i === undefined || i <= 0) return false;
+  try {
+    hold = true;
+    window.history.go(-i);
+    return true;
+  } catch {
+    hold = false;
+    return false;
   }
 }
