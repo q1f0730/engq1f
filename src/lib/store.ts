@@ -10,7 +10,9 @@ import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, parseHM, type CheckIn
 import type { ShareTpl } from "./share";
 import { cleanFontSize, cleanMotion, motionReduced, type FontSize, type Motion } from "./ux";
 import { ACTIVE_PROFILE, revKeyOf, stateKeyOf } from "./profiles";
+import { cleanCards, cleanDayMap, cleanDays, cleanFlags, cleanLog, emptyReport, isDay, optDay, type CleanReport } from "./validate";
 
+export type { CleanReport };
 export type Book = "all" | "core";
 export type Order = "core" | "alpha" | "random";
 export type Theme = "system" | "light" | "dark" | "contrast";
@@ -123,6 +125,10 @@ export interface AppState {
   newCut?: { d: string; n: number };
   /** v10 · 新词自适应建议关掉的那天 */
   newCutSeen?: string;
+  /** 11.1 · 回归恢复计划：from–until 这几天只清积压、新词暂停 */
+  recover?: { from: string; until: string; n: number };
+  /** 11.1 · 欢迎回来卡片关掉的那天 */
+  recoverSeen?: string;
 }
 
 /** v10 · 记忆保持目标（这里自带一份，不让首屏引入整个 algo.ts） */
@@ -211,8 +217,17 @@ export function initialState(): AppState {
 /** 越界的设置值回到默认（导入旧备份或手改数据时） */
 export function cleanSettings(s: Settings): Settings {
   const d = defaultSettings();
+  const bool = (v: unknown, dv: boolean) => (typeof v === "boolean" ? v : dv);
   return {
     ...s,
+    book: s.book === "core" ? "core" : "all",
+    order: s.order === "alpha" || s.order === "random" ? s.order : "core",
+    daily: Number.isInteger(s.daily) && s.daily >= 1 && s.daily <= 300 ? s.daily : d.daily,
+    accent: s.accent === "uk" ? "uk" : "us",
+    autoplay: bool(s.autoplay, d.autoplay),
+    cnFirst: s.cnFirst === true,
+    haptics: bool(s.haptics, d.haptics),
+    reviewCap: Number.isInteger(s.reviewCap) && s.reviewCap >= 0 && s.reviewCap <= 10000 ? s.reviewCap : 0,
     rate: RATE_OPTIONS.includes(s.rate) ? s.rate : d.rate,
     tapeRepeat: REPEAT_OPTIONS.includes(s.tapeRepeat) ? s.tapeRepeat : d.tapeRepeat,
     wakeLock: typeof s.wakeLock === "boolean" ? s.wakeLock : d.wakeLock,
@@ -243,40 +258,54 @@ export function cleanSettings(s: Settings): Settings {
   };
 }
 
-/** 校验并补全（导入备份/读取旧数据） */
-export function normalize(raw: unknown): AppState {
-  if (!raw || typeof raw !== "object") throw new Error("备份格式不对");
+/** 校验并补全（导入备份/读取旧数据）：逐条检查，能修的修、修不了的丢，绝不抛出坏状态 */
+export function normalize(raw: unknown, has?: (w: string) => boolean, rep: CleanReport = emptyReport()): AppState {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("备份格式不对");
   const r = raw as Partial<AppState>;
-  if (r.cards && typeof r.cards !== "object") throw new Error("备份格式不对");
   const base = initialState();
-  const rs = (r.settings && typeof r.settings === "object" ? r.settings : {}) as Partial<Settings>;
+  const day = today();
+  const rs = (r.settings && typeof r.settings === "object" && !Array.isArray(r.settings) ? r.settings : {}) as Partial<Settings>;
   // 已有存档：v10 起每次保存都会写全这些开关；缺了就是更早的存档，沿用旧默认（关）
   const defaults = "fuzz" in rs ? base.settings : { ...base.settings, ...LEGACY_ALGO };
+  const checkins = cleanDays(r.checkins, rep);
+  const str = (x: unknown) => (typeof x === "string" ? x : undefined);
   return {
     ...base,
-    ...r,
     v: 1,
+    onboarded: r.onboarded === true,
     settings: cleanSettings({ ...defaults, ...rs }),
-    cards: r.cards ?? {},
-    star: r.star ?? {},
-    log: r.log ?? {},
-    checkins: Array.isArray(r.checkins) ? r.checkins : [],
-    bury: r.bury && typeof r.bury === "object" ? r.bury : {},
-    quizzes: Array.isArray(r.quizzes) ? r.quizzes.filter((q) => q && typeof q.ok === "number" && typeof q.n === "number" && typeof q.at === "string") : [],
+    cards: cleanCards(r.cards, day, has, rep),
+    star: cleanFlags(r.star, has, rep),
+    log: cleanLog(r.log, rep),
+    checkins,
+    bury: cleanDayMap(r.bury, has, rep),
+    test: r.test && typeof r.test === "object" && isDay(r.test.at) && typeof r.test.est === "number" && Number.isFinite(r.test.est) ? { at: r.test.at, est: r.test.est } : undefined,
+    lastBackup: optDay(r.lastBackup),
+    backupSnooze: optDay(r.backupSnooze),
+    quizzes: Array.isArray(r.quizzes)
+      ? r.quizzes
+          .filter((q) => q && typeof q === "object" && typeof q.ok === "number" && typeof q.n === "number" && typeof q.at === "string")
+          .map((q) => ({ ...q, ts: typeof q.ts === "number" ? q.ts : 0, ms: typeof q.ms === "number" ? q.ms : 0 }))
+      : [],
     lists: normalizeLists(r.lists),
     revlog: normalizeRevlog(r.revlog),
     badges: r.badges && typeof r.badges === "object" && !Array.isArray(r.badges) ? Object.fromEntries(Object.entries(r.badges).filter(([, v]) => typeof v === "string")) : {},
-    weekSeen: typeof r.weekSeen === "string" ? r.weekSeen : undefined,
+    weekSeen: str(r.weekSeen),
     makeup: typeof r.makeup === "number" && Number.isFinite(r.makeup) ? Math.max(0, Math.min(MAKEUP_MAX, Math.floor(r.makeup))) : 0,
-    makeupEarned: typeof r.makeupEarned === "string" ? r.makeupEarned : undefined,
-    patched: Array.isArray(r.patched) ? r.patched.filter((d) => typeof d === "string") : [],
+    makeupEarned: str(r.makeupEarned),
+    patched: cleanDays(r.patched),
     installed: r.installed === true ? true : undefined,
-    installSnooze: typeof r.installSnooze === "string" ? r.installSnooze : undefined,
-    seed: typeof r.seed === "number" ? r.seed : base.seed,
+    installSnooze: str(r.installSnooze),
+    seed: typeof r.seed === "number" && Number.isFinite(r.seed) ? r.seed : base.seed,
     gameBest: cleanBest(r.gameBest),
     newCut:
       r.newCut && typeof r.newCut === "object" && typeof r.newCut.d === "string" && Number.isInteger(r.newCut.n) && r.newCut.n >= 0 ? { d: r.newCut.d, n: r.newCut.n } : undefined,
-    newCutSeen: typeof r.newCutSeen === "string" ? r.newCutSeen : undefined,
+    newCutSeen: str(r.newCutSeen),
+    recover:
+      r.recover && typeof r.recover === "object" && isDay(r.recover.from) && isDay(r.recover.until) && Number.isInteger(r.recover.n) && r.recover.n > 0
+        ? { from: r.recover.from, until: r.recover.until, n: r.recover.n }
+        : undefined,
+    recoverSeen: optDay(r.recoverSeen),
   };
 }
 
@@ -285,51 +314,178 @@ function cleanBest(raw: unknown): Record<string, number> {
   return Object.fromEntries(Object.entries(raw).filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v >= 0));
 }
 
-function read(): AppState {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const st = normalize(JSON.parse(raw));
-      // 复习日志单独存（主状态里带了就用主状态里的，例如刚导入）
-      if (!st.revlog.length) {
-        try {
-          st.revlog = normalizeRevlog(JSON.parse(localStorage.getItem(REV_KEY) || "[]"));
-        } catch {
-          /* 日志损坏：丢掉日志，不影响学习记录 */
-        }
-      }
-      return st;
+/** 从存储里的原文读出状态（复习日志单独存；主状态里带了就用主状态里的，例如刚导入） */
+function fromRaw(raw: string): AppState {
+  const st = normalize(JSON.parse(raw));
+  if (!st.revlog.length) {
+    try {
+      st.revlog = normalizeRevlog(JSON.parse(localStorage.getItem(REV_KEY) || "[]"));
+    } catch {
+      /* 日志损坏：丢掉日志，不影响学习记录 */
     }
-  } catch {
-    /* 损坏的数据：从头开始 */
   }
-  return initialState();
+  return st;
+}
+
+/** 11.1 · 存档读不出来时不再静默从头开始（那样下一次保存就把原始数据覆盖了）：交给救援页处理 */
+export let bootError: string | null = null;
+/** 上次和存储同步（写入或读入）的原文：保存前对比，发现别的窗口写过就先合并 */
+let lastRaw: string | null = null;
+
+function read(): AppState {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(KEY);
+  } catch {
+    return initialState();
+  }
+  if (!raw) return initialState();
+  try {
+    const st = fromRaw(raw);
+    lastRaw = raw;
+    return st;
+  } catch (e) {
+    bootError = (e as Error)?.message || "存档损坏";
+    return initialState();
+  }
 }
 
 let state: AppState = read();
 let savedRev: RevEntry[] | null = null;
 const listeners = new Set<() => void>();
+const external = new Set<(why: "sync" | "merge") => void>();
 
-function persist() {
+/** 别的窗口改了记录（已同步 / 已合并）时通知界面 */
+export function onExternalChange(fn: (why: "sync" | "merge") => void) {
+  external.add(fn);
+  return () => {
+    external.delete(fn);
+  };
+}
+
+const REC_KEYS = ["cards", "log", "star", "bury", "badges", "gameBest"] as const;
+
+/** a → b 的改动套到 base 上（只改动过的 key） */
+function applyDiff<T>(base: Record<string, T>, a: Record<string, T>, b: Record<string, T>): Record<string, T> {
+  const out = { ...base };
+  for (const k of Object.keys(b)) if (b[k] !== a[k]) out[k] = b[k];
+  for (const k of Object.keys(a)) if (!(k in b)) delete out[k];
+  return out;
+}
+
+/**
+ * 11.1 · 三方合并：prev → next 是本窗口这一步的改动，other 是别的窗口刚写进存储的状态。
+ * 把本窗口的改动重放到 other 上，两边的改动都留下（学过的词、设置、日志、打卡）。
+ */
+export function rebase(prev: AppState, next: AppState, other: AppState): AppState {
+  const out = { ...other } as Record<string, unknown>;
+  const P = prev as unknown as Record<string, unknown>;
+  const N = next as unknown as Record<string, unknown>;
+  for (const k of Object.keys(N)) {
+    const a = P[k];
+    const b = N[k];
+    if (a === b) continue;
+    if (k === "revlog") {
+      const key = (e: RevEntry) => `${e[0]}|${e[1]}|${e[2]}`;
+      const had = new Set((a as RevEntry[]).map(key));
+      const seen = new Set(other.revlog.map(key));
+      const added = (b as RevEntry[]).filter((e) => !had.has(key(e)) && !seen.has(key(e)));
+      const removed = new Set((a as RevEntry[]).filter((e) => !(b as RevEntry[]).some((x) => key(x) === key(e))).map(key));
+      out.revlog = [...other.revlog.filter((e) => !removed.has(key(e))), ...added].sort((x, y) => x[1] - y[1]);
+    } else if (k === "checkins" || k === "patched") {
+      out[k] = [...new Set([...((other as unknown as Record<string, string[]>)[k] ?? []), ...(b as string[])])].sort();
+    } else if (k === "settings") {
+      const sa = a as Record<string, unknown>;
+      const sb = b as Record<string, unknown>;
+      const ns = { ...other.settings } as Record<string, unknown>;
+      for (const f of Object.keys(sb)) if (sb[f] !== sa[f]) ns[f] = sb[f];
+      out.settings = ns;
+    } else if ((REC_KEYS as readonly string[]).includes(k) && a && b && typeof a === "object" && typeof b === "object") {
+      out[k] = applyDiff(((other as unknown as Record<string, Record<string, unknown>>)[k] ?? {}) as Record<string, unknown>, a as Record<string, unknown>, b as Record<string, unknown>);
+    } else out[k] = b;
+  }
+  return out as unknown as AppState;
+}
+
+function writeOut() {
+  // 日志可能上万条：只在变了的时候写它自己的 key
+  if (state.revlog !== savedRev) {
+    if (state.revlog.length) localStorage.setItem(REV_KEY, JSON.stringify(state.revlog));
+    else localStorage.removeItem(REV_KEY);
+    savedRev = state.revlog;
+  }
+  const { revlog: _omit, ...rest } = state;
+  void _omit;
+  const raw = JSON.stringify(rest);
+  localStorage.setItem(KEY, raw);
+  lastRaw = raw;
+  localStorage.setItem(THEME_KEY, state.settings.theme);
+}
+
+let bc: BroadcastChannel | null = null;
+try {
+  bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("cet4v-sync") : null;
+} catch {
+  bc = null;
+}
+
+function persist(prev: AppState) {
   try {
-    // 日志可能上万条：只在变了的时候写它自己的 key
-    if (state.revlog !== savedRev) {
-      if (state.revlog.length) localStorage.setItem(REV_KEY, JSON.stringify(state.revlog));
-      else localStorage.removeItem(REV_KEY);
-      savedRev = state.revlog;
+    const cur = localStorage.getItem(KEY);
+    let merged = false;
+    if (cur !== null && lastRaw !== null && cur !== lastRaw) {
+      // 别的窗口在我们上次同步之后写过：先合并，再写（谁最后写谁赢会丢数据）
+      try {
+        state = rebase(prev, state, fromRaw(cur));
+        merged = true;
+      } catch {
+        /* 对方写的读不出来：保留本窗口 */
+      }
     }
-    const { revlog: _omit, ...rest } = state;
-    void _omit;
-    localStorage.setItem(KEY, JSON.stringify(rest));
-    localStorage.setItem(THEME_KEY, state.settings.theme);
+    writeOut();
+    bc?.postMessage({ key: KEY });
+    if (merged) external.forEach((f) => f("merge"));
   } catch {
     /* 存储已满 */
   }
 }
 
-function commit(next: AppState) {
+/** 别的窗口写了存储：读进来替换内存（本窗口每一步都已即时写入，不会丢） */
+export function syncFromStorage(): boolean {
+  let cur: string | null;
+  try {
+    cur = localStorage.getItem(KEY);
+  } catch {
+    return false;
+  }
+  if (cur === null || cur === lastRaw) return false;
+  let next: AppState;
+  try {
+    next = fromRaw(cur);
+  } catch {
+    return false;
+  }
+  lastRaw = cur;
   state = next;
-  persist();
+  savedRev = null;
+  applyTheme(state.settings.theme);
+  applyLook(state.settings);
+  listeners.forEach((l) => l());
+  external.forEach((f) => f("sync"));
+  return true;
+}
+
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === KEY || e.key === null) syncFromStorage();
+  });
+  if (bc) bc.onmessage = (e) => (e.data as { key?: string })?.key === KEY && syncFromStorage();
+}
+
+function commit(next: AppState) {
+  const prev = state;
+  state = next;
+  persist(prev);
   applyTheme(state.settings.theme);
   applyLook(state.settings);
   listeners.forEach((l) => l());
@@ -575,25 +731,48 @@ export function replaceCards(cards: Record<string, Card>) {
   commit({ ...state, cards });
 }
 
+// ---------------------------------------------------------------- 11.1 · 回归恢复计划
+
+/** 开始恢复：积压按天摊开（cards 由调用方算好），这几天新词暂停 */
+export function startRecover(cards: Record<string, Card>, from: string, until: string, n: number) {
+  commit({ ...state, cards, recover: { from, until, n }, recoverSeen: from });
+}
+
+export function endRecover() {
+  commit({ ...state, recover: undefined });
+}
+
+export function dismissRecover(day: string) {
+  commit({ ...state, recoverSeen: day });
+}
+
 export function saveTest(est: number) {
   commit({ ...state, test: { at: today(), est } });
 }
 
+/** 备份文件格式版本（state.v 是存档版本）：比这个新的备份来自更新的应用，拒收 */
+export const BACKUP_VERSION = 1;
+export const STATE_VERSION = 1;
+
 export function exportBackup(): string {
-  return JSON.stringify({ app: "cet4-vocab", version: 1, exportedAt: new Date().toISOString(), state }, null, 0);
+  return JSON.stringify({ app: "cet4-vocab", version: BACKUP_VERSION, exportedAt: new Date().toISOString(), state }, null, 0);
 }
 
-/** 解析明文备份（不提交）：文件 / 剪贴板 / 快照共用 */
-export function parseBackup(text: string): AppState {
+export const NEWER_MSG = "这份备份来自更新的版本，请先更新 app 再导入";
+
+/** 解析明文备份（不提交）：文件 / 剪贴板 / 快照共用。has 给了就丢掉词库里没有的词；rep 收集丢掉 / 修正的条数 */
+export function parseBackup(text: string, has?: (w: string) => boolean, rep: CleanReport = emptyReport()): AppState {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
     throw new Error("文件不是有效的 JSON");
   }
-  const p = parsed as { app?: string; state?: unknown };
-  if (p?.app !== "cet4-vocab" || !p.state) throw new Error("这不是四级单词打卡的备份文件");
-  return normalize(p.state);
+  const p = parsed as { app?: string; version?: unknown; state?: unknown };
+  if (p?.app !== "cet4-vocab" || !p.state || typeof p.state !== "object") throw new Error("这不是四级单词打卡的备份文件");
+  const sv = (p.state as { v?: unknown }).v;
+  if ((typeof p.version === "number" && p.version > BACKUP_VERSION) || (typeof sv === "number" && sv > STATE_VERSION)) throw new Error(NEWER_MSG);
+  return normalize(p.state, has, rep);
 }
 
 export function importBackup(text: string): AppState {

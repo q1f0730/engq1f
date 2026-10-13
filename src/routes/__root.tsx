@@ -14,25 +14,21 @@ import { useEffect, useRef } from "react";
 import { requestPersist } from "@/lib/persist";
 import { useAppBadge, useReminder } from "@/lib/nudge";
 import { MilestoneOverlay } from "@/components/app/milestone";
+import { Rescue } from "@/components/app/rescue";
+import { useSheetOpen } from "@/lib/back-stack";
+import { onExternalChange } from "@/lib/store";
 
 const BARE = ["/study", "/welcome", "/test", "/tape", "/quiz", "/match", "/judge"];
+/** 11.1 · 二级页：不显示底部标签栏（只用左上角返回一种导航） */
+const SUB = ["/data", "/algo", "/syn"];
 
 function NotFound() {
   return <Navigate to="/" replace />;
 }
 
 function ErrorView({ error }: { error: unknown }) {
-  return (
-    <div className="grid min-h-dvh place-items-center p-6 text-center">
-      <div>
-        <h1 className="text-xl font-bold">出了点问题</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{String((error as Error)?.message ?? error)}</p>
-        <button className="mt-6 rounded-2xl bg-primary px-6 py-3 font-semibold text-primary-foreground" onClick={() => location.reload()}>
-          重新加载
-        </button>
-      </div>
-    </div>
-  );
+  // 11.1 · 不依赖主界面的救援页：回滚到快照 / 导出原始数据
+  return <Rescue message={String((error as Error)?.message ?? error)} />;
 }
 
 export const Route = createRootRoute({
@@ -52,6 +48,21 @@ function Root() {
   const booted = useRef(false);
   const theme = st.settings.theme;
   const bare = BARE.some((p) => path.startsWith(p));
+  // 11.1 · 有弹层开着时 toast 挪到顶部，不挡弹层底部的主按钮
+  const sheetOpen = useSheetOpen();
+  const top = bare || sheetOpen;
+  // 11.1 · 多窗口：别的窗口改了记录 → 已同步 / 已合并，提示一次（固定 id 去重）
+  useEffect(
+    () =>
+      onExternalChange((why) =>
+        toast(why === "merge" ? "另一个窗口也改了记录，已合并，两边的进度都保留" : "另一个窗口更新了学习记录，已同步", {
+          id: "multi-tab",
+          description: "同时开着多个窗口时，记录会自动合并",
+          duration: 3000,
+        }),
+      ),
+    [],
+  );
   // 申请持久化存储，避免浏览器清理学习记录
   useEffect(() => {
     void requestPersist();
@@ -93,14 +104,14 @@ function Root() {
   useAppBadge(st);
   return (
     <>
-      {bare ? <Outlet /> : <AppShell><Outlet /></AppShell>}
+      {bare ? <Outlet /> : <AppShell sub={SUB.some((p) => path.startsWith(p))}><Outlet /></AppShell>}
       <UpdatePrompt bare={bare} />
       <MilestoneOverlay />
       {/* 有底栏的页面：底部居中、浮在标签栏之上；学习/测试页底部是作答按钮，放顶部（让开刘海） */}
       <Toaster
-        position={bare ? "top-center" : "bottom-center"}
-        offset={bare ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
-        mobileOffset={bare ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
+        position={top ? "top-center" : "bottom-center"}
+        offset={top ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
+        mobileOffset={top ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
         theme={resolvedTheme(theme)}
         duration={1600}
       />

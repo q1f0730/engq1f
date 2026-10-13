@@ -1,13 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, Gauge, Layers, ShieldCheck, WifiOff, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, Gauge, RotateCcw, ShieldCheck, WifiOff, Zap } from "lucide-react";
 import { useState } from "react";
 import { Logo, Spinner } from "@/components/app/shell";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
 import { fmtDate } from "@/lib/format";
 import { bookSize } from "@/lib/plan";
-import { finishDate } from "@/lib/srs";
+import { diffDays, finishDate } from "@/lib/srs";
 import { DAILY_OPTIONS, completeOnboarding, getState, type Book, type Order } from "@/lib/store";
+import { daysUntil, effectiveExam, recommendPlan, sprintPlan, upcomingExams } from "@/lib/exam";
+import { NEW_CARD_SEC, REVIEW_CARD_SEC } from "@/lib/ux";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/welcome")({ component: Welcome });
@@ -16,18 +18,33 @@ function Welcome() {
   const { index } = useWords();
   const navigate = useNavigate();
   const init = getState().settings;
+  const day = today();
+  const exams = upcomingExams(day, 2);
   const [step, setStep] = useState(0);
-  const [book, setBook] = useState<Book>(init.book);
+  // 11.1 · 第一步先问考试：默认下一场（2026-12-12），可以换
+  const [exam, setExam] = useState(() => effectiveExam(day, init.examDate).day);
+  const [book, setBook] = useState<Book | null>(null);
   const [order, setOrder] = useState<Order>(init.order);
-  const [daily, setDaily] = useState(init.daily);
+  const [daily, setDaily] = useState<number | null>(null);
 
   if (!index) return <Spinner />;
-  const size = bookSize(index, book);
-  const days = Math.ceil(size / daily);
-  const finish = finishDate(today(), size, daily);
+  const sizes = { all: index.list.length, core: index.coreCount };
+  const rec = recommendPlan(day, exam, sizes);
+  const curBook: Book = book ?? rec.book;
+  const size = bookSize(index, curBook);
+  const bookPlan = sprintPlan(day, exam, size);
+  const curDaily = daily ?? bookPlan.daily;
+  const days = Math.ceil(size / curDaily);
+  const finish = finishDate(today(), size, curDaily);
+  const spare = diffDays(finish, exam);
+  const examLeft = daysUntil(day, exam);
+  const options = [...new Set([bookPlan.daily, ...DAILY_OPTIONS])].sort((a, b) => a - b);
+  const reviews = Math.round(curDaily * 2.5);
+  const minutes = Math.max(5, Math.round((curDaily * NEW_CARD_SEC + reviews * REVIEW_CARD_SEC) / 60));
+  const spareOf = (sz: number, n: number) => diffDays(finishDate(day, sz, n), exam);
 
   const finishSetup = (to: "/" | "/test") => {
-    completeOnboarding({ book, order, daily });
+    completeOnboarding({ book: curBook, order, daily: curDaily, examDate: exam === exams[0].day ? "" : exam });
     navigate({ to, replace: true });
   };
 
@@ -56,16 +73,16 @@ function Welcome() {
             <h1 className="mt-8 font-display text-[40px] font-extrabold leading-[1.1] tracking-tight">
               四级单词，
               <br />
-              <span className="text-primary">每天十分钟</span>拿下。
+              <span className="text-primary">考前</span>稳稳背完。
             </h1>
             <p className="mt-4 text-[16px] leading-relaxed text-muted-foreground">
-              {index.list.length} 个四级词汇，分组学习 + 智能复习。记不住的词会反复出现，记住的词会越隔越久。
+              {index.list.length} 个四级词汇，按你的考试日期排好每天学多少。忘了的词明天再来，记住的词越隔越久。
             </p>
             <div className="mt-8 grid grid-cols-2 gap-2.5">
               <Feature icon={<ShieldCheck className="size-4" />} label="不用注册" />
               <Feature icon={<WifiOff className="size-4" />} label="离线可用" />
               <Feature icon={<Zap className="size-4" />} label="秒开无广告" />
-              <Feature icon={<Layers className="size-4" />} label="墨墨式复习算法" />
+              <Feature icon={<RotateCcw className="size-4" />} label="忘了的词自动回来" />
             </div>
           </div>
           <Primary onClick={() => setStep(1)} testid="welcome-next">
@@ -76,13 +93,71 @@ function Welcome() {
 
       {step === 1 && (
         <div className="card-in flex flex-1 flex-col">
-          <h1 className="mt-4 font-display text-[30px] font-extrabold tracking-tight">选择词书</h1>
-          <p className="mt-1 text-[15px] text-muted-foreground">之后可以在「我的」里随时修改。</p>
-          <div className="mt-6 space-y-3">
-            <Choice active={book === "all"} onClick={() => setBook("all")} title="四级全部词汇" sub={`${index.list.length} 词 · 覆盖大纲全部词汇`} testid="book-all" />
-            <Choice active={book === "core"} onClick={() => setBook("core")} title="四级核心词汇" sub={`${index.coreCount} 词 · 高频必考，时间紧先背这个`} testid="book-core" />
+          <h1 className="mt-4 font-display text-[30px] font-extrabold tracking-tight">什么时候考四级？</h1>
+          <p className="mt-1 text-[15px] text-muted-foreground">按考试日期安排每天的量，保证考前学完、留出复习时间。</p>
+          <div className="mt-5 grid grid-cols-3 gap-2" data-testid="onb-exam">
+            {exams.map((e, k) => (
+              <button
+                key={e.day}
+                type="button"
+                data-testid={`onb-exam-${k}`}
+                aria-pressed={exam === e.day}
+                onClick={() => setExam(e.day)}
+                className={cn("rounded-2xl border px-1 py-2.5 text-center transition", exam === e.day ? "border-primary bg-brand-soft text-primary" : "border-border bg-card text-muted-foreground")}
+              >
+                <span className="tnum block text-[15px] font-bold">{fmtDate(e.day)}</span>
+                <span className="block text-[11px] opacity-80">
+                  {e.day.slice(0, 4)} · {e.official ? "官方" : "预估"}
+                </span>
+              </button>
+            ))}
+            <label
+              className={cn(
+                "relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border px-1 py-2.5 text-center transition",
+                !exams.some((e) => e.day === exam) ? "border-primary bg-brand-soft text-primary" : "border-border bg-card text-muted-foreground",
+              )}
+            >
+              <span className="flex items-center gap-1 text-[14px] font-bold">
+                <CalendarDays className="size-3.5" />
+                {!exams.some((e) => e.day === exam) ? fmtDate(exam) : "其他日期"}
+              </span>
+              <span className="block text-[11px] opacity-80">自己选</span>
+              <input
+                type="date"
+                data-testid="onb-exam-custom"
+                min={day}
+                value={exam}
+                onChange={(e) => e.target.value && e.target.value >= day && setExam(e.target.value)}
+                className="absolute inset-0 cursor-pointer opacity-0"
+                aria-label="自定义考试日期"
+              />
+            </label>
           </div>
-          <div className="mb-2 mt-7 text-[12px] font-bold tracking-wider text-muted-foreground">学习顺序</div>
+          <p className="mt-2 text-[13px] font-semibold text-primary" data-testid="onb-exam-left">
+            还有 {examLeft} 天
+          </p>
+          <div className="mb-2 mt-5 text-[12px] font-bold tracking-wider text-muted-foreground">选择词书</div>
+          <div className="space-y-2.5">
+            {(["core", "all"] as Book[]).map((b) => {
+              const sz = b === "all" ? sizes.all : sizes.core;
+              const p = sprintPlan(day, exam, sz);
+              return (
+                <Choice
+                  key={b}
+                  active={curBook === b}
+                  onClick={() => {
+                    setBook(b);
+                    setDaily(null);
+                  }}
+                  title={b === "all" ? "四级全部词汇" : "四级核心词汇"}
+                  sub={`${sz} 词 · ${p.tooMany ? `每天 100 个也要到考后才学完` : `每天 ${p.daily} 个，考前 ${p.spare} 天学完`}`}
+                  badge={rec.book === b ? "推荐" : undefined}
+                  testid={`book-${b}`}
+                />
+              );
+            })}
+          </div>
+          <div className="mb-2 mt-5 text-[12px] font-bold tracking-wider text-muted-foreground">学习顺序</div>
           <div className="grid grid-cols-3 gap-2">
             {(
               [
@@ -97,7 +172,7 @@ function Welcome() {
                 onClick={() => setOrder(v)}
                 data-testid={`order-${v}`}
                 className={cn(
-                  "rounded-2xl border py-3 text-[14px] font-semibold transition",
+                  "rounded-2xl border py-2.5 text-[14px] font-semibold transition",
                   order === v ? "border-primary bg-brand-soft text-primary" : "border-border bg-card text-muted-foreground",
                 )}
               >
@@ -115,32 +190,38 @@ function Welcome() {
       {step === 2 && (
         <div className="card-in flex flex-1 flex-col">
           <h1 className="mt-4 font-display text-[30px] font-extrabold tracking-tight">每天学多少新词？</h1>
-          <p className="mt-1 text-[15px] text-muted-foreground">复习量会随新词增加，建议从 20 开始。</p>
-          <div className="mt-6 grid grid-cols-3 gap-2.5" data-testid="daily-pick">
-            {DAILY_OPTIONS.map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setDaily(n)}
-                data-testid={`daily-${n}`}
-                className={cn(
-                  "relative rounded-3xl border py-5 transition",
-                  daily === n ? "border-primary bg-brand-soft" : "border-border bg-card",
-                )}
-              >
-                <div className={cn("tnum font-display text-[30px] font-extrabold leading-none", daily === n ? "text-primary" : "")}>{n}</div>
-                <div className="mt-1.5 text-[12px] text-muted-foreground">{Math.ceil(size / n)} 天</div>
-                {n === 20 && <span className="absolute -top-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">推荐</span>}
-              </button>
-            ))}
+          <p className="mt-1 text-[15px] text-muted-foreground">
+            推荐 <b className="text-foreground">{bookPlan.daily}</b> 个：考前 {Math.max(0, bookPlan.spare)} 天学完{curBook === "core" ? "核心词" : "全部词"}，最后留时间复习。
+          </p>
+          <div className="mt-5 grid grid-cols-3 gap-2.5" data-testid="daily-pick">
+            {options.map((n) => {
+              const sp = spareOf(size, n);
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setDaily(n)}
+                  data-testid={`daily-${n}`}
+                  data-rec={n === bookPlan.daily ? 1 : 0}
+                  className={cn("relative rounded-3xl border py-4 transition", curDaily === n ? "border-primary bg-brand-soft" : "border-border bg-card")}
+                >
+                  <div className={cn("tnum font-display text-[28px] font-extrabold leading-none", curDaily === n ? "text-primary" : "")}>{n}</div>
+                  <div className={cn("mt-1.5 text-[11px]", sp < 0 ? "font-semibold text-forget" : "text-muted-foreground")}>{sp < 0 ? "考后才学完" : `考前 ${sp} 天学完`}</div>
+                  {n === bookPlan.daily && <span className="absolute -top-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">推荐</span>}
+                </button>
+              );
+            })}
           </div>
-          <div className="mt-6 rounded-3xl bg-secondary/80 p-5" data-testid="plan-preview">
+          <div className="mt-5 rounded-3xl bg-secondary/80 p-5" data-testid="plan-preview" data-spare={spare}>
             <div className="text-[13px] text-muted-foreground">按这个节奏</div>
             <div className="mt-1 text-[20px] font-extrabold">
               {days} 天，<span className="text-primary">{fmtDate(finish, true)}</span> 学完
             </div>
+            <div className={cn("mt-1 text-[13px] font-semibold", spare < 0 ? "text-forget" : "text-know")} data-testid="plan-exam">
+              {spare < 0 ? `比考试晚 ${-spare} 天，来不及` : `考前 ${spare} 天学完`}
+            </div>
             <div className="mt-1 text-[13px] text-muted-foreground">
-              每天约 {daily} 个新词 + {Math.round(daily * 2.5)} 个左右复习，约 {Math.max(5, Math.round((daily * 3.5 * 8) / 60))} 分钟
+              每天约 {curDaily} 个新词 + {reviews} 个左右复习，约 {minutes} 分钟
             </div>
           </div>
           <div className="flex-1" />
@@ -186,19 +267,22 @@ function Primary({ children, onClick, testid }: { children: React.ReactNode; onC
   );
 }
 
-function Choice({ active, onClick, title, sub, testid }: { active: boolean; onClick: () => void; title: string; sub: string; testid?: string }) {
+function Choice({ active, onClick, title, sub, testid, badge }: { active: boolean; onClick: () => void; title: string; sub: string; testid?: string; badge?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
       data-testid={testid}
       className={cn(
-        "flex w-full items-center gap-4 rounded-3xl border p-5 text-left transition",
+        "flex w-full items-center gap-4 rounded-3xl border p-4 text-left transition",
         active ? "border-primary bg-brand-soft" : "border-border bg-card",
       )}
     >
       <div className="min-w-0 flex-1">
-        <div className="text-[17px] font-bold">{title}</div>
+        <div className="flex items-center gap-2 text-[17px] font-bold">
+          {title}
+          {badge && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">{badge}</span>}
+        </div>
         <div className="mt-0.5 text-[13px] text-muted-foreground">{sub}</div>
       </div>
       <span className={cn("grid size-6 place-items-center rounded-full border-2", active ? "border-primary bg-primary text-primary-foreground" : "border-border")}>

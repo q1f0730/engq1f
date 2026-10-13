@@ -33,7 +33,7 @@ function AlgoPage() {
       <Link to="/me" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground" data-testid="algo-back">
         <ChevronLeft className="size-4" /> 我的
       </Link>
-      <PageHeader title="记忆算法" sub="SM-2 变体 · 全部在这台手机上计算" />
+      <PageHeader title="记忆算法" sub="全部在这台手机上计算，不联网" />
       <Segmented<Tab>
         value={tab}
         onChange={(v) => navigate({ to: "/algo", search: v === "sim" ? { tab: "sim" } : {}, replace: true })}
@@ -63,6 +63,21 @@ function HowTab() {
   const s = st.settings;
   const [ivl, setIvl] = useState(7);
   const [ease, setEase] = useState(2.5);
+  const [details, setDetailsState] = useState(() => {
+    try {
+      return sessionStorage.getItem("cet4v-algo-details") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const setDetails = (v: boolean) => {
+    try {
+      sessionStorage.setItem("cet4v-algo-details", v ? "1" : "0");
+    } catch {
+      /* 无痕模式 */
+    }
+    setDetailsState(v);
+  };
   const eff = ratingEffects(ivl, ease, s);
   const max = Math.max(1, ...Object.values(eff));
   const order: Grade4[] = ["forget", "vague", "know", "easy"];
@@ -86,12 +101,27 @@ function HowTab() {
     },
   ];
   return (
+    <>
+      {/* 11.1 · 第一句讲人话；参数和公式收在「看细节」里 */}
+      <Panel data-testid="algo-plain" className="mb-4">
+        <p className="text-[17px] font-extrabold leading-snug">答错的词明天再来，答对的越隔越久。</p>
+        <ul className="mt-3 space-y-1.5 text-[14px] leading-relaxed text-muted-foreground">
+          <li>· 不认识：今天这一组里再来一遍，明天再复习。</li>
+          <li>· 认识：下次隔得更久（1 天 → 3 天 → 一周 → 半个月……），越熟越少打扰你。</li>
+          <li>· 连续隔 21 天还记得，就算掌握了；本来就会的词点「斩」直接跳过。</li>
+          <li>· 每天要复习的量会自动摊平，不会某天突然堆一大堆。</li>
+        </ul>
+        <button type="button" data-testid="algo-details" aria-expanded={details} onClick={() => setDetails(!details)} className="mt-3 text-[13px] font-semibold text-primary">
+          {details ? "收起细节" : "看细节：间隔具体怎么算"}
+        </button>
+      </Panel>
+      {details && (
     <div className="grid gap-4 md:grid-cols-2 md:gap-5">
       <Panel data-testid="algo-effects">
         <PanelTitle>一次评分，间隔怎么变</PanelTitle>
         <div className="mb-1.5 text-[12px] font-bold tracking-wider text-muted-foreground">这张卡现在的间隔</div>
         <Segmented<number> value={ivl} onChange={setIvl} testid="eff-ivl" options={IVL_OPTIONS.map((v) => ({ value: v, label: v < 0 ? "新词" : `${v}天` }))} />
-        <div className="mb-1.5 mt-3 text-[12px] font-bold tracking-wider text-muted-foreground">记忆系数（ease）</div>
+        <div className="mb-1.5 mt-3 text-[12px] font-bold tracking-wider text-muted-foreground">这个词难不难</div>
         <Segmented<number> value={ease} onChange={setEase} testid="eff-ease" options={EASE_OPTIONS.map((v) => ({ value: v, label: `${EASE_CN[v]} ${v.toFixed(1)}` }))} />
         <div className="mt-4 space-y-2.5" data-testid="eff-bars">
           {order.map((g) => {
@@ -147,6 +177,8 @@ function HowTab() {
         </ul>
       </Panel>
     </div>
+      )}
+    </>
   );
 }
 

@@ -1,3 +1,4 @@
+import { LeaveSheet, useLeaveGuard } from "@/components/app/leave";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Puzzle, Timer, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -126,9 +127,12 @@ function MatchGame({ index }: { index: WordIndex }) {
   };
 
   const quit = () => navigate({ to: "/" });
+  // 11.1 · 游戏中按返回 / × 先确认，不直接丢掉这一局
+  const blocker = useLeaveGuard(phase === "run");
 
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe pt-safe" data-testid="match" data-phase={phase}>
+      <LeaveSheet blocker={blocker} title="退出这一局？" desc="计时和分数不会保存。" stay="继续玩" leave="退出" />
       {phase === "intro" && (
         <GameIntro
           testid="match-intro"

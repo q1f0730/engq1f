@@ -99,10 +99,11 @@ describe("v4 · 冲刺计划", () => {
     expect(reserveDays(12)).toBe(4);
     expect(reserveDays(10)).toBe(0);
   });
-  it("rounds the need up to a daily option and dates the finish", () => {
+  it("11.1 · rounds the need up to a multiple of 5 (not a daily option) and dates the finish", () => {
     const p = sprintPlan(T, "2026-12-12", 2577);
-    expect(p).toMatchObject({ daysLeft: 60, reserve: 14, need: 57, daily: 80, tooMany: false });
-    expect(p.finish).toBe("2026-11-14"); // ceil(2577/80)=33 天
+    expect(p).toMatchObject({ daysLeft: 60, reserve: 14, need: 57, daily: 60, tooMany: false });
+    expect(p.finish).toBe("2026-11-24"); // ceil(2577/60)=43 天
+    expect(p.spare).toBe(18);
   });
   it("flags plans that need more than 100/day", () => {
     const p = sprintPlan(T, "2026-11-01", 5000);

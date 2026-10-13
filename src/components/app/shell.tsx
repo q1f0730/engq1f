@@ -34,7 +34,7 @@ function isActive(path: string, to: string) {
   return to === "/" ? path === "/" : path.startsWith(to);
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, sub = false }: { children: ReactNode; sub?: boolean }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
     <div className="min-h-dvh">
@@ -67,10 +67,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-4 pb-[calc(4rem+env(safe-area-inset-bottom)+2rem)] pt-safe md:px-6 md:pb-16" data-testid="shell-main">{children}</main>
+      <main
+        className={cn("mx-auto w-full max-w-5xl px-4 pt-safe md:px-6 md:pb-16", sub ? "pb-[calc(env(safe-area-inset-bottom)+2rem)]" : "pb-[calc(4rem+env(safe-area-inset-bottom)+2rem)]")}
+        data-testid="shell-main"
+        data-sub={sub ? 1 : 0}
+      >
+        {children}
+      </main>
 
-      {/* 手机底部标签栏 */}
-      <nav
+      {/* 手机底部标签栏（11.1 · 二级页不显示，只用左上角返回） */}
+      {!sub && <nav
         className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/85 pb-safe backdrop-blur-xl md:hidden"
         aria-label="底部导航"
       >
@@ -100,7 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </div>
-      </nav>
+      </nav>}
     </div>
   );
 }

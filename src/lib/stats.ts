@@ -352,7 +352,7 @@ export const BADGES: Badge[] = [
   { id: "learn1000", name: "千词斩", desc: "学过 1000 个词", goal: (c) => [c.learned, 1000] },
   { id: "learnAll", name: "通关词库", desc: "学过全部四级词", goal: (c) => [c.learned, c.total || Infinity] },
   { id: "master500", name: "牢牢记住", desc: "掌握 500 个词", goal: (c) => [c.mastered, 500] },
-  { id: "kill100", name: "斩立决", desc: "斩掉 100 个熟词", goal: (c) => [c.killed, 100] },
+  { id: "kill100", name: "斩立决", desc: "斩掉 100 个本来就会的词", goal: (c) => [c.killed, 100] },
   { id: "perfect", name: "满分小测", desc: "模拟小测拿满分", goal: (c) => [c.perfect, 1] },
 ];
 

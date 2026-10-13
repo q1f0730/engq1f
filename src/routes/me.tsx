@@ -1,5 +1,6 @@
+import { finePointer } from "@/lib/pointer";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Accessibility, Database, Scale, BellRing, CalendarDays, Check, Contrast, MonitorDown, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
+import { Accessibility, Database, Scale, BellRing, CalendarDays, Check, ChevronDown, Contrast, MonitorDown, SlidersHorizontal, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
@@ -32,7 +33,7 @@ import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 import { BASE_MODES, REVIEW_MODES, TIER_LONG, TIER_SHORT, toggleMode } from "@/lib/modes";
 import { MODE_LABEL } from "@/lib/exam";
 import { FIT_MIN, RETENTION_OPTIONS, balanceAll, fitInitialEase } from "@/lib/algo";
-import { retentionScale } from "@/lib/srs";
+import { diffDays, retentionScale } from "@/lib/srs";
 import { getState, replaceCards } from "@/lib/store";
 import { ImportFlow } from "@/components/app/import-flow";
 import { ACTIVE_PROFILE, readRegistry } from "@/lib/profiles";
@@ -50,6 +51,16 @@ function MePage() {
   const file = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<string | null>(null);
   const persist = usePersist();
+  const [adv, setAdvState] = useState(advOpen);
+  const setAdv = (v: boolean) => {
+    advOpen = v;
+    try {
+      sessionStorage.setItem(ADV_KEY, v ? "1" : "0");
+    } catch {
+      /* 无痕模式 */
+    }
+    setAdvState(v);
+  };
   if (!index) return <Spinner />;
   const s = st.settings;
   const day = today();
@@ -72,75 +83,18 @@ function MePage() {
     }
   };
 
+  const dailyOpts = [...new Set([...DAILY_OPTIONS, s.daily])].sort((x, y) => x - y);
+  const backupLine = st.lastBackup ? (diffDays(st.lastBackup, day) === 0 ? "今天" : `${diffDays(st.lastBackup, day)} 天前`) : null;
+
   return (
     <div data-testid="me">
       <PageHeader title="我的" sub="设置与数据" />
       <div className="grid gap-4 md:grid-cols-2 md:gap-5">
         <div className="min-w-0 space-y-4 md:space-y-5">
+          {/* 11.1 · 顶层只留最常用的 8 项：考试日期、每日新词、复习上限、提醒、发音、外观、数据与备份、关于 */}
           <Panel data-testid="plan-settings">
-            <PanelTitle>学习计划</PanelTitle>
-            <Label>词书</Label>
-            <Segmented<Book>
-              value={s.book}
-              onChange={(v) => setSettings({ book: v })}
-              testid="book"
-              options={[
-                { value: "all", label: `全部 ${index.list.length}` },
-                { value: "core", label: `核心 ${index.coreCount}` },
-              ]}
-            />
-            <Label>学习顺序</Label>
-            <Segmented<Order>
-              value={s.order}
-              onChange={(v) => setSettings({ order: v })}
-              testid="order"
-              options={[
-                { value: "core", label: "核心优先" },
-                { value: "alpha", label: "字母顺序" },
-                { value: "random", label: "乱序" },
-              ]}
-            />
-            <Label>每日新词</Label>
-            <div className="grid grid-cols-6 gap-1.5" data-testid="daily">
-              {DAILY_OPTIONS.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setSettings({ daily: n })}
-                  className={cn(
-                    "tnum rounded-xl py-2 text-[14px] font-bold transition",
-                    s.daily === n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <Label>每日复习上限</Label>
-            <div className="grid grid-cols-4 gap-1.5" data-testid="review-cap">
-              {REVIEW_CAP_OPTIONS.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  data-testid={`cap-${n}`}
-                  onClick={() => setSettings({ reviewCap: n })}
-                  className={cn(
-                    "tnum rounded-xl py-2 text-[14px] font-bold transition",
-                    (s.reviewCap ?? 0) === n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {n === 0 ? "不限" : n}
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-[13px] text-muted-foreground">
-              还剩 {sum.newLeft} 个新词，{sum.newLeft ? `预计 ${fmtDate(sum.finish, true)} 学完` : "已经全部学过"}；今天要复习 {sum.due} 个
-              {sum.deferred > 0 ? `，另有 ${sum.deferred} 个顺延` : ""}。复习上限只是把超出的词往后排，不会丢。
-            </p>
-          </Panel>
-
-          <Panel data-testid="exam-settings">
-            <PanelTitle right={<span className="tnum text-[13px] font-bold text-primary" data-testid="me-exam-days">还有 {daysUntil(day, exam.day)} 天</span>}>四级考试</PanelTitle>
+            <PanelTitle right={<span className="tnum text-[13px] font-bold text-primary" data-testid="me-exam-days">还有 {daysUntil(day, exam.day)} 天</span>}>考试日期</PanelTitle>
+            <div data-testid="exam-settings">
             <div className="grid grid-cols-3 gap-1.5" data-testid="exam-options">
               {exams.map((e, k) => (
                 <button
@@ -179,15 +133,38 @@ function MePage() {
                 />
               </label>
             </div>
-            <div className="mt-3 flex items-center gap-3 rounded-2xl bg-secondary/70 p-3" data-testid="me-sprint">
+            </div>
+            <Label>每日新词</Label>
+            <div className={cn("grid gap-1.5", dailyOpts.length > 6 ? "grid-cols-7" : "grid-cols-6")} data-testid="daily">
+              {dailyOpts.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setSettings({ daily: n })}
+                  className={cn(
+                    "tnum rounded-xl py-2 text-[14px] font-bold transition",
+                    s.daily === n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 flex items-center gap-3 rounded-2xl bg-secondary/70 p-3" data-testid="me-sprint">
               <div className="min-w-0 flex-1 text-[13px] leading-snug text-muted-foreground">
                 {plan.newLeft === 0 ? (
                   "新词已经全部学过，考前专心复习。"
+                ) : plan.tooMany ? (
+                  <>
+                    <b className="text-[14px] text-foreground">{s.book === "core" ? "核心词也来不及了" : "全部词来不及了"}</b>
+                    <br />
+                    每天要 {plan.need} 个才学得完{s.book === "all" ? "，建议在「高级 → 词书」换核心词" : ""}
+                  </>
                 ) : (
                   <>
-                    <b className="text-[14px] text-foreground">冲刺计划：每天 {plan.daily} 词</b>
+                    <b className="text-[14px] text-foreground">按考试算：每天 {plan.daily} 个</b>
                     <br />
-                    {plan.tooMany ? `需要每天 ${plan.need} 词，超过最高档，建议换核心词书` : `${fmtDate(plan.finish)}学完 ${plan.newLeft} 个新词${plan.reserve ? `，最后 ${plan.reserve} 天只复习` : ""}`}
+                    {fmtDate(plan.finish)}学完剩下 {plan.newLeft} 个{plan.spare ? `，考前留 ${plan.spare} 天复习` : ""}
                   </>
                 )}
               </div>
@@ -206,13 +183,30 @@ function MePage() {
                 </button>
               )}
             </div>
-            <p className="mt-2 text-[12px] text-muted-foreground">未公布的场次按往年规律（6 月 / 12 月第二个周六）预估，以准考证为准。考试过后自动切到下一场。</p>
+            <Label>每日复习上限</Label>
+            <div className="grid grid-cols-4 gap-1.5" data-testid="review-cap">
+              {REVIEW_CAP_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  data-testid={`cap-${n}`}
+                  onClick={() => setSettings({ reviewCap: n })}
+                  className={cn(
+                    "tnum rounded-xl py-2 text-[14px] font-bold transition",
+                    (s.reviewCap ?? 0) === n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {n === 0 ? "不限" : n}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              今天要复习 {sum.due} 个{sum.deferred > 0 ? `，另有 ${sum.deferred} 个顺延` : ""}。上限只是把超出的词往后排，不会丢。
+            </p>
           </Panel>
 
-          <HabitPanel />
-
           <Panel>
-            <PanelTitle>学习偏好</PanelTitle>
+            <RemindRow />
             <Row label="发音">
               <Segmented
                 className="w-36"
@@ -223,27 +217,6 @@ function MePage() {
                   { value: "uk", label: "英音" },
                 ]}
               />
-            </Row>
-            <Row label="发音语速" hint="含例句、磁带">
-              <Segmented<number>
-                className="w-52 shrink-0"
-                value={s.rate ?? 1}
-                onChange={(v) => setSettings({ rate: v })}
-                testid="rate"
-                options={RATE_OPTIONS.map((v) => ({ value: v, label: `${v}×` }))}
-              />
-            </Row>
-            <Row label="自动发音" hint="出现新卡片时自动朗读">
-              <Switch checked={s.autoplay} onCheckedChange={(v) => setSettings({ autoplay: v })} aria-label="自动发音" />
-            </Row>
-            <Row label="中文优先" hint="卡片正面显示释义，回想英文">
-              <Switch checked={s.cnFirst} onCheckedChange={(v) => setSettings({ cnFirst: v })} aria-label="中文优先" data-testid="cn-first" />
-            </Row>
-            <Row label="震动反馈" hint="答对轻震，答错双震">
-              <Switch checked={s.haptics ?? true} onCheckedChange={(v) => setSettings({ haptics: v })} aria-label="震动反馈" data-testid="haptics" />
-            </Row>
-            <Row label="屏幕常亮" hint="学习和磁带模式时不自动熄屏">
-              <Switch checked={s.wakeLock ?? true} onCheckedChange={(v) => setSettings({ wakeLock: v })} aria-label="屏幕常亮" data-testid="wake-lock" />
             </Row>
             <Row label="外观" hint={s.theme === "contrast" ? "高对比度：文字与边框 ≥ 7:1" : undefined}>
               <Segmented<Theme>
@@ -260,30 +233,9 @@ function MePage() {
               />
             </Row>
           </Panel>
-
-          <ModesPanel />
-
-          <AlgoPanel />
-
-          <A11yPanel />
         </div>
 
         <div className="min-w-0 space-y-4 md:space-y-5">
-          <Link to="/test" data-testid="go-test" className="block">
-            <Panel className="flex items-center gap-4 transition hover:border-primary/40">
-              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
-                <Gauge className="size-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[15px] font-bold">词汇量测试</div>
-                <div className="text-[13px] text-muted-foreground">
-                  {st.test ? `上次估算约 ${st.test.est} 词（${fmtDate(st.test.at)}）` : "3 分钟估算词汇量，跳过已经会的词"}
-                </div>
-              </div>
-              <ChevronRight className="size-5 text-muted-foreground" />
-            </Panel>
-          </Link>
-
           <Panel data-testid="data-panel">
             <PanelTitle
               right={
@@ -294,25 +246,20 @@ function MePage() {
                 ) : undefined
               }
             >
-              数据
+              数据与备份
             </PanelTitle>
-            <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">不用注册，记录只存在这台设备上。换设备前先导出备份。</p>
-            <div className="mb-3 grid grid-cols-2 gap-2 text-[12px]" data-testid="data-status">
-              <div className={cn("flex items-center gap-2 rounded-2xl px-3 py-2.5", persist === "persisted" ? "bg-know-soft text-know" : "bg-secondary text-muted-foreground")} data-testid="persist-status" data-state={persist ?? "pending"}>
-                {persist === "persisted" ? <ShieldCheck className="size-4 shrink-0" /> : <ShieldAlert className="size-4 shrink-0" />}
-                <span className="min-w-0 leading-tight">
-                  <b className="block text-[13px]">{persist === "persisted" ? "存储已锁定" : persist === null ? "检查中…" : "可能被清理"}</b>
-                  {persist === "persisted" ? "系统不会自动清理" : "建议定期备份"}
+            {/* 11.1 · 只说当前这一种状态，一句话，不做成像按钮的 chip */}
+            <p className="-mt-1 mb-3 flex items-start gap-2 text-[13px] leading-snug text-muted-foreground" data-testid="data-status">
+              {persist === "persisted" ? <ShieldCheck className="mt-px size-4 shrink-0 text-know" /> : <ShieldAlert className="mt-px size-4 shrink-0 text-vague" />}
+              <span>
+                <span data-testid="last-backup" className={cn("font-semibold", backupLine ? "text-foreground" : "text-vague")}>
+                  {backupLine ? `上次备份：${backupLine}` : "还没备份过"}
                 </span>
-              </div>
-              <div className="flex items-center gap-2 rounded-2xl bg-secondary px-3 py-2.5 text-muted-foreground" data-testid="last-backup">
-                <Download className="size-4 shrink-0" />
-                <span className="min-w-0 leading-tight">
-                  <b className="block text-[13px] text-foreground">{st.lastBackup ? fmtDate(st.lastBackup) : "从未备份"}</b>
-                  上次备份
+                <span data-testid="persist-status" data-state={persist ?? "pending"}>
+                  {persist === "persisted" ? " · 存储已锁定，系统不会自动清理。" : persist === null ? " · 正在检查存储…" : " · 记录只存在这台手机上，浏览器空间紧张时可能被清理，建议定期备份。"}
                 </span>
-              </div>
-            </div>
+              </span>
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <ActionBtn
                 testid="export"
@@ -335,27 +282,95 @@ function MePage() {
               <Database className="size-5 shrink-0 text-primary" />
               <span className="min-w-0 flex-1">
                 <b className="block text-[14px]">数据中心</b>
-                <span className="block truncate text-[12px] text-muted-foreground">合并导入 · 自动快照 · 加密备份 · 学习档案 · 体检</span>
+                <span className="block truncate text-[12px] text-muted-foreground">快照回滚 · 合并两台设备 · 加密备份 · 学习档案</span>
               </span>
               <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
             </Link>
+          </Panel>
+
+          <Panel className="p-0" data-testid="adv">
             <button
               type="button"
-              onClick={() => setConfirm(true)}
-              data-testid="reset"
-              className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-semibold text-destructive hover:bg-destructive/10"
+              onClick={() => setAdv(!adv)}
+              aria-expanded={adv}
+              data-testid="adv-toggle"
+              className="flex w-full items-center gap-3 px-5 py-4 text-left"
             >
-              <RotateCcw className="size-4" /> 清空所有学习记录
+              <SlidersHorizontal className="size-5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1">
+                <b className="block text-[15px]">高级</b>
+                <span className="block truncate text-[12px] text-muted-foreground">词书 · 打卡规则 · 题型 · 记忆算法 · 字号与无障碍</span>
+              </span>
+              <ChevronDown className={cn("size-5 shrink-0 text-muted-foreground transition-transform", adv && "rotate-180")} />
             </button>
           </Panel>
 
-          <Panel>
-            <button type="button" onClick={() => setHelp(true)} className="flex w-full items-center gap-3 text-left" data-testid="open-shortcuts">
-              <Keyboard className="size-5 text-muted-foreground" />
-              <span className="flex-1 text-[15px] font-semibold">键盘快捷键</span>
-              <ChevronRight className="size-5 text-muted-foreground" />
-            </button>
-          </Panel>
+          {adv && (
+            <div className="space-y-4 md:space-y-5" data-testid="adv-body">
+              <Panel data-testid="book-settings">
+                <PanelTitle>词书与顺序</PanelTitle>
+                <Segmented<Book>
+                  value={s.book}
+                  onChange={(v) => setSettings({ book: v })}
+                  testid="book"
+                  options={[
+                    { value: "all", label: `全部 ${index.list.length}` },
+                    { value: "core", label: `核心 ${index.coreCount}` },
+                  ]}
+                />
+                <Segmented<Order>
+                  className="mt-2"
+                  value={s.order}
+                  onChange={(v) => setSettings({ order: v })}
+                  testid="order"
+                  options={[
+                    { value: "core", label: "核心优先" },
+                    { value: "alpha", label: "字母顺序" },
+                    { value: "random", label: "乱序" },
+                  ]}
+                />
+                <p className="mt-2 text-[12px] text-muted-foreground">
+                  还剩 {sum.newLeft} 个新词，{sum.newLeft ? `预计 ${fmtDate(sum.finish, true)} 学完` : "已经全部学过"}。
+                </p>
+              </Panel>
+              <HabitPanel />
+              <PrefsPanel />
+              <ModesPanel />
+              <AlgoPanel />
+              <A11yPanel />
+              <Link to="/test" data-testid="go-test" className="block">
+                <Panel className="flex items-center gap-4 transition hover:border-primary/40">
+                  <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
+                    <Gauge className="size-6" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[15px] font-bold">词汇量测试</div>
+                    <div className="text-[13px] text-muted-foreground">
+                      {st.test ? `上次估算约 ${st.test.est} 词（${fmtDate(st.test.at)}）` : "3 分钟估算词汇量，跳过已经会的词"}
+                    </div>
+                  </div>
+                  <ChevronRight className="size-5 text-muted-foreground" />
+                </Panel>
+              </Link>
+              {finePointer() && (
+                <Panel>
+                  <button type="button" onClick={() => setHelp(true)} className="flex w-full items-center gap-3 text-left" data-testid="open-shortcuts">
+                    <Keyboard className="size-5 text-muted-foreground" />
+                    <span className="flex-1 text-[15px] font-semibold">键盘快捷键</span>
+                    <ChevronRight className="size-5 text-muted-foreground" />
+                  </button>
+                </Panel>
+              )}
+              <button
+                type="button"
+                onClick={() => setConfirm(true)}
+                data-testid="reset"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-semibold text-destructive hover:bg-destructive/10"
+              >
+                <RotateCcw className="size-4" /> 清空所有学习记录
+              </button>
+            </div>
+          )}
 
           <Panel data-testid="about">
             <div className="flex items-center gap-3">
@@ -366,13 +381,16 @@ function MePage() {
                 <div className="tnum mt-0.5 text-[12px] font-semibold text-muted-foreground" data-testid="app-version">版本 v{APP_VERSION}</div>
               </div>
             </div>
-            <div className="mt-4 space-y-1.5 text-[12px] leading-relaxed text-muted-foreground">
-              <p>词表与释义：KyleBing/english-vocabulary（BSD-3-Clause）</p>
-              <p>音标：qwerty-learner 词典数据（GPL-3.0）</p>
-              <p>发音：有道词典 dictvoice，离线时使用系统语音</p>
-              <p>例句：Free Dictionary API（dictionaryapi.dev）</p>
-              <p>本应用以 GPL-3.0 开源</p>
-            </div>
+            <details className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+              <summary className="cursor-pointer font-semibold">数据来源与开源协议</summary>
+              <div className="mt-2 space-y-1.5">
+                <p>词表与释义：KyleBing/english-vocabulary（BSD-3-Clause）</p>
+                <p>音标：qwerty-learner 词典数据（GPL-3.0）</p>
+                <p>发音：有道词典 dictvoice，离线时使用系统语音</p>
+                <p>例句：Free Dictionary API（dictionaryapi.dev）</p>
+                <p>本应用以 GPL-3.0 开源</p>
+              </div>
+            </details>
           </Panel>
         </div>
       </div>
@@ -404,8 +422,18 @@ function MePage() {
   );
 }
 
-/** v7 · 坚持与打卡：打卡标准、休息日、学习提醒、图标角标、补卡 */
-function HabitPanel() {
+/** 「高级」展开状态：这个标签页里记住（切页面、刷新回来还是展开的） */
+const ADV_KEY = "cet4v-adv";
+let advOpen = (() => {
+  try {
+    return sessionStorage.getItem(ADV_KEY) === "1";
+  } catch {
+    return false;
+  }
+})();
+
+/** 学习提醒（顶层）：到点发通知 */
+function RemindRow() {
   const st = useApp();
   const s = st.settings;
   const [perm, setPerm] = useState(notifyPermission());
@@ -428,6 +456,64 @@ function HabitPanel() {
     setSettings({ remindAt: "20:00" });
     toast.success("每天 20:00 提醒你背单词");
   };
+  return (
+    <Row label="学习提醒" hint={perm === "denied" ? "通知被禁止了，需在浏览器设置里打开" : "应用开着或在后台时到点发通知"}>
+      <div className="flex shrink-0 items-center gap-2">
+        {remindOn && (
+          <label className="relative flex items-center gap-1 rounded-xl bg-secondary px-2.5 py-1.5 text-[14px] font-bold tnum">
+            <BellRing className="size-3.5 text-primary" />
+            {s.remindAt}
+            <input
+              type="time"
+              data-testid="remind-time"
+              value={s.remindAt}
+              onChange={(e) => e.target.value && setSettings({ remindAt: e.target.value })}
+              className="absolute inset-0 cursor-pointer opacity-0"
+              aria-label="提醒时间"
+            />
+          </label>
+        )}
+        <Switch checked={remindOn} onCheckedChange={(v) => void toggleRemind(v)} aria-label="学习提醒" data-testid="remind-switch" />
+      </div>
+    </Row>
+  );
+}
+
+/** 高级 · 学习偏好 */
+function PrefsPanel() {
+  const s = useApp().settings;
+  return (
+    <Panel data-testid="prefs-settings">
+      <PanelTitle>学习偏好</PanelTitle>
+      <Row label="发音语速" hint="含例句、磁带">
+        <Segmented<number>
+          className="w-52 shrink-0"
+          value={s.rate ?? 1}
+          onChange={(v) => setSettings({ rate: v })}
+          testid="rate"
+          options={RATE_OPTIONS.map((v) => ({ value: v, label: `${v}×` }))}
+        />
+      </Row>
+      <Row label="自动发音" hint="出现新卡片时自动朗读">
+        <Switch checked={s.autoplay} onCheckedChange={(v) => setSettings({ autoplay: v })} aria-label="自动发音" />
+      </Row>
+      <Row label="中文优先" hint="卡片正面显示释义，回想英文">
+        <Switch checked={s.cnFirst} onCheckedChange={(v) => setSettings({ cnFirst: v })} aria-label="中文优先" data-testid="cn-first" />
+      </Row>
+      <Row label="震动反馈" hint="答对轻震，答错双震">
+        <Switch checked={s.haptics ?? true} onCheckedChange={(v) => setSettings({ haptics: v })} aria-label="震动反馈" data-testid="haptics" />
+      </Row>
+      <Row label="屏幕常亮" hint="学习和磁带模式时不自动熄屏">
+        <Switch checked={s.wakeLock ?? true} onCheckedChange={(v) => setSettings({ wakeLock: v })} aria-label="屏幕常亮" data-testid="wake-lock" />
+      </Row>
+    </Panel>
+  );
+}
+
+/** v7 · 坚持与打卡：打卡标准、休息日、学习提醒、图标角标、补卡 */
+function HabitPanel() {
+  const st = useApp();
+  const s = st.settings;
   return (
     <Panel data-testid="habit-settings" id="habit">
       <PanelTitle
@@ -494,25 +580,6 @@ function HabitPanel() {
       </p>
 
       <div className="mt-3 border-t border-border/60 pt-1">
-        <Row label="学习提醒" hint={perm === "denied" ? "通知被禁止了，需在浏览器设置里打开" : "应用开着或在后台时到点发通知"}>
-          <div className="flex shrink-0 items-center gap-2">
-            {remindOn && (
-              <label className="relative flex items-center gap-1 rounded-xl bg-secondary px-2.5 py-1.5 text-[14px] font-bold tnum">
-                <BellRing className="size-3.5 text-primary" />
-                {s.remindAt}
-                <input
-                  type="time"
-                  data-testid="remind-time"
-                  value={s.remindAt}
-                  onChange={(e) => e.target.value && setSettings({ remindAt: e.target.value })}
-                  className="absolute inset-0 cursor-pointer opacity-0"
-                  aria-label="提醒时间"
-                />
-              </label>
-            )}
-            <Switch checked={remindOn} onCheckedChange={(v) => void toggleRemind(v)} aria-label="学习提醒" data-testid="remind-switch" />
-          </div>
-        </Row>
         <Row label="图标角标" hint={badgeSupported() ? "桌面图标上显示待复习数" : "这个浏览器不支持角标"}>
           <Switch checked={s.appBadge !== false} disabled={!badgeSupported()} onCheckedChange={(v) => setSettings({ appBadge: v })} aria-label="图标角标" data-testid="app-badge" />
         </Row>
@@ -526,9 +593,20 @@ function ModesPanel() {
   const st = useApp();
   const s = st.settings;
   const off = s.offModes ?? [];
+  const recallOnly = REVIEW_MODES.every((m) => m === "recall" || off.includes(m));
   return (
     <Panel data-testid="modes-settings">
       <PanelTitle right={<span className="tnum text-[12px] font-semibold text-muted-foreground" data-testid="modes-on">已开 {REVIEW_MODES.length - off.length}/{REVIEW_MODES.length}</span>}>复习题型</PanelTitle>
+      <Segmented<number>
+        value={recallOnly ? 1 : 0}
+        onChange={(v) => setSettings({ offModes: v === 1 ? REVIEW_MODES.filter((m) => m !== "recall") : [] })}
+        testid="modes-simple"
+        options={[
+          { value: 0, label: "智能（多种题型）" },
+          { value: 1, label: "只用回想" },
+        ]}
+      />
+      <div className="mb-2 mt-4 text-[12px] font-bold tracking-wider text-muted-foreground">自选题型</div>
       <div className="grid grid-cols-3 gap-1.5" data-testid="mode-chips">
         {REVIEW_MODES.map((m) => {
           const on = !off.includes(m);
@@ -633,7 +711,7 @@ function AlgoPanel() {
         <Row label="重学步骤" hint="忘掉的词先走 1 天 → 3 天，再恢复正常增长">
           <Switch checked={!!s.steps} onCheckedChange={(v) => setSettings({ steps: v })} aria-label="重学步骤" data-testid="steps-switch" />
         </Row>
-        <Row label="四键模式" hint="多一个「简单」：间隔再 ×1.3，快捷键 4">
+        <Row label="四键模式" hint="多一个「简单」：这个词下次隔得更久">
           <Switch checked={!!s.fourKey} onCheckedChange={(v) => setSettings({ fourKey: v })} aria-label="四键模式" data-testid="fourkey-switch" />
         </Row>
         <Row
@@ -703,7 +781,7 @@ function A11yPanel() {
       <Segmented<Motion> value={s.motion ?? "system"} onChange={(v) => setSettings({ motion: v })} testid="motion" options={(["system", "reduce", "full"] as Motion[]).map((v) => ({ value: v, label: MOTION_LABEL[v] }))} />
       <p className="mt-2 text-[12px] text-muted-foreground" data-testid="motion-hint">
         {(s.motion ?? "system") === "system" ? `系统${sysReduce ? "已开启" : "未开启"}「减少动态效果」` : s.motion === "reduce" ? "关闭翻转、弹出、彩带等动画" : "保留所有动画"}
-        ；学习页右上角可进入专注模式（全屏）。
+        {finePointer() ? "；电脑上学习页可按 F 进入专注模式（全屏）。" : "。"}
       </p>
       {canInstall && !st.installed && !isStandalone() && (
         <button

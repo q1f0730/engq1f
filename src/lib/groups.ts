@@ -122,7 +122,18 @@ export function commonPrefix(a: string, b: string): number {
   return k;
 }
 
-/** 共享 ≥5 个字母前缀的词（不含本词），共同前缀长的在前，其次短词在前 */
+/** 去掉一个常见后缀，得到大致的词干（compete → compet，competitiveness → competit） */
+const SUFFIXES = ["ization", "isation", "iveness", "fulness", "ousness", "ation", "ition", "ness", "ment", "ance", "ence", "able", "ible", "tion", "sion", "ious", "eous", "ally", "ity", "ive", "ous", "ful", "ion", "ing", "ant", "ent", "ism", "ist", "ize", "ise", "ate", "al", "er", "or", "ed", "ly", "ic", "es", "y", "e", "s"];
+export function stemLen(w: string): number {
+  for (const s of SUFFIXES) if (w.endsWith(s) && w.length - s.length >= 4) return w.length - s.length;
+  return w.length;
+}
+
+/**
+ * 拼写相近（多为同根派生）：共享 ≥5 个字母、并且共同前缀至少覆盖较短词的词干
+ * （compete 的一族是 competitive / competition / competitor，compel、compensate 只是前缀相同，不算）。
+ * 共同前缀长的在前，其次短词在前
+ */
 export function familyOf(index: WordIndex, word: Word, max = FAMILY_MAX): { w: string; prefix: number }[] {
   const lw = word.w.toLowerCase();
   if (lw.length < FAMILY_PREFIX || !/^[a-z]+$/.test(lw)) return [];
@@ -139,6 +150,7 @@ export function familyOf(index: WordIndex, word: Word, max = FAMILY_MAX): { w: s
   return (famCache.byPrefix.get(lw.slice(0, FAMILY_PREFIX)) ?? [])
     .filter((w) => w.toLowerCase() !== lw)
     .map((w) => ({ w, prefix: commonPrefix(lw, w.toLowerCase()) }))
+    .filter((x) => x.prefix >= Math.max(FAMILY_PREFIX, Math.min(stemLen(lw), stemLen(x.w.toLowerCase()))))
     .sort((a, b) => b.prefix - a.prefix || a.w.length - b.w.length || a.w.localeCompare(b.w))
     .slice(0, max);
 }

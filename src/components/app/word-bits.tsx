@@ -8,6 +8,7 @@ import { diffDays, isLeech, type Card } from "@/lib/srs";
 import { getState, killWord, resetWord, toggleStar, unkillWord, useApp } from "@/lib/store";
 import { today } from "@/lib/clock";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { BottomSheet } from "./sheet";
 import { ListPicker } from "./lists";
 import { WordTrack } from "./track";
@@ -16,10 +17,33 @@ import { wordTrack, type RevEntry } from "@/lib/stats";
 /** v9 · 同义词组 + 同根形词：按需加载 */
 const WordExtra = lazy(() => import("./word-extra"));
 
+/** 11.1 · 单词标题按字数缩字号：360 宽下最长的四级词（15 个字母）也一行放下，不在词中间断开 */
+export function titleSize(w: string): string {
+  if (w.length <= 9) return "text-[38px]";
+  if (w.length <= 11) return "text-[32px]";
+  if (w.length <= 13) return "text-[28px]";
+  return "text-[25px]";
+}
+
+/** 11.1 · 截断的美音音标（administration → /əd/）：比英音短很多就用英音 */
+const ipaLen = (s: string) => s.replace(/[()ːˈˌ'.]/g, "").length;
+export function ipaOf(word: Word, accent: "us" | "uk"): string {
+  if (!word.p) return "";
+  const [us, uk] = word.p;
+  if (accent === "uk") return uk || us || "";
+  if (us && uk && ipaLen(us) <= 0.6 * ipaLen(uk) && ipaLen(uk) - ipaLen(us) >= 3) return uk;
+  return us || uk || "";
+}
+
 export function Phonetic({ word, accent, className }: { word: Word; accent: "us" | "uk"; className?: string }) {
-  if (!word.p) return null;
-  const p = accent === "uk" ? word.p[1] : word.p[0];
-  return <span className={cn("font-ipa", className)}>/{p}/</span>;
+  const p = ipaOf(word, accent);
+  // 没有音标就整行不显示，不留空的 //
+  if (!p) return null;
+  return (
+    <span className={cn("font-ipa", className)} data-testid="ipa">
+      /{p}/
+    </span>
+  );
 }
 
 export function SpeakButton({ word, accent, className, label }: { word: string; accent: "us" | "uk"; className?: string; label?: string }) {
@@ -235,24 +259,26 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
         )}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="font-display break-words text-[38px] font-extrabold leading-tight tracking-tight" data-testid="sheet-word">
+            <h2 className={cn("font-display whitespace-nowrap font-extrabold leading-tight tracking-tight", titleSize(word.w))} data-testid="sheet-word">
               {word.w}
             </h2>
             <div className="mt-1 flex flex-wrap items-center gap-3 text-[14px] text-muted-foreground">
               {word.p && (
                 <>
                   <button className="flex items-center gap-1 hover:text-foreground" onClick={() => speak(word.w, "us")}>
-                    美 <span className="font-ipa">/{word.p[0]}/</span> <Volume2 className="size-3.5" />
+                    美 <span className="font-ipa">/{ipaOf(word, "us")}/</span> <Volume2 className="size-3.5" />
                   </button>
                   <button className="flex items-center gap-1 hover:text-foreground" onClick={() => speak(word.w, "uk")}>
-                    英 <span className="font-ipa">/{word.p[1]}/</span> <Volume2 className="size-3.5" />
+                    英 <span className="font-ipa">/{ipaOf(word, "uk")}/</span> <Volume2 className="size-3.5" />
                   </button>
                 </>
               )}
               {!word.p && <SpeakButton word={word.w} accent={accent} className="size-8" />}
             </div>
           </div>
-          <StateBadge card={card} />
+          <span className="shrink-0 whitespace-nowrap pt-2">
+            <StateBadge card={card} />
+          </span>
         </div>
         <div className="fs-card mt-5">
           <Meanings word={word} />
@@ -292,7 +318,11 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
 
         <div className="mt-4 grid grid-cols-3 gap-2">
           <button
-            onClick={() => toggleStar(word.w)}
+            onClick={() => {
+              toggleStar(word.w);
+              // 11.1 · 弹层里也给个回执（toast 此时在顶部，不挡弹层按钮）
+              toast.success(starred ? "已移出生词本" : "已加入生词本", { id: "sheet-star" });
+            }}
             data-testid="sheet-star"
             className={cn(
               "flex h-11 items-center justify-center gap-1.5 rounded-2xl text-[13px] font-semibold",

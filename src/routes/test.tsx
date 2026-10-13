@@ -211,7 +211,7 @@ function VocabTest({ index }: { index: WordIndex }) {
               className="mt-5 flex h-14 items-center justify-center gap-2 rounded-2xl bg-secondary text-[15px] font-bold disabled:opacity-60"
             >
               <Check className="size-5" />
-              {marked ? "已标为熟词" : `把 ${result.knownWords.length} 个认识的词标为熟词`}
+              {marked ? "已斩掉这些词" : `把 ${result.knownWords.length} 个认识的词斩掉（以后不再出现）`}
             </button>
           )}
           <Link to="/" data-testid="test-home" className="mt-2.5 flex h-14 items-center justify-center rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground">

@@ -75,26 +75,29 @@ export function swipeHint(swap: boolean): string {
 export const ETA_CAP_MS = 60_000;
 /** 没有任何数据时的默认每题用时 */
 export const ETA_DEFAULT_MS = 8_000;
+/** 11.1 · 新用户的保守预估：一个新词 15 秒（听发音 + 翻面 + 看例句），一个复习 8 秒 */
+export const NEW_CARD_SEC = 15;
+export const REVIEW_CARD_SEC = 8;
 
 /**
  * 每题平均用时：本组已经答了 ≥3 题用本组的；否则用历史（≥10 题）；都没有用默认。
  * 本组 1–2 题时与历史平均混合，避免第一题很慢时估得离谱。
  */
-export function avgAnswerMs(sessionMs: number[], hist: { ms: number; a: number }): number {
+export function avgAnswerMs(sessionMs: number[], hist: { ms: number; a: number }, def = ETA_DEFAULT_MS): number {
   const capped = sessionMs.filter((x) => Number.isFinite(x) && x >= 0).map((x) => Math.min(ETA_CAP_MS, x));
   const histAvg = hist.a >= 10 && hist.ms > 0 ? Math.min(ETA_CAP_MS, hist.ms / hist.a) : null;
   const mean = capped.length ? capped.reduce((s, x) => s + x, 0) / capped.length : null;
   if (mean !== null && capped.length >= 3) return mean;
-  const base = histAvg ?? ETA_DEFAULT_MS;
+  const base = histAvg ?? def;
   if (mean === null) return base;
   // 1–2 题：按题数加权
   return (mean * capped.length + base * (3 - capped.length)) / 3;
 }
 
 /** 剩余分钟（四舍五入，至少 1）与显示文字；剩 0 题返回 null */
-export function estimateRemaining(remaining: number, sessionMs: number[], hist: { ms: number; a: number }): { ms: number; min: number; label: string } | null {
+export function estimateRemaining(remaining: number, sessionMs: number[], hist: { ms: number; a: number }, def = ETA_DEFAULT_MS): { ms: number; min: number; label: string } | null {
   if (remaining <= 0) return null;
-  const ms = remaining * avgAnswerMs(sessionMs, hist);
+  const ms = remaining * avgAnswerMs(sessionMs, hist, def);
   if (ms < 60_000) return { ms, min: 0, label: "不到 1 分钟" };
   const min = Math.max(1, Math.round(ms / 60_000));
   return { ms, min, label: `剩约 ${min} 分钟` };

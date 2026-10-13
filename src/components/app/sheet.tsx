@@ -2,6 +2,7 @@ import * as D from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useBackClose } from "@/lib/back-stack";
 
 /** 手机：底部弹出；桌面：居中卡片 */
 export function BottomSheet({
@@ -12,6 +13,7 @@ export function BottomSheet({
   className,
   testid,
   hideTitle,
+  noHistory,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -20,7 +22,11 @@ export function BottomSheet({
   className?: string;
   testid?: string;
   hideTitle?: boolean;
+  /** 不接管返回键（拦截离开页面的确认框用：那时 history 正在回滚） */
+  noHistory?: boolean;
 }) {
+  // 11.1 · 打开时压一条 history：Android 返回手势只关这个弹层，不退出应用
+  useBackClose(open, () => onOpenChange(false), !noHistory);
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>

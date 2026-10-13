@@ -1,5 +1,5 @@
 /** v11 · 导入备份：加密备份先输口令；本机已有记录时选「合并」或「覆盖」；动手前先给本机存一份快照 */
-import { Eye, EyeOff, GitMerge, Lock, Replace } from "lucide-react";
+import { Eye, EyeOff, GitMerge, Lock, Replace, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { today } from "@/lib/clock";
@@ -7,10 +7,36 @@ import { fmtDate } from "@/lib/format";
 import { dayKey } from "@/lib/srs";
 import { ACTIVE_PROFILE } from "@/lib/profiles";
 import { exportBackup, getState, parseBackup, replaceState, type AppState } from "@/lib/store";
+import { getWordsSync } from "@/lib/data";
+import { emptyReport, type CleanReport } from "@/lib/validate";
 import { decryptBackup, hasProgress, mergeStates, sniffBackup, type EncEnvelope } from "@/lib/sync";
 import { BottomSheet } from "./sheet";
+import { cn } from "@/lib/utils";
 
-type Phase = { k: "idle" } | { k: "pass"; enc: EncEnvelope; at?: string } | { k: "choose"; remote: AppState; at?: string };
+type Phase = { k: "idle" } | { k: "pass"; enc: EncEnvelope; at?: string } | { k: "choose"; remote: AppState; at?: string; rep: CleanReport };
+
+/** 11.1 · 逐条校验备份：词库里没有的词、坏掉的记录丢掉，能修的修好；返回丢掉 / 修正的条数 */
+export function parseChecked(plain: string): { remote: AppState; rep: CleanReport } {
+  const idx = getWordsSync();
+  const rep = emptyReport();
+  const remote = parseBackup(plain, idx ? (w) => idx.map.has(w) : undefined, rep);
+  return { remote, rep };
+}
+
+export function repText(rep: CleanReport): string {
+  const parts: string[] = [];
+  if (rep.dropped.length) parts.push(`丢掉 ${rep.dropped.length} 条损坏 / 词库里没有的单词记录`);
+  if (rep.repaired.length) parts.push(`修正 ${rep.repaired.length} 条`);
+  if (rep.other) parts.push(`另有 ${rep.other} 条日志 / 打卡等坏数据已清理`);
+  return parts.join("，");
+}
+
+/** 覆盖会让本机记录大幅减少（备份是空的，或不到本机的一半） */
+export const riskyReplace = (remote: AppState, local: AppState) => {
+  const r = Object.keys(remote.cards).length;
+  const l = Object.keys(local.cards).length;
+  return l > 0 && (r === 0 || r < l / 2);
+};
 
 /** 导入 / 合并前给本机拍一份快照（失败不拦着导入） */
 async function safetySnap() {
@@ -48,16 +74,20 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
+  const [sure, setSure] = useState(false);
   const gotPlain = async (plain: string, at?: string) => {
-    const remote = parseBackup(plain);
-    if (hasProgress(getState())) setPhase({ k: "choose", remote, at });
+    const { remote, rep } = parseChecked(plain);
+    const bad = repText(rep);
+    if (hasProgress(getState())) setPhase({ k: "choose", remote, at, rep });
     else {
       await applyReplace(remote);
+      if (bad) toast.warning("备份里有坏数据，已跳过", { description: bad, duration: 4000 });
       finish();
     }
   };
 
   const finish = () => {
+    setSure(false);
     setPhase({ k: "idle" });
     setPass("");
     setErr("");
@@ -96,6 +126,8 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
 
   const remote = phase.k === "choose" ? phase.remote : null;
   const local = getState();
+  const risky = !!remote && riskyReplace(remote, local);
+  const bad = phase.k === "choose" ? repText(phase.rep) : "";
   return (
     <>
       <BottomSheet open={phase.k === "pass"} onOpenChange={(v) => !v && finish()} title="这份备份设了口令" testid="import-pass-sheet">
@@ -142,6 +174,12 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
               <Side label="备份" words={Object.keys(remote.cards).length} days={remote.checkins.length} sub={phase.k === "choose" && phase.at ? `导出于 ${fmtDate(dayKey(new Date(phase.at)), true)}` : "导出时间未知"} />
               <Side label="这台设备" words={Object.keys(local.cards).length} days={local.checkins.length} sub="当前记录" />
             </div>
+            {bad && (
+              <p className="mt-3 flex gap-2 rounded-2xl bg-vague-soft px-3 py-2.5 text-[12px] font-medium text-vague" data-testid="import-dropped" data-n={phase.k === "choose" ? phase.rep.dropped.length : 0}>
+                <TriangleAlert className="mt-px size-4 shrink-0" />
+                备份里有坏数据：{bad}。
+              </p>
+            )}
             <button
               type="button"
               data-testid="import-merge"
@@ -162,18 +200,36 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
             <button
               type="button"
               data-testid="import-replace"
+              data-risky={risky ? 1 : 0}
               disabled={busy}
               onClick={async () => {
+                // 11.1 · 覆盖后记录会少一大半（或清零）：要再确认一次
+                if (risky && !sure) {
+                  setSure(true);
+                  return;
+                }
                 setBusy(true);
                 await applyReplace(remote);
                 finish();
               }}
-              className="mt-2 flex w-full items-center gap-3 rounded-2xl border border-border/70 p-4 text-left"
+              className={cn(
+                "mt-2 flex w-full items-center gap-3 rounded-2xl border p-4 text-left",
+                risky ? "border-destructive bg-destructive/10" : "border-border/70",
+                risky && sure && "bg-destructive text-destructive-foreground",
+              )}
             >
-              <Replace className="size-6 shrink-0 text-destructive" />
+              <Replace className={cn("size-6 shrink-0", risky && sure ? "" : "text-destructive")} />
               <span className="min-w-0">
-                <b className="block text-[15px]">覆盖这台设备</b>
-                <span className="block text-[12px] text-muted-foreground">用备份整个替换现在的记录</span>
+                <b className="block text-[15px]" data-testid="import-replace-label">
+                  {risky && sure ? `确认覆盖：${Object.keys(local.cards).length} 词 → ${Object.keys(remote.cards).length} 词` : "覆盖这台设备"}
+                </b>
+                <span className={cn("block text-[12px]", risky && sure ? "opacity-90" : risky ? "font-semibold text-destructive" : "text-muted-foreground")}>
+                  {risky
+                    ? Object.keys(remote.cards).length === 0
+                      ? "备份里一个学习记录都没有，覆盖 = 清空这台设备"
+                      : `备份只有本机的 ${Math.round((Object.keys(remote.cards).length / Math.max(1, Object.keys(local.cards).length)) * 100)}%，覆盖会丢掉大部分记录`
+                    : "用备份整个替换现在的记录"}
+                </span>
               </span>
             </button>
             <p className="mt-3 text-[12px] text-muted-foreground">动手前会给这台设备自动存一份快照，可以在「数据中心 → 自动快照」回滚。</p>

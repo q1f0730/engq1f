@@ -47,6 +47,22 @@ def clean_phone(s):
     return s
 
 
+_IPA_STRIP = re.compile(r"[()ːˈˌ'.]")
+
+
+def truncated_us(us, uk):
+    """11.1 · 源数据里有一批美音音标在次重音处被截断（administration → /əd/）：
+    美音明显比英音短（≤60% 且少 3 个音以上）就当截断，退回用英音。"""
+    a, b = _IPA_STRIP.sub("", us or ""), _IPA_STRIP.sub("", uk or "")
+    return bool(a and b) and len(a) <= 0.6 * len(b) and len(b) - len(a) >= 3
+
+
+def fix_phones(us, uk):
+    if truncated_us(us, uk):
+        us = uk
+    return [us or uk, uk or us]
+
+
 def load_phones():
     phones = {}
     core = set()
@@ -271,7 +287,7 @@ def main():
         item = {"w": m["w"]}
         p = phones.get(k)
         if p and (p[0] or p[1]):
-            item["p"] = [p[0] or p[1], p[1] or p[0]]
+            item["p"] = fix_phones(p[0], p[1])
             with_phone += 1
         item["t"] = m["t"]
         if m["ph"]:
@@ -282,6 +298,9 @@ def main():
         if k in basic:
             item["o"] = 1  # Oxford 3000 basic word: used as the easiest tier in the vocab test
         out.append(item)
+    bad = [x["w"] for x in out if x.get("p") and truncated_us(*x["p"])]
+    if bad:
+        raise SystemExit(f"truncated US phonetics left: {bad[:10]}")
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
@@ -289,5 +308,24 @@ def main():
     print(f"source_entries={len(src)} words={len(out)} core={core_count} phonetic={with_phone} ({with_phone / len(out) * 100:.1f}%) size={size / 1024:.0f}KB pos_lines_dropped_words={TRUNCATED}")
 
 
+def patch_existing():
+    """不重新下载源数据，只把现有 cet4.json 里截断的美音音标修好（python3 scripts/build-data.py --fix-phones）。"""
+    with open(OUT, encoding="utf-8") as f:
+        out = json.load(f)
+    n = 0
+    for x in out:
+        p = x.get("p")
+        if p and truncated_us(p[0], p[1]):
+            x["p"] = fix_phones(p[0], p[1])
+            n += 1
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+    print("fixed", n)
+
+
 if __name__ == "__main__":
-    main()
+    if "--fix-phones" in sys.argv:
+        patch_existing()
+    else:
+        main()
+

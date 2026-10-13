@@ -78,6 +78,8 @@ export interface TodaySummary {
   goalMin: number;
   /** v10 · 今天的新词目标被自适应减少了 */
   cut: boolean;
+  /** 11.1 · 回归恢复期（新词暂停） */
+  recovering: boolean;
 }
 
 export function summarize(index: WordIndex, st: AppState, day: string): TodaySummary {
@@ -86,7 +88,9 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
   const due = cappedDue(st, day, dueList.length);
   const left = newWordsLeft(index, st, day).length;
   const bookTotal = bookSize(index, st.settings.book);
-  const goal = st.newCut?.d === day ? Math.min(st.settings.daily, st.newCut.n) : st.settings.daily;
+  // 11.1 · 回归恢复期：只清积压，新词暂停
+  const recovering = !!st.recover && day >= st.recover.from && day <= st.recover.until;
+  const goal = recovering ? 0 : st.newCut?.d === day ? Math.min(st.settings.daily, st.newCut.n) : st.settings.daily;
   const remainingGoal = Math.max(0, goal - log.n);
   const timeMode = st.settings.goalMode === "time";
   const goalMin = st.settings.goalMin || 20;
@@ -106,6 +110,7 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
     ready: timeMode ? timeReached(log.ms, goalMin) : canCheckIn({ learnedToday: log.n, goal, newLeft: left, due }),
     finish: remainingGoal > 0 ? finishDate(day, left, st.settings.daily) : finishDate(addDays(day, 1), left, st.settings.daily),
     cut: goal < st.settings.daily,
+    recovering,
     remainingGoal,
     timeMode,
     ms: log.ms,
@@ -269,10 +274,14 @@ export function cleanPhraseCn(t: string): string {
     .join("；");
 }
 
-/** 适合出题的短语：含本词、中文干净（无英文、不太长） */
+/** 11.1 · 专业领域短语（[化] [物] 这类标记，或明显是术语的中文）不进短语题：四级不考，干扰项一眼就能排除 */
+export const DOMAIN_RE =
+  /\[[^\]]+\]|方程|函数|系数|矩阵|向量|变量|积分|微分|导数|坐标|概率|拓扑|定理|定律|电路|电压|电流|电阻|电容|电极|晶体|分子|原子|离子|化合|氧化|溶液|合金|聚合|半导|光谱|波长|频率|折射|细胞|染色|病毒|抗体|激素|算法|协议|寄存|编译|字节|数据库|指令|内核|节点|轴承|齿轮|传感|信号|变压|反应堆|菌/;
+
+/** 适合出题的短语：含本词、中文干净（无英文、不太长、不是专业术语） */
 function goodPhrase(word: Word, p: [string, string]) {
   const cn = cleanPhraseCn(p[1]);
-  return !!cn && cn.length <= 18 && !/[A-Za-z]/.test(cn) && p[0].toLowerCase().includes(word.w.toLowerCase());
+  return !!cn && cn.length <= 18 && !/[A-Za-z]/.test(cn) && !DOMAIN_RE.test(p[1]) && p[0].toLowerCase().includes(word.w.toLowerCase());
 }
 
 /** 短语选义：按种子稳定挑一个短语（优先适合出题的），中文已清洗 */
@@ -293,8 +302,10 @@ export function hasGoodPhrase(word: Word | undefined): boolean {
 export function phraseOptions(index: WordIndex, word: Word, seed: number): Word[] {
   const correct = phraseFor(word, seed);
   if (!correct) return quizOptions(index, word, seed);
-  const pool = (index.byPos.get(posOf(word)) ?? index.list).filter(hasGoodPhrase);
-  const src = pool.length > 20 ? pool : index.list.filter(hasGoodPhrase);
+  // 11.1 · 干扰项优先从同词性的核心词短语里抽（常用、像四级），不够再放宽
+  const same = (index.byPos.get(posOf(word)) ?? index.list).filter(hasGoodPhrase);
+  const coreSame = same.filter((w) => w.c);
+  const src = coreSame.length > 20 ? coreSame : same.length > 20 ? same : index.list.filter(hasGoodPhrase);
   const r = rng(hashStr(word.w + "ph") ^ seed);
   const seen = new Set([word.w, correct[1]]);
   const out: Word[] = [];

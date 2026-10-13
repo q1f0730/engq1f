@@ -8,8 +8,8 @@
  *  - 词单链接：词单压缩后编码进链接 hash，不经服务器
  *  - 自动快照：每天一份、保留最近 7 份的取舍规则
  */
-import { MASTER_DAYS, MAX_EASE, MIN_EASE, NEVER, type Card, type DayLog } from "./srs";
-import type { AppState } from "./store";
+import type { Card, DayLog } from "./srs";
+import { BACKUP_VERSION, NEWER_MSG, type AppState } from "./store";
 import { LIST_MAX, LIST_WORDS_MAX, addWords, cleanListName, type WordList } from "./lists";
 import { REV_MAX, isRevEntry, type RevEntry } from "./stats";
 import type { QuizRecord } from "./exam";
@@ -230,6 +230,7 @@ export function sniffBackup(text: string): ParsedBackup {
     throw new Error("不是有效的备份（JSON 格式不对）");
   }
   if (p?.app !== "cet4-vocab") throw new Error("这不是四级单词打卡的备份");
+  if (typeof (p as { version?: unknown }).version === "number" && (p as { version: number }).version > BACKUP_VERSION) throw new Error(NEWER_MSG);
   const at = typeof p.exportedAt === "string" ? p.exportedAt : undefined;
   if (p.enc) {
     const e = p.enc;
@@ -265,36 +266,9 @@ export const ISSUE_TEXT: Record<IssueKind, [string, string]> = {
   "bad-log": ["损坏的每日学习记录", "修正或删除"],
 };
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const isDay = (d: unknown): d is string => typeof d === "string" && DAY_RE.test(d) && !Number.isNaN(Date.parse(d + "T12:00:00"));
+import { fixCard, isDay } from "./validate";
+export { fixCard };
 const nonNegInt = (x: unknown) => typeof x === "number" && Number.isInteger(x) && x >= 0;
-
-/** 修一张卡片；没坏返回 null，修不了（不是对象）返回 "drop" */
-export function fixCard(c: unknown, today: string): Card | null | "drop" {
-  if (!c || typeof c !== "object" || Array.isArray(c)) return "drop";
-  const x = c as Card;
-  const out: Card = { ...x };
-  let bad = false;
-  if (typeof x.e !== "number" || !Number.isFinite(x.e) || x.e < MIN_EASE || x.e > MAX_EASE) {
-    out.e = typeof x.e === "number" && Number.isFinite(x.e) ? Math.min(MAX_EASE, Math.max(MIN_EASE, x.e)) : 2.5;
-    bad = true;
-  }
-  if (!nonNegInt(x.i)) {
-    out.i = typeof x.i === "number" && Number.isFinite(x.i) && x.i > 0 ? Math.round(x.i) : 0;
-    bad = true;
-  }
-  if (!nonNegInt(x.r)) (out.r = 0, (bad = true));
-  if (!nonNegInt(x.l)) (out.l = 0, (bad = true));
-  if (!isDay(x.f)) (out.f = isDay(x.t) ? x.t : today, (bad = true));
-  if (!isDay(x.t)) (out.t = out.f, (bad = true));
-  if (x.k !== undefined && x.k !== 1) (delete out.k, (bad = true));
-  if (out.k) {
-    if (x.d !== NEVER) (out.d = NEVER, (bad = true));
-  } else if (!isDay(x.d) || x.d === NEVER) (out.d = today, (bad = true));
-  const st = out.k || out.i >= MASTER_DAYS ? "mastered" : out.i === 0 ? "learning" : "review";
-  if (x.st !== st) (out.st = st, (bad = true));
-  return bad ? out : null;
-}
 
 /** 体检：返回问题清单和修好的状态（不提交） */
 export function inspectState(st: AppState, has: (w: string) => boolean, today: string): { issues: Issue[]; total: number; fixed: AppState } {

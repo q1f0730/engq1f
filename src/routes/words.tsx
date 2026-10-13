@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronLeft, GraduationCap, Headphones, Play, Search, Shuffle, Star, X } from "lucide-react";
+import { Check, ChevronLeft, GraduationCap, Headphones, Play, Search, Shuffle, SlidersHorizontal, Star, X } from "lucide-react";
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Segmented, Spinner } from "@/components/app/shell";
 import { StateBadge, WordSheet } from "@/components/app/word-bits";
@@ -17,6 +17,16 @@ import { cn } from "@/lib/utils";
 type Tab = "all" | "core" | "star" | "wrong" | "hard" | "mastered" | "lists" | "list";
 type Filter = "any" | "new" | "learning" | "mastered";
 const TABS: Tab[] = ["all", "core", "star", "wrong", "hard", "mastered", "lists", "list"];
+
+/** 「筛选」展开状态：这个标签页里记住 */
+const FILTERS_KEY = "cet4v-filters";
+let filtersRemember = (() => {
+  try {
+    return sessionStorage.getItem(FILTERS_KEY) === "1";
+  } catch {
+    return false;
+  }
+})();
 
 export const Route = createFileRoute("/words")({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab; list?: string } => ({
@@ -51,6 +61,17 @@ function WordsPage() {
   const [jumpIdx, setJumpIdx] = useState<number | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [open, setOpen] = useState<Word | null>(null);
+  // 11.1 · 默认只有搜索框 + 一行来源；状态、排序、词性、多选、导出收进「筛选」
+  const [filtersOpen, setFiltersOpenState] = useState(filtersRemember);
+  const setFiltersOpen = (v: boolean) => {
+    filtersRemember = v;
+    try {
+      sessionStorage.setItem(FILTERS_KEY, v ? "1" : "0");
+    } catch {
+      /* 无痕模式 */
+    }
+    setFiltersOpenState(v);
+  };
   const sentinel = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const sticky = useRef<HTMLDivElement>(null);
@@ -189,7 +210,8 @@ function WordsPage() {
   const nbMode = tab === "all" || tab === "core" || tab === "lists" || tab === "list" ? null : tab;
   const listCount = (st.lists ?? []).length;
   const day = today();
-  const TAB_TITLE: Record<Tab, string> = { all: "全部", core: "核心未掌握", star: "生词本", wrong: "错词本", hard: "顽固词", mastered: "熟词", lists: "词单", list: list?.name ?? "词单" };
+  const TAB_TITLE: Record<Tab, string> = { all: "全部", core: "核心未掌握", star: "生词本", wrong: "错词本", hard: "顽固词", mastered: "已斩", lists: "词单", list: list?.name ?? "词单" };
+  const activeFilters = (filter !== "any" ? 1 : 0) + (sort !== "default" ? 1 : 0) + (pos !== "any" ? 1 : 0) + (coreOnly ? 1 : 0);
   const showRail = !dq && !selecting && tab !== "lists" && results.length > 40;
 
   return (
@@ -205,7 +227,8 @@ function WordsPage() {
       />
 
       <div ref={sticky} className="sticky top-0 z-20 -mx-4 bg-background/90 px-4 pb-3 pt-1 backdrop-blur-xl md:top-16 md:-mx-6 md:px-6">
-        <div className={cn("relative", tab === "lists" && "hidden")}>
+        <div className={cn("flex items-center gap-2", tab === "lists" && "hidden")}>
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground" />
           <input
             ref={input}
@@ -222,7 +245,25 @@ function WordsPage() {
             </button>
           )}
         </div>
-        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto">
+          <button
+            type="button"
+            data-testid="filter-toggle"
+            aria-expanded={filtersOpen || selecting}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className={cn(
+              "relative flex h-12 shrink-0 items-center gap-1.5 rounded-2xl px-3.5 text-[14px] font-semibold transition",
+              filtersOpen || selecting ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <SlidersHorizontal className="size-4" /> 筛选
+            {activeFilters > 0 && (
+              <span className="tnum absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground" data-testid="filter-count">
+                {activeFilters}
+              </span>
+            )}
+          </button>
+        </div>
+        <div className="no-scrollbar fade-x mt-3 flex gap-2 overflow-x-auto">
           {(
             [
               ["all", "全部"],
@@ -230,7 +271,7 @@ function WordsPage() {
               ["star", `生词本 ${counts.star}`],
               ["wrong", `错词本 ${counts.wrong}`],
               ["hard", `顽固词 ${counts.hard}`],
-              ["mastered", `熟词 ${counts.mastered}`],
+              ["mastered", `已斩 ${counts.mastered}`],
               ["lists", `词单 ${listCount}`],
             ] as [Tab, string][]
           ).map(([t, label]) => (
@@ -249,7 +290,7 @@ function WordsPage() {
           ))}
         </div>
         <Segmented<Filter>
-          className={cn("mt-2.5", tab === "lists" && "hidden")}
+          className={cn("mt-2.5", (tab === "lists" || !(filtersOpen || selecting)) && "hidden")}
           value={filter}
           onChange={setFilter}
           testid="state-filter"
@@ -273,7 +314,7 @@ function WordsPage() {
         </>
       )}
 
-      {tab !== "lists" && (
+      {tab !== "lists" && (filtersOpen || selecting) && (
         <ToolRow
           sort={sort}
           setSort={setSort}
@@ -298,7 +339,7 @@ function WordsPage() {
             className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20"
           >
             <Play className="size-4 fill-current" />
-            {nbMode === "star" ? "复习生词本" : nbMode === "wrong" ? "复习错词本" : nbMode === "hard" ? "顽固词专项" : "回顾熟词"}（{Math.min(20, results.length)} 词）
+            {nbMode === "star" ? "复习生词本" : nbMode === "wrong" ? "复习错词本" : nbMode === "hard" ? "顽固词专项" : "回顾已斩的词"}（{Math.min(20, results.length)} 词）
           </Link>
           {nbMode !== "mastered" && (
             <Link

@@ -3,6 +3,8 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+/* 11.1 · 有鼠标 / 触控板、没有触摸屏的设备：键盘提示只在这里显示（和 lib/pointer.ts 的判断一致） */
+@custom-variant fine (@media (hover: hover) and (pointer: fine) and (not (any-pointer: coarse)));
 
 /*
  * 四级单词打卡 · 设计系统
@@ -606,5 +608,71 @@ html [data-sonner-toaster][data-y-position="top"] [data-sonner-toast][data-mount
     display: block;
     height: 13pt;
     border-bottom: 0.6pt dashed #999;
+  }
+}
+
+/* ---------------------------------------------------------------- 11.1 · Jobs 评审修正 */
+
+/* 打卡成功：就地庆祝（光晕扩散），不再自动弹分享图 */
+@keyframes checkin-burst {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 18px color-mix(in oklch, var(--primary) 0%, transparent);
+  }
+}
+.checkin-burst {
+  animation: checkin-burst 900ms ease-out 2;
+}
+html[data-motion="reduce"] .checkin-burst {
+  animation: none;
+}
+
+/* 横向滚动的 chip 行：右边渐隐，提示还能往右滑 */
+.fade-x {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+/* 手机横屏（高度 < 500）：题目卡和选项左右并排，4 个选项不滚动也能全看到 */
+@media (max-height: 500px) {
+  [data-testid="quiz"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    column-gap: 12px;
+  }
+  [data-testid="quiz"] > [data-testid="quiz-prompt"] {
+    grid-row: 1 / span 2;
+    min-height: 0;
+    padding: 12px 16px;
+    border-radius: 24px;
+  }
+  [data-testid="quiz"] > [data-testid="quiz-prompt"] h2 {
+    font-size: 32px;
+  }
+  [data-testid="quiz"] > [data-testid="quiz-options"] {
+    grid-column: 2;
+    margin-top: 0;
+    align-content: start;
+    overflow-y: auto;
+    gap: 6px;
+  }
+  [data-testid="quiz"] > [data-testid="quiz-options"] > button {
+    min-height: 0;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  [data-testid="quiz"] > div:last-child {
+    grid-column: 2;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  [data-testid="quiz"] > div:last-child button {
+    height: 40px;
+  }
+  [data-testid="quiz"] ~ div [data-testid="card-tools"] {
+    display: none;
   }
 }

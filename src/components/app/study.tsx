@@ -48,11 +48,13 @@ import { celebrate } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
 import { Confusables, Examples, Meanings, Phonetic, Phrases } from "./word-bits";
 import { ShortcutsSheet } from "./shortcuts";
+import { LeaveSheet, useLeaveGuard } from "./leave";
+import { useFinePointer } from "@/lib/pointer";
 import { ShareSheet } from "./share-sheet";
 import { useShareInfo } from "@/lib/use-share";
 import { useWakeLock } from "@/lib/wakelock";
 import { rankGroup, revEntry, type RevEntry } from "@/lib/stats";
-import { estimateRemaining, historyPace, quizAnnouncement, rateAnnouncement, rateOrder, sideRating, speedOrder, swipeHint, swipeRating } from "@/lib/ux";
+import { NEW_CARD_SEC, REVIEW_CARD_SEC, estimateRemaining, historyPace, quizAnnouncement, rateAnnouncement, rateOrder, sideRating, speedOrder, swipeHint, swipeRating } from "@/lib/ux";
 import { fullscreenSupported, useFullscreen } from "@/lib/fullscreen";
 import { algoOptions, rateOrder4, type Grade4 } from "@/lib/algo";
 import type { AlgoOptions } from "@/lib/srs";
@@ -75,7 +77,7 @@ const MODE_TITLE: Record<StudyMode, string> = {
   list: "词单学习",
   star: "生词本复习",
   wrong: "错词本复习",
-  mastered: "熟词回顾",
+  mastered: "已斩回顾",
   hard: "顽固词专项",
   rank: "难词榜专项",
 };
@@ -165,6 +167,10 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const say = useCallback((t: string) => setLive((p) => (p.replace(/\u200b$/, "") === t ? t + (p.endsWith("\u200b") ? "" : "\u200b") : t)), []);
   const [focus, toggleFocus] = useFullscreen();
   const canFocus = fullscreenSupported();
+  // 11.1 · 键盘相关的入口和提示只给有鼠标 / 触控板的设备
+  const fine = useFinePointer();
+  // 11.1 · 学到一半刷新：告诉用户刚才那几个已经存下来了
+  const [resumed] = useState(() => takeResume(mode));
   const pace = useMemo(() => historyPace(getState().log), []);
 
   const head = current(session);
@@ -367,7 +373,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     setLast(null);
     setPhase("front");
     bump();
-    toast(`已斩：${it.w}`, { description: "标记为已掌握，以后不再出现" });
+    toast(`已斩：${it.w}`, { description: "本来就会，以后不再出现" });
   }, [practice, rewind, day]);
 
   const star = useCallback(() => {
@@ -426,6 +432,15 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
 
   useWakeLock(!finished && items.length > 0);
 
+  // 11.1 · 学到一半：记下答过几个（刷新后提示已保存）；按返回 / × 先确认
+  const answered = Object.keys(session.firsts).length;
+  useEffect(() => {
+    if (practice) return;
+    saveResume(mode, isFinished(session) ? 0 : answered);
+  }, [answered, session, mode, practice]);
+  useEffect(() => () => saveResume(mode, 0), [mode]);
+  const blocker = useLeaveGuard(!isFinished(session) && session.done.length > 0 && !previewing);
+
   if (!items.length) return <Empty mode={mode} />;
   if (previewing)
     return (
@@ -437,7 +452,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         onStart={(killed) => {
           if (killed.length) {
             previewKill(killed, day, (w, card) => revEntry(w, now(), "kill", { isNew: true, card }));
-            toast(`已斩 ${killed.length} 个`, { description: "标记为已掌握，以后不再出现" });
+            toast(`已斩 ${killed.length} 个`, { description: "本来就会，以后不再出现" });
           }
           const rest = items.filter((it) => !killed.includes(it.w));
           if (rest.length) {
@@ -489,7 +504,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const flipped = phase === "back" && !isQuiz;
   const relearn = !!shownItem.repeat;
   const leech = !practice && isLeech(st.cards[word.w]);
-  const eta = estimateRemaining(session.queue.length, answerMs.current, pace);
+  const eta = estimateRemaining(session.queue.length, answerMs.current, pace, (mode === "new" ? NEW_CARD_SEC : REVIEW_CARD_SEC) * 1000);
   const preview =
     !practice && head && !isQuiz && (phase === "front" || peek)
       ? previewIntervals(getState().cards[head.w], day, { repeat: head.w in session.firsts, early: head.early, algo: { key: head.w, ...algoNow(day) } }, fourKey)
@@ -497,11 +512,11 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
 
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe md:py-6" data-testid="study" data-mode={mode}>
-      {/* 顶栏 */}
+      {/* 顶栏：只留退出和进度（11.1 · 撤销 / 明天再说 / 收藏放到卡片下面，带文字） */}
       <div className="flex shrink-0 items-center gap-1.5 pt-3 pt-safe md:gap-2">
-        <Link to="/" aria-label="退出" className="grid size-9 shrink-0 place-items-center md:size-10 rounded-full text-muted-foreground hover:bg-secondary">
+        <button type="button" onClick={() => navigate({ to: "/" })} aria-label="退出" data-testid="study-quit" className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary md:size-10">
           <X className="size-5" />
-        </Link>
+        </button>
         <div className="flex-1">
           <div className="h-2 overflow-hidden rounded-full bg-secondary">
             <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${(doneN / total) * 100}%` }} />
@@ -510,25 +525,16 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         <span className="tnum min-w-11 text-center text-[13px] font-semibold text-muted-foreground" data-testid="progress">
           {doneN}/{total}
         </span>
-        <IconBtn label="撤销 (Z)" onClick={doUndo} testid="undo" disabled={!session.history.length && !peek}>
-          <Undo2 className="size-[18px]" />
-        </IconBtn>
-        {!practice && (
-          <IconBtn label="明天再说 (B)" onClick={doBury} testid="bury">
-            <CalendarClock className="size-[18px]" />
-          </IconBtn>
-        )}
-        <IconBtn label="生词本 (S)" onClick={star} testid="star" active={starred}>
-          <Star className={cn("size-[18px]", starred && "fill-current")} />
-        </IconBtn>
-        {canFocus && (
+        {canFocus && fine && (
           <IconBtn label={focus ? "退出专注 (F)" : "专注模式 (F)"} onClick={toggleFocus} testid="focus" active={focus} pressed={focus}>
             {focus ? <Minimize className="size-[18px]" /> : <Maximize className="size-[18px]" />}
           </IconBtn>
         )}
-        <IconBtn label="快捷键 (?)" onClick={() => setHelp(true)} className="hidden md:grid">
-          <Keyboard className="size-[18px]" />
-        </IconBtn>
+        {fine && (
+          <IconBtn label="快捷键 (?)" onClick={() => setHelp(true)} testid="kbd-help">
+            <Keyboard className="size-[18px]" />
+          </IconBtn>
+        )}
       </div>
 
       <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-[12px] font-medium text-muted-foreground">
@@ -542,6 +548,11 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
           </span>
         )}
         {practice && <span className="rounded-full bg-secondary px-2 py-px">不影响复习计划</span>}
+        {resumed > 0 && doneN === 0 && (
+          <span className="rounded-full bg-know-soft px-2 py-px text-know" data-testid="resume-note">
+            刚才学的 {resumed} 个已保存 ✓
+          </span>
+        )}
         {eta && (
           <span className="tnum shrink-0" data-testid="eta" data-min={eta.min}>
             · {eta.label}
@@ -553,6 +564,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       </div>
 
       {isQuiz ? (
+        <>
         <QuizView
           key={cardKey}
           seed={seed}
@@ -568,6 +580,8 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
           shake={shake}
           leftHand={leftHand}
         />
+        {phase === "front" && <div className="-mt-2 pb-2"><CardTools onUndo={doUndo} canUndo={!!session.history.length} onBury={practice ? undefined : doBury} onStar={star} starred={starred} /></div>}
+        </>
       ) : speedMode ? (
         <>
           <SpeedCard
@@ -581,7 +595,8 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
             swap={swap}
             frontIpa={frontIpa}
           />
-          <div className="shrink-0 pb-4 pt-4">
+          <CardTools onUndo={doUndo} canUndo={!!session.history.length || peek} onBury={practice ? undefined : doBury} onStar={star} starred={starred} />
+          <div className="shrink-0 pb-4 pt-2">
             <div className="grid grid-cols-2 gap-2.5" data-testid="speed-buttons" data-order={speedOrder(swap).join(",")}>
               {speedOrder(swap).map((r, k) => (
                 <SpeedBtn key={r} tone={r} side={k === 0 ? "left" : "right"} label={r === "know" ? "认识" : "不认识"} hint={preview?.[r]} onClick={() => rate(r)} />
@@ -607,7 +622,8 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
             swap={swap}
             frontIpa={frontIpa}
           />
-          <div className="shrink-0 pb-4 pt-4">
+          <CardTools onUndo={doUndo} canUndo={!!session.history.length || peek} onBury={practice ? undefined : doBury} onStar={star} starred={starred} />
+          <div className="shrink-0 pb-4 pt-2">
             {phase === "front" || peek ? (
               <div className={cn("grid gap-2.5", fourKey ? "grid-cols-4 gap-2" : "grid-cols-3")} data-testid="rate-buttons" data-order={rateOrder4(leftHand, fourKey).join(",")}>
                 {rateOrder4(leftHand, fourKey).map((r) => (
@@ -636,7 +652,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
                   data-testid="next"
                   className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25 transition active:scale-[0.98]"
                 >
-                  下一个 <span className="rounded-md bg-white/20 px-1.5 text-[11px] font-semibold">空格</span>
+                  下一个 {fine && <span className="rounded-md bg-white/20 px-1.5 text-[11px] font-semibold" data-testid="kbd-hint">空格</span>}
                 </button>
               </div>
             )}
@@ -644,10 +660,51 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         </>
       )}
       <ShortcutsSheet open={help} onOpenChange={setHelp} />
+      <LeaveSheet blocker={blocker} title="退出本组？" desc={`这组已经答了 ${doneN}/${total} 个，答过的都已保存。退出后剩下的词下次再学。`} stay="继续学习" leave="退出" />
     </div>
   );
 }
 
+
+/** 11.1 · 卡片下面的小工具条：撤销 / 明天再说 / 收藏，带文字（原来挤在顶栏、只有图标） */
+function CardTools({ onUndo, canUndo, onBury, onStar, starred }: { onUndo: () => void; canUndo: boolean; onBury?: () => void; onStar: () => void; starred: boolean }) {
+  const cls = "flex h-8 items-center gap-1 rounded-full px-3 text-[12.5px] font-semibold text-muted-foreground transition hover:bg-secondary disabled:opacity-35";
+  return (
+    <div className="flex shrink-0 items-center justify-center gap-1 pt-2" data-testid="card-tools">
+      <button type="button" onClick={onUndo} disabled={!canUndo} data-testid="undo" aria-label="撤销" className={cls}>
+        <Undo2 className="size-4" /> 撤销
+      </button>
+      {onBury && (
+        <button type="button" onClick={onBury} data-testid="bury" aria-label="明天再说" className={cls}>
+          <CalendarClock className="size-4" /> 明天再说
+        </button>
+      )}
+      <button type="button" onClick={onStar} data-testid="star" aria-label={starred ? "移出生词本" : "加入生词本"} aria-pressed={starred} className={cn(cls, starred && "text-vague")}>
+        <Star className={cn("size-4", starred && "fill-current")} /> {starred ? "已收藏" : "收藏"}
+      </button>
+    </div>
+  );
+}
+
+const RESUME_KEY = "cet4v-resume";
+/** 刷新前这一组已经答过几个词（同一模式、同一天）；读完就清掉 */
+function takeResume(mode: string): number {
+  try {
+    const r = JSON.parse(sessionStorage.getItem(RESUME_KEY) || "null") as { mode?: string; day?: string; n?: number } | null;
+    sessionStorage.removeItem(RESUME_KEY);
+    return r && r.mode === mode && r.day === today() && typeof r.n === "number" ? r.n : 0;
+  } catch {
+    return 0;
+  }
+}
+function saveResume(mode: string, n: number) {
+  try {
+    if (n > 0) sessionStorage.setItem(RESUME_KEY, JSON.stringify({ mode, day: today(), n }));
+    else sessionStorage.removeItem(RESUME_KEY);
+  } catch {
+    /* 无痕模式 */
+  }
+}
 
 const RATE_CN: Record<Grade4, string> = { easy: "简单", know: "认识", vague: "模糊", forget: "不认识" };
 const RATE_KEY: Record<Grade4, string> = { know: "1", vague: "2", forget: "3", easy: "4" };
@@ -781,7 +838,7 @@ function SpeedCard({
           data-testid="kill"
           className="absolute bottom-3.5 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-secondary/90 px-3.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:text-know"
         >
-          <Swords className="size-3.5" /> 斩 · 已掌握
+          <Swords className="size-3.5" /> 斩 · 我本来就会
         </button>
         {hint && (
           <div className={cn("pointer-events-none absolute inset-0 grid place-items-center rounded-[32px] text-[28px] font-extrabold", hint === "know" ? "bg-know/15 text-know" : "bg-forget/15 text-forget")} data-testid="swipe-hint" data-rating={hint}>
@@ -852,7 +909,7 @@ function RateBtn({ tone, label, k, hint, onClick, compact }: { tone: Grade4; lab
           {hint}
         </span>
       )}
-      <span className="absolute right-2 top-1.5 hidden text-[10px] font-semibold opacity-60 md:block">{k}</span>
+      <span className="absolute right-2 top-1.5 hidden text-[10px] font-semibold opacity-60 fine:block">{k}</span>
     </button>
   );
 }
@@ -962,8 +1019,8 @@ function FlipCard({
   ) : null;
 
   const back = (
-    <div className="h-full overflow-y-auto px-6 py-6 text-left" data-testid="card-back">
-      <div className="fs-card">
+    <div className="flex h-full flex-col overflow-y-auto px-6 py-6 text-left" data-testid="card-back">
+      <div className="fs-card my-auto">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight">{word.w}</h2>
@@ -1038,7 +1095,7 @@ function FlipCard({
               data-testid="kill"
               className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-secondary/90 px-3.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:text-know"
             >
-              <Swords className="size-3.5" /> 斩 · 已掌握
+              <Swords className="size-3.5" /> 斩 · 我本来就会
             </button>}
             {hint && (
               <div
@@ -1335,7 +1392,7 @@ function Empty({ mode }: { mode: StudyMode }) {
     rank: ["难词榜是空的", "复习时忘过的词会按遗忘次数上榜。"],
     star: ["生词本是空的", "学习时按 S 或点星标收藏生词。"],
     wrong: ["错词本是空的", "选择题答错或点「不认识」的词会自动进来。"],
-    mastered: ["还没有熟词", "学习时按 D「斩」掉已经掌握的词。"],
+    mastered: ["还没有斩掉的词", "学习时遇到本来就会的词，点「斩」跳过。"],
   };
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 text-center" data-testid="study-empty">
@@ -1377,6 +1434,9 @@ function Summary({
   const [share, setShare] = useState(false);
   const info = useShareInfo(index);
   const s = curStreak(st, day);
+  const toGo = sum.timeMode ? 0 : Math.max(0, sum.goal - sum.learned) * (sum.newLeft > 0 ? 1 : 0) + sum.due;
+  // 第一次学完一组：专门的「第一组 ✓」
+  const firstEver = mode === "new" && st.checkins.length === 0 && Object.keys(st.cards).length <= words.length;
 
   const restart = (m: StudyMode) => navigate({ to: "/study", search: { mode: m, t: Date.now() } });
   // 学后速测答错的也算进「错词再练」
@@ -1394,7 +1454,10 @@ function Summary({
         <div className="pop grid size-20 place-items-center rounded-[28px] bg-primary text-primary-foreground shadow-xl shadow-primary/30">
           <Check className="size-10" strokeWidth={3} />
         </div>
-        <h1 className="mt-5 font-display text-[28px] font-extrabold tracking-tight">本组完成！</h1>
+        <h1 className="mt-5 font-display text-[28px] font-extrabold tracking-tight" data-testid="summary-title">
+          {firstEver ? "第一组 ✓" : "本组完成！"}
+        </h1>
+        {firstEver && <p className="mt-1 text-[14px] font-semibold text-primary" data-testid="first-group">好的开始！这 {words.length} 个词明天会回来复习一次</p>}
         <p className="mt-1 text-[15px] text-muted-foreground">
           {MODE_TITLE[mode]} {words.length} 词 · 首次正确率 {acc}% · 用时 {Math.max(1, Math.round(ms / 60000))} 分钟
         </p>
@@ -1407,7 +1470,12 @@ function Summary({
           <MiniStat label="今日新学" value={`${sum.learned}/${sum.goal}`} />
         )}
         <MiniStat label="待复习" value={String(sum.due)} />
-        <MiniStat label="连续打卡" value={`${s} 天`} />
+        {s > 0 ? (
+          <MiniStat label="连续打卡" value={`${s} 天`} testid="summary-streak" />
+        ) : (
+          // 11.1 · 庆祝的时候不显示一个泄气的 0：换成离打卡还差多少
+          <MiniStat label="今日打卡" value={sum.checked ? "已打卡" : sum.ready ? "可以打卡" : `还差 ${toGo} 个`} testid="summary-streak" />
+        )}
       </div>
 
       {sum.ready && !sum.checked && (
@@ -1416,12 +1484,24 @@ function Summary({
           data-testid="summary-checkin"
           onClick={() => {
             const r = checkIn(day);
-            toast.success(`打卡成功！连续 ${r.streak} 天`, r.earned ? { description: `奖励 1 张补卡（共 ${r.makeup} 张）` } : undefined);
-            celebrate(r.milestone, () => setShare(true));
+            toast.success(`打卡成功！连续 ${r.streak} 天`, { id: "checkin", ...(r.earned ? { description: `奖励 1 张补卡（共 ${r.makeup} 张）` } : {}) });
+            // 11.1 · 不自动弹分享图：想分享再点
+            celebrate(r.milestone);
           }}
           className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25"
         >
           <Flame className="size-5" /> 今日任务完成，打卡
+        </button>
+      )}
+
+      {sum.checked && (
+        <button
+          type="button"
+          data-testid="summary-share"
+          onClick={() => setShare(true)}
+          className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-[15px] font-semibold"
+        >
+          <Flame className="size-4 text-primary" /> 今日已打卡 · 生成分享图
         </button>
       )}
 
@@ -1541,10 +1621,10 @@ function Summary({
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function MiniStat({ label, value, testid }: { label: string; value: string; testid?: string }) {
   return (
-    <div className="rounded-2xl bg-secondary/80 px-2 py-3">
-      <div className="tnum text-[20px] font-extrabold">{value}</div>
+    <div className="rounded-2xl bg-secondary/80 px-2 py-3" data-testid={testid}>
+      <div className="tnum truncate text-[20px] font-extrabold">{value}</div>
       <div className="mt-0.5 text-[12px] text-muted-foreground">{label}</div>
     </div>
   );

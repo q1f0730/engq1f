@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ClipboardCheck, Clock3, Download, Flame, Repeat2, Skull, Sparkles, Target } from "lucide-react";
+import { ClipboardCheck, Clock3, Download, Flame, GraduationCap, Repeat2, Skull, Sparkles, Target } from "lucide-react";
 import { useState } from "react";
 import { Bars, Curve, Heatmap, ScoreLine } from "@/components/app/charts";
 import { BadgeGrid, Forecast30, HourBars, IntervalBars, MonthCalendar, RetentionLine, RevList } from "@/components/app/review-charts";
@@ -8,13 +8,14 @@ import { BADGES, badgeCtx, forecast30, hardest, hourBand, hourDist, intervalBuck
 import { download } from "@/lib/format";
 import { shortMeaning, type Word, type WordIndex } from "@/lib/data";
 import type { AppState } from "@/lib/store";
-import { fmtClock, quizStats, scoreOf } from "@/lib/exam";
+import { daysUntil, effectiveExam, fmtClock, quizStats, scoreOf } from "@/lib/exam";
+import { fmtDate } from "@/lib/format";
 import { PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
 import { fmtMinutes } from "@/lib/format";
 import { bookSize } from "@/lib/plan";
-import { emptyLog, forecast, masteryCounts } from "@/lib/srs";
+import { addDays, emptyLog, forecast, masteryCounts } from "@/lib/srs";
 import { bestStreak, curStreak, restOf } from "@/lib/habit";
 import { DaySheet } from "@/components/app/day-sheet";
 import { useApp } from "@/lib/store";
@@ -100,23 +101,38 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
 
   const curYm = day.slice(0, 7);
   const ms = monthSum(st.log, st.checkins, ym);
+  const exam = effectiveExam(day, st.settings.examDate);
+  const daysLeft = daysUntil(day, exam.day);
+  const started = Math.min(book, Object.keys(st.cards).filter((w) => st.settings.book === "all" || index.map.get(w)?.c).length);
+  const projected = Math.min(book, started + st.settings.daily * daysLeft);
+  const ret7 = retention(st.revlog ?? [], day, 7);
+  const retPrev = retention(st.revlog ?? [], addDays(day, -7), 7);
+  const retDelta = ret7.rate !== null && retPrev.rate !== null ? Math.round((ret7.rate - retPrev.rate) * 100) : 0;
   return (
     <div data-testid="stats">
       {header}
 
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-4">
-        <Tile icon={<Sparkles className="size-4" />} label="今日新学" value={String(log.n)} tone="text-primary bg-brand-soft" testid="tile-new" />
-        <Tile icon={<Repeat2 className="size-4" />} label="今日复习" value={String(log.r)} tone="text-know bg-know-soft" testid="tile-review" />
-        <Tile icon={<Clock3 className="size-4" />} label="今日用时" value={fmtMinutes(log.ms)} tone="text-chart-4 bg-secondary" />
-        <Tile
-          icon={<Target className="size-4" />}
-          label="今日正确率"
-          value={acc === null ? "—" : `${acc}%`}
-          sub={accAll === null ? undefined : `累计 ${accAll}%`}
-          tone="text-vague bg-vague-soft"
-          testid="tile-acc"
-        />
-      </div>
+      {/* 11.1 · 概览第一屏回答「我离考试还有多远」，不再重复首页的今日数字 */}
+      <Panel data-testid="outlook">
+        <PanelTitle right={<span className="tnum text-[12px] text-muted-foreground">{fmtDate(exam.day, true)}</span>}>
+          <span className="flex items-center gap-1.5">
+            <GraduationCap className="size-4 text-primary" /> 距四级还有 <b className="tnum text-primary">{daysLeft}</b> 天
+          </span>
+        </PanelTitle>
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+          <Tile icon={<Target className="size-4" />} label="考前能学完" value={`${projected}/${book}`} sub={projected >= book ? `按每天 ${st.settings.daily} 个能学完` : `还差 ${book - projected} 个，去「我的」调每日新词`} tone="text-primary bg-brand-soft" testid="outlook-learn" />
+          <Tile icon={<Sparkles className="size-4" />} label="已掌握" value={String(m.mastered)} sub={`占词书 ${Math.round((Math.min(m.mastered, book) / Math.max(1, book)) * 100)}%`} tone="text-know bg-know-soft" testid="outlook-mastered" />
+          <Tile
+            icon={<Repeat2 className="size-4" />}
+            label="近 7 天记得住"
+            value={ret7.rate === null ? "—" : `${Math.round(ret7.rate * 100)}%`}
+            sub={ret7.rate === null || retPrev.rate === null ? "复习满一周后显示变化" : retDelta === 0 ? "和上周持平" : `比上周${retDelta > 0 ? "高" : "低"} ${Math.abs(retDelta)}%`}
+            tone="text-vague bg-vague-soft"
+            testid="outlook-retention"
+          />
+          <Tile icon={<Clock3 className="size-4" />} label="累计用时" value={fmtMinutes(all.ms)} sub={accAll === null ? undefined : `首答正确率 ${accAll}%`} tone="text-chart-4 bg-secondary" testid="outlook-time" />
+        </div>
+      </Panel>
 
       <div className="mt-4 grid gap-4 md:mt-5 md:grid-cols-2 md:gap-5">
         <Panel data-testid="mastery">

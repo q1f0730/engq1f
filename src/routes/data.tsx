@@ -69,7 +69,7 @@ function DataPage() {
       </Link>
       <PageHeader
         title="数据中心"
-        sub="无云 · 记录只在这台设备上"
+        sub="不联网 · 记录只存在这台手机上"
         right={
           profile && (
             <span className="mb-1 max-w-[40%] truncate rounded-full bg-brand-soft px-3 py-1.5 text-[12px] font-bold text-primary" data-testid="data-profile">

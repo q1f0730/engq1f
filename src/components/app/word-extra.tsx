@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { getWordsSync, shortMeaning, type Word } from "@/lib/data";
 import { POS_CN, familyOf, synonymsOf } from "@/lib/groups";
 
-/** v9 · 单词详情里的同义词组与同根形词（懒加载，不占首屏） */
+/** v9 · 单词详情里的同义词组与拼写相近的词（懒加载，不占首屏） */
 export default function WordExtra({ word, onOpen }: { word: Word; onOpen: (w: Word) => void }) {
   const index = getWordsSync();
   if (!index) return null;
@@ -56,7 +56,7 @@ export default function WordExtra({ word, onOpen }: { word: Word; onOpen: (w: Wo
       )}
       {fam.length > 0 && (
         <div data-testid="family">
-          <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">同根形词 · 共享前缀</div>
+          <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">拼写相近 · 多为同根派生</div>
           <div className="grid grid-cols-2 gap-1.5">
             {fam.map(({ w, prefix }) => {
               const x = index.map.get(w);

@@ -1,3 +1,4 @@
+import { LeaveSheet, useLeaveGuard } from "@/components/app/leave";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, ChevronDown, ClipboardCheck, RotateCcw, Star, Timer, Trophy, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -137,9 +138,19 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
   }, [phase, pick, cur, accent]);
 
   const quit = () => navigate({ to: "/" });
+  // 11.1 · 小测答到一半按返回 / ×：交卷（按已答的算分）、放弃（不记成绩）、或继续
+  const blocker = useLeaveGuard(phase === "run" && answers.length > 0);
 
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe pt-safe" data-testid="mock" data-phase={phase}>
+      <LeaveSheet
+        blocker={blocker}
+        title="交卷还是放弃？"
+        desc={`已经答了 ${answers.length}/${items.length} 题。交卷按已答的算分（没答的算错）；放弃不记成绩。`}
+        stay="继续答题"
+        leave="放弃"
+        extra={{ label: "交卷看成绩", testid: "leave-submit", onClick: () => finish(answers, false) }}
+      />
       {phase === "intro" && <Intro onStart={start} onQuit={quit} stats={prevStats} />}
       {phase === "run" && cur && word && (
         <>

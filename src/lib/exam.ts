@@ -70,16 +70,21 @@ export interface SprintPlan {
   daysLeft: number;
   /** 留给最后复习的天数（不学新词） */
   reserve: number;
-  /** 建议每日新词（取设置里的档位） */
+  /** 建议每日新词（精确需要量向上取到 5 的倍数，最少 5，最多 SPRINT_MAX） */
   daily: number;
   /** 精确需要的每日新词 */
   need: number;
-  /** 最高档也来不及 */
+  /** 每天 SPRINT_MAX 个也来不及 */
   tooMany: boolean;
   /** 按建议学完新词的日期 */
   finish: string;
+  /** 按建议学完时距考试还有几天 */
+  spare: number;
   newLeft: number;
 }
+
+/** 冲刺计划每天最多学多少新词 */
+export const SPRINT_MAX = DAILY_OPTIONS[DAILY_OPTIONS.length - 1];
 
 /** 最后留几天只复习：>30 天留 14 天；10~30 天留三分之一；更少不留 */
 export function reserveDays(daysLeft: number): number {
@@ -88,15 +93,26 @@ export function reserveDays(daysLeft: number): number {
   return 0;
 }
 
+/**
+ * 11.1 · 唯一的计划引擎：新手引导的推荐、首页的冲刺建议、「我的」里的一键应用都用它，
+ * 所以引导刚给的计划在首页一定显示「已达标」，不会冒出第二套。
+ */
 export function sprintPlan(today: string, exam: string, newLeft: number): SprintPlan {
   const daysLeft = daysUntil(today, exam);
   const reserve = reserveDays(daysLeft);
   const learnDays = Math.max(1, daysLeft - reserve);
   const need = newLeft > 0 ? Math.ceil(newLeft / learnDays) : 0;
-  const opt = DAILY_OPTIONS.find((n) => n >= need);
-  const daily = need === 0 ? DAILY_OPTIONS[0] : (opt ?? DAILY_OPTIONS[DAILY_OPTIONS.length - 1]);
+  const daily = need === 0 ? 5 : Math.min(SPRINT_MAX, Math.max(5, Math.ceil(need / 5) * 5));
   const finish = newLeft > 0 ? addDays(today, Math.ceil(newLeft / daily) - 1) : today;
-  return { daysLeft, reserve, daily, need, tooMany: need > DAILY_OPTIONS[DAILY_OPTIONS.length - 1], finish, newLeft };
+  return { daysLeft, reserve, daily, need, tooMany: need > SPRINT_MAX, finish, spare: Math.max(0, diffDays(finish, exam)), newLeft };
+}
+
+/** 新手引导推荐：全部词每天 ≤ 50 个来得及就学全部，否则先学核心词 */
+export const RECOMMEND_ALL_MAX = 50;
+export function recommendPlan(today: string, exam: string, sizes: { all: number; core: number }): { book: "all" | "core"; plan: SprintPlan } {
+  const all = sprintPlan(today, exam, sizes.all);
+  if (!all.tooMany && all.need <= RECOMMEND_ALL_MAX) return { book: "all", plan: all };
+  return { book: "core", plan: sprintPlan(today, exam, sizes.core) };
 }
 
 // ---------------------------------------------------------------- 一词多义

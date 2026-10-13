@@ -1,3 +1,5 @@
+import { LeaveSheet, useLeaveGuard } from "@/components/app/leave";
+import { finePointer } from "@/lib/pointer";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Scale, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -114,12 +116,15 @@ function JudgeGame({ index }: { index: WordIndex }) {
   }, [phase, shown, judge, advance, swap, cur, accent]);
 
   const quit = () => navigate({ to: "/" });
+  // 11.1 · 游戏中按返回 / × 先确认
+  const blocker = useLeaveGuard(phase === "run");
   const okN = answers.filter((a) => a.ok).length;
   // 两个按钮：左边 = 左滑的含义
   const sides: [boolean, boolean] = swap ? [true, false] : [false, true];
 
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe pt-safe" data-testid="judge" data-phase={phase}>
+      <LeaveSheet blocker={blocker} title="退出这一局？" desc={`已经答了 ${answers.length} 题，退出后这一局不计分。`} stay="继续玩" leave="退出" />
       {phase === "intro" && (
         <GameIntro
           testid="judge-intro"
@@ -127,7 +132,7 @@ function JudgeGame({ index }: { index: WordIndex }) {
           title="判断对错"
           big={`${JUDGE_SIZE} 题 · 一眼判断`}
           desc={`单词配一个释义，判断是不是它的意思。${swap ? "左滑" : "右滑"}或点「对」，${swap ? "右滑" : "左滑"}或点「不对」；错配的释义来自同词性的别的词。`}
-          tags={["一半对一半错", "←/→ 也能答", "学过的词优先", "满分 100"]}
+          tags={finePointer() ? ["一半对一半错", "←/→ 也能答", "学过的词优先", "满分 100"] : ["一半对一半错", "左右滑也能答", "学过的词优先", "满分 100"]}
           best={best}
           bestLabel="最高"
           onStart={start}
@@ -162,7 +167,7 @@ function JudgeGame({ index }: { index: WordIndex }) {
                 data-testid="judge-next"
                 className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25 transition active:scale-[0.98]"
               >
-                记住了 · 继续 <span className="rounded-md bg-white/20 px-1.5 text-[11px] font-semibold">空格</span>
+                记住了 · 继续 <span className="hidden rounded-md bg-white/20 px-1.5 text-[11px] font-semibold fine:inline">空格</span>
               </button>
             ) : (
               <div className="grid grid-cols-2 gap-2.5" data-testid="judge-buttons" data-order={sides.map((b) => (b ? "yes" : "no")).join(",")}>
