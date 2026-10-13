@@ -136,7 +136,7 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
             icon={<Repeat2 className="size-4" />}
             label="近 7 天记得住"
             value={fmtPct(ret7f)}
-            sub={fmtPctDelta(ret7f, retPrevF) ?? "复习满一周后显示变化"}
+            sub={keepTail(fmtPctDelta(ret7f, retPrevF) ?? "复习满一周后显示变化")}
             tone="text-vague bg-vague-soft"
             testid="outlook-retention"
           />
@@ -477,6 +477,17 @@ function QStat({ label, value, unit, testid }: { label: string; value: number; u
       </div>
       <div className="text-[11px] text-muted-foreground">{label}</div>
     </div>
+  );
+}
+
+/** 11.7 · 「比上周低 6 个百分点」：「6 个百分点」不拆开（360 宽下不再剩一个「点」单独一行，r7 R7-7） */
+function keepTail(s: string): React.ReactNode {
+  const m = /^(.*\S)\s(\d+ 个百分点)$/.exec(s);
+  if (!m) return s;
+  return (
+    <>
+      {m[1]} <span className="whitespace-nowrap">{m[2]}</span>
+    </>
   );
 }
 

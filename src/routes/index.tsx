@@ -205,8 +205,12 @@ function Today() {
   const examIdle = sum.examMode && !sum.recovering && sum.reviewed + sum.due === 0;
   // 11.6 / 11.7 · 考前一天什么都不用做：不打卡也不断签。和结算同一个函数（habit.eveFree，读今天的快照），按词数 / 按时长一个说法
   const idleEve = !sum.examDay && !sum.paused && !sum.ready && !sum.checked && eveFree(st, day, st.dayRule?.[day] ?? dayRuleOf(sum));
+  // 11.7 · 今天按快照是考试日（结算 skipDay 用的同一个 examDayOn）：不打卡也不断签
+  const todayExam = examDayOn(st, day);
+  // 考试日改到了以后（今天按原来的快照还是考试日）：打卡卡片照样说今天不打卡也不断签
+  const movedExam = todayExam && sum.examMode && !sum.examDay && !sum.paused && !sum.ready && !sum.checked;
   // 11.7 · 考试当天 / 考前一天不免打卡（自定的考试日离上一场不到 30 天，R7-6）：主卡不说「不用背了 / 不断签」
-  const examFree = sum.examDay ? examDayOn(st, day) : idleEve;
+  const examFree = todayExam || idleEve;
   const noPass = sum.examMode && !examFree && !sum.ready && !sum.checked;
   const canCheck = sum.ready && !sum.checked;
   // 11.2 · 没有复习时不放一个「复习 0」的空按钮
@@ -218,7 +222,7 @@ function Today() {
   // 「今日一词」单独占一行（前面的小卡是偶数个）时用宽版
   const wodWide = (3 + (sum.due > 0 && !overFirst ? 1 : 0) + (quizOpen && advice?.kind !== "quiz" ? 1 : 0)) % 2 === 0;
   // 11.4 · 连续 3 天以上才说「要断了」
-  const lateOn = late && s >= STREAK_WARN_MIN && !sum.ready && !sum.checked && !idleEve && advice?.kind !== "recover-offer" && advice?.kind !== "recovering";
+  const lateOn = late && s >= STREAK_WARN_MIN && !sum.ready && !sum.checked && !idleEve && !todayExam && advice?.kind !== "recover-offer" && advice?.kind !== "recovering";
   // 11.3 · 连续 0 天不显示补卡说明；昨天刚断（又没补卡可用）时说一句，不悄悄清零
   const showHabit = s > 0;
   // 11.4 · 休息中 / 考完了还没选时不说「断了」；连续 1–2 天不算「连续」
@@ -428,7 +432,7 @@ function Today() {
                 ? extraNew ? "今天已打卡 ✓" : "今天已打卡 ✓ 想多学可以再来一组"
                 : sum.ready
                   ? "今天的任务完成了 ✓"
-                  : idleEve
+                  : idleEve || movedExam
                     ? "考前不用赶新词 · 今天不打卡也不断签"
                     : sum.timeMode
                     ? `还差 ${Math.max(0, sum.goalMin - minutes)} 分钟就能打卡`
@@ -492,9 +496,9 @@ function Today() {
                     <Share2 className="size-4" /> 分享图
                   </button>
                 </div>
-              ) : idleEve ? (
-                <div className="flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-3 text-[13px] font-semibold text-know" data-testid="checkin-idle-eve">
-                  <GraduationCap className="size-5 shrink-0" /> 考前一天，今天没有要做的：不打卡也不断签，连续 {s} 天保留
+              ) : idleEve || movedExam ? (
+                <div className="flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-3 text-[13px] font-semibold text-know" data-testid="checkin-idle-eve" data-kind={idleEve ? "eve" : "exam"}>
+                  <GraduationCap className="size-5 shrink-0" /> {idleEve ? "考前一天，今天没有要做的" : "今天是原定的考试日"}：不打卡也不断签，连续 {s} 天保留
                 </div>
               ) : sum.ready ? (
                 <div className="flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-3 text-[13px] font-semibold text-know" data-testid="checkin-ready">
