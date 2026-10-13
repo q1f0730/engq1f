@@ -301,7 +301,7 @@ export function finishDate(today: string, remaining: number, perDay: number): st
 
 // ---------------------------------------------------------------- session (group study)
 
-export type QuizMode = "recall" | "en2cn" | "cn2en" | "audio" | "phrase" | "listen" | "poly" | "pos" | "cloze";
+export type QuizMode = "recall" | "en2cn" | "cn2en" | "audio" | "phrase" | "listen" | "poly" | "pos" | "cloze" | "example" | "cnphrase";
 
 export interface SessionItem {
   w: string;
@@ -468,10 +468,12 @@ export function hashStr(s: string): number {
 }
 
 /** 复习题型：按词+日期稳定分配；有短语的词多一种「短语选义」，有形近词的词多一种「听音辨词」 */
-export function pickMode(w: string, today: string, cnFirst = false, hasPhrase = false, hasListen = false, v4: QuizMode[] = []): QuizMode {
+export function pickMode(w: string, today: string, cnFirst = false, hasPhrase = false, hasListen = false, v4: QuizMode[] = [], extra: QuizMode[] = []): QuizMode {
   const modes: QuizMode[] = ["en2cn", "cn2en", "audio", "recall"];
   if (hasPhrase) modes.push("phrase");
   if (hasListen) modes.push("listen");
+  // v9：例句选词 / 中选短语（只给能出这种题的词）
+  for (const m of extra) if (!modes.includes(m)) modes.push(m);
   const m = modes[hashStr(w + today) % modes.length];
   // v4：落在「回想」的词有一半换成一词多义 / 词性判断 / 短语挖空（只给能出这种题的词）
   if (m === "recall" && v4.length) {

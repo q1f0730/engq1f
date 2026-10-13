@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Accessibility, BellRing, CalendarDays, Contrast, MonitorDown, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
+import { Accessibility, BellRing, CalendarDays, Check, Contrast, MonitorDown, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
@@ -30,6 +30,8 @@ import { MAKEUP_EVERY, MAKEUP_MAX, REST_OPTIONS, TIME_GOALS, WEEKDAY_CN, type Go
 import { askNotify, badgeSupported, notifyPermission, notifySupported } from "@/lib/nudge";
 import { FONT_LABEL, FONT_SIZES, MOTION_LABEL, type FontSize, type Motion } from "@/lib/ux";
 import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
+import { BASE_MODES, REVIEW_MODES, TIER_LONG, TIER_SHORT, toggleMode } from "@/lib/modes";
+import { MODE_LABEL } from "@/lib/exam";
 
 const APP_VERSION = __APP_VERSION__;
 import { cn } from "@/lib/utils";
@@ -252,6 +254,8 @@ function MePage() {
               />
             </Row>
           </Panel>
+
+          <ModesPanel />
 
           <A11yPanel />
         </div>
@@ -478,6 +482,61 @@ function HabitPanel() {
         </Row>
         <Row label="图标角标" hint={badgeSupported() ? "桌面图标上显示待复习数" : "这个浏览器不支持角标"}>
           <Switch checked={s.appBadge !== false} disabled={!badgeSupported()} onCheckedChange={(v) => setSettings({ appBadge: v })} aria-label="图标角标" data-testid="app-badge" />
+        </Row>
+      </div>
+    </Panel>
+  );
+}
+
+/** v9 · 复习题型与学习流程：自选题型、难度递进、新词预习、学后速测 */
+function ModesPanel() {
+  const st = useApp();
+  const s = st.settings;
+  const off = s.offModes ?? [];
+  return (
+    <Panel data-testid="modes-settings">
+      <PanelTitle right={<span className="tnum text-[12px] font-semibold text-muted-foreground" data-testid="modes-on">已开 {REVIEW_MODES.length - off.length}/{REVIEW_MODES.length}</span>}>复习题型</PanelTitle>
+      <div className="grid grid-cols-3 gap-1.5" data-testid="mode-chips">
+        {REVIEW_MODES.map((m) => {
+          const on = !off.includes(m);
+          return (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={on}
+              data-testid={`mode-${m}`}
+              onClick={() => {
+                const next = toggleMode(off, m);
+                if (!next) {
+                  toast.error("至少保留一种基础题型", { description: "回想 / 英选中 / 中选英 / 听音选义" });
+                  return;
+                }
+                setSettings({ offModes: next });
+              }}
+              className={cn(
+                "flex h-10 items-center justify-center gap-1 rounded-xl px-1 text-[13px] font-bold transition",
+                on ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground line-through decoration-1 hover:text-foreground",
+                BASE_MODES.includes(m) && on && "ring-2 ring-primary/25 ring-offset-1 ring-offset-card",
+              )}
+            >
+              {on && <Check className="size-3.5 shrink-0" strokeWidth={3} />}
+              <span className="truncate">{MODE_LABEL[m]}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        关掉的题型不再出现。至少保留一种基础题型（回想 / 英选中 / 中选英 / 听音选义）；其余题型只给能出题的词出，例句选词要先在线看过这个词的例句。难度递进：间隔 ≤{TIER_SHORT} 天英选中，{TIER_SHORT + 1}–{TIER_LONG - 1} 天中选英，≥{TIER_LONG} 天听音。
+      </p>
+      <div className="mt-3 border-t border-border/60 pt-1">
+        <Row label="难度递进" hint="间隔越长题越难：英选中 → 中选英 → 听音">
+          <Switch checked={!!s.progressive} onCheckedChange={(v) => setSettings({ progressive: v })} aria-label="难度递进" data-testid="progressive" />
+        </Row>
+        <Row label="新词预习" hint="开始一组新词前先看列表，认识的直接斩">
+          <Switch checked={!!s.preview} onCheckedChange={(v) => setSettings({ preview: v })} aria-label="新词预习" data-testid="preview-switch" />
+        </Row>
+        <Row label="学后速测" hint="每组新词学完自动四选一检测一轮">
+          <Switch checked={!!s.postQuiz} onCheckedChange={(v) => setSettings({ postQuiz: v })} aria-label="学后速测" data-testid="post-quiz-switch" />
         </Row>
       </div>
     </Panel>

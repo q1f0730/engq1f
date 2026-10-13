@@ -1,11 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, CalendarClock, Check, CircleHelp, Dumbbell, Flame, Keyboard, Maximize, Minimize, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarClock, Check, CircleHelp, ClipboardCheck, Dumbbell, Flame, Keyboard, Maximize, Minimize, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { speak } from "@/lib/audio";
 import { now, today } from "@/lib/clock";
 import { shortMeaning, type Word, type WordIndex } from "@/lib/data";
-import { MODE_HINT, MODE_LABEL, choicesFor, clozeFor, coreGroupWords, type Choice } from "@/lib/exam";
+import { MODE_HINT, MODE_LABEL, choicesFor, clozeFor, cnPhraseOf, coreGroupWords, type Choice } from "@/lib/exam";
+import { exampleCloze } from "@/lib/examples";
 import {
   aheadGroup,
   nextNewGroup,
@@ -39,7 +40,9 @@ import {
   type Session,
   type SessionItem,
 } from "@/lib/srs";
-import { applyAnswer, checkIn, getState, setBury, toggleStar, useApp } from "@/lib/store";
+import { applyAnswer, checkIn, getState, previewKill, setBury, toggleStar, useApp } from "@/lib/store";
+import { PostQuiz, PreviewList } from "./study-extra";
+import { postQuizWords, postSummary, retryWords } from "@/lib/learnflow";
 import { curStreak } from "@/lib/habit";
 import { celebrate } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
@@ -104,7 +107,13 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   const frontIpa = st.settings.frontIpa !== false;
   const practice = mode === "practice";
   const speedMode = mode === "speed";
-  const [items] = useState(() => buildItems(index, mode, words));
+  const [items, setItems] = useState(() => buildItems(index, mode, words));
+  // v9 · 新词预习：开始前先列表过一遍
+  const [previewing, setPreviewing] = useState(() => mode === "new" && !!getState().settings.preview && items.length > 0);
+  const previewWords = useMemo(() => items.map((i) => i.w), [items]);
+  // v9 · 学后速测：idle = 还没做；run = 正在做；done = 做完（结果计入小结）
+  const [post, setPost] = useState<"idle" | "run" | "done">("idle");
+  const [postRes, setPostRes] = useState<Record<string, boolean> | null>(null);
   // 错词再练：作答只记在这里，不写入学习记录
   const scratch = useRef<{ cards: Record<string, Card | undefined>; log: DayLog | undefined }>({ cards: {}, log: undefined });
   const getCard = useCallback((w: string) => (practice ? scratch.current.cards[w] : getState().cards[w]), [practice]);
@@ -167,13 +176,13 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   // 进入新卡片：计时 + 自动发音
   const cardKey = `${shownItem?.w ?? "none"}-${turn}`;
   useEffect(() => {
-    if (phase !== "front" || !shownItem) return;
+    if (phase !== "front" || !shownItem || previewing) return;
     shownAt.current = now();
     setReveal(false);
     const m = shownItem.repeat ? "recall" : shownItem.mode;
     if (m === "audio" || m === "listen" || (st.settings.autoplay && (m === "en2cn" || m === "poly" || m === "pos" || (m === "recall" && !cnFirst)))) speak(shownItem.w, accent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardKey, phase]);
+  }, [cardKey, phase, previewing]);
 
   const day = today();
 
@@ -229,7 +238,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       say(quizAnnouncement(ok, word.w, options.find((o) => o.correct)?.text ?? word.w));
       setLast({ item: r.it, rating: ok ? "know" : "forget", pick: k, via: "quiz" });
       setPhase("back");
-      if (shownItem?.mode === "cn2en" || shownItem?.mode === "audio" || shownItem?.mode === "listen" || shownItem?.mode === "cloze") speak(word.w, accent);
+      if (shownItem?.mode === "cn2en" || shownItem?.mode === "audio" || shownItem?.mode === "listen" || shownItem?.mode === "cloze" || shownItem?.mode === "example" || shownItem?.mode === "cnphrase") speak(word.w, accent);
     },
     [head, isQuiz, phase, word, options, doAnswer, shownItem, accent, say],
   );
@@ -364,6 +373,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (previewing) return;
       if (help && e.key !== "?") return;
       const k = e.key.toLowerCase();
       if (k === "?" || (k === "/" && e.shiftKey)) {
@@ -399,12 +409,65 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [help, finished, next, doUndo, star, doKill, doBury, replay, isQuiz, phase, peek, pick, rate, navigate, speedMode, swap, canFocus, toggleFocus]);
+  }, [help, finished, next, doUndo, star, doKill, doBury, replay, isQuiz, phase, peek, pick, rate, navigate, speedMode, swap, canFocus, toggleFocus, previewing]);
 
   useWakeLock(!finished && items.length > 0);
 
   if (!items.length) return <Empty mode={mode} />;
-  if (finished) return <Summary session={session} index={index} mode={mode} ms={now() - startedAt.current} listId={listId} />;
+  if (previewing)
+    return (
+      <PreviewList
+        index={index}
+        words={previewWords}
+        accent={accent}
+        onQuit={() => navigate({ to: "/" })}
+        onStart={(killed) => {
+          if (killed.length) {
+            previewKill(killed, day, (w, card) => revEntry(w, now(), "kill", { isNew: true, card }));
+            toast(`已斩 ${killed.length} 个`, { description: "标记为已掌握，以后不再出现" });
+          }
+          const rest = items.filter((it) => !killed.includes(it.w));
+          if (rest.length) {
+            setItems(rest);
+            setSession(createSession(rest));
+            setPreviewing(false);
+            startedAt.current = now();
+            return;
+          }
+          // 整组都认识：换下一组继续预习
+          const more = buildItems(index, mode, words);
+          setItems(more);
+          if (more.length) setSession(createSession(more));
+        }}
+      />
+    );
+  const postWords = finished && mode === "new" ? postQuizWords(session.firsts, getState().cards, (w) => index.map.has(w)) : [];
+  if (finished && postWords.length && (post === "run" || (post === "idle" && st.settings.postQuiz)))
+    return (
+      <PostQuiz
+        index={index}
+        words={postWords}
+        accent={accent}
+        seed={hashStr(day + postWords.join())}
+        onSkip={() => setPost("done")}
+        onDone={(r) => {
+          setPostRes(r);
+          setPost("done");
+        }}
+      />
+    );
+  if (finished)
+    return (
+      <Summary
+        session={session}
+        index={index}
+        mode={mode}
+        ms={now() - startedAt.current}
+        listId={listId}
+        postRes={postRes}
+        onPostQuiz={postWords.length && post === "idle" ? () => setPost("run") : undefined}
+      />
+    );
   if (!shownItem || !word) return null;
 
   const starred = !!st.star[word.w];
@@ -1012,7 +1075,7 @@ function QuizView({
 }) {
   const done = !!answered;
   return (
-    <div className="flex min-h-0 flex-1 flex-col card-in" data-testid="quiz" data-quiz-mode={mode}>
+    <div className="flex min-h-0 flex-1 flex-col card-in" data-testid="quiz" data-quiz-mode={mode} data-w={word.w}>
       <QuizPrompt word={word} mode={mode} accent={accent} seed={seed} done={done} />
       <ChoiceList choices={options} done={done} pick={answered?.pick} wrong={done && answered?.rating === "forget" && answered.pick !== -1} shakeKey={shake} onPick={onPick} subTestId={mode === "listen" ? "listen-meaning" : undefined} />
       <div className="shrink-0 pb-4 pt-3">
@@ -1049,6 +1112,8 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
   const revealWord = mode === "en2cn" || mode === "poly" || mode === "pos" || done;
   const phrase = mode === "phrase" ? phraseFor(word, seed) : undefined;
   const cloze = mode === "cloze" ? clozeFor(word, seed) : null;
+  const ex = mode === "example" ? exampleCloze(word.w, seed) : null;
+  const cnph = mode === "cnphrase" ? cnPhraseOf(word, seed) : undefined;
   return (
     <div
       className={cn(
@@ -1092,6 +1157,39 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
           </div>
         </div>
       )}
+      {ex && (
+        <div className={cn("w-full max-w-md text-left", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3" : "")} data-testid="quiz-example">
+          {!done && <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">例句</div>}
+          <div className={cn("leading-relaxed", done ? "text-[14px] text-foreground/85" : "font-display text-[21px] font-semibold tracking-tight")}>
+            {done ? (
+              <>
+                {ex.blanked.split("____")[0]}
+                <b className="font-semibold text-primary">{ex.form}</b>
+                {ex.blanked.split("____").slice(1).join("____")}
+              </>
+            ) : (
+              <ClozeText text={ex.blanked} />
+            )}
+          </div>
+          {!done && ex.form.toLowerCase() !== word.w.toLowerCase() && <div className="mt-2 text-[12px] text-muted-foreground" data-testid="example-form-hint">空格处是这个词的变形</div>}
+        </div>
+      )}
+      {cnph && (
+        <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3 text-left" : "")} data-testid="quiz-cnphrase">
+          {done ? (
+            <>
+              <div className="font-display text-[16px] font-bold leading-snug tracking-tight">
+                <PhraseText phrase={cnph[0]} word={word.w} />
+              </div>
+              <div className="mt-0.5 text-[14px] text-muted-foreground">{cnph[1]}</div>
+            </>
+          ) : (
+            <div className="text-[28px] font-bold leading-snug" data-testid="cnphrase-cn">
+              {cnph[1]}
+            </div>
+          )}
+        </div>
+      )}
       {revealWord && (
         <>
           <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", done ? "text-[38px]" : wordSize(word.w))} data-testid="quiz-word">
@@ -1110,7 +1208,7 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
           <Meanings word={word} />
         </div>
       )}
-      {done && !compact && word.ph?.length && mode !== "cloze" ? (
+      {done && !compact && word.ph?.length && mode !== "cloze" && mode !== "cnphrase" ? (
         <div className="mt-4 w-full max-w-md text-left">
           <Phrases word={word} max={3} />
         </div>
@@ -1239,7 +1337,23 @@ function Empty({ mode }: { mode: StudyMode }) {
   );
 }
 
-function Summary({ session, index, mode, ms, listId }: { session: Session; index: WordIndex; mode: StudyMode; ms: number; listId?: string }) {
+function Summary({
+  session,
+  index,
+  mode,
+  ms,
+  listId,
+  postRes,
+  onPostQuiz,
+}: {
+  session: Session;
+  index: WordIndex;
+  mode: StudyMode;
+  ms: number;
+  listId?: string;
+  postRes?: Record<string, boolean> | null;
+  onPostQuiz?: () => void;
+}) {
   const st = useApp();
   const navigate = useNavigate();
   const day = today();
@@ -1251,7 +1365,9 @@ function Summary({ session, index, mode, ms, listId }: { session: Session; index
   const s = curStreak(st, day);
 
   const restart = (m: StudyMode) => navigate({ to: "/study", search: { mode: m, t: Date.now() } });
-  const missed = words.filter(([, r]) => r !== "know").map(([w]) => w);
+  // 学后速测答错的也算进「错词再练」
+  const { n: postN, ok: postOk, wrong: postWrong, pct: postPct } = postSummary(postRes);
+  const missed = retryWords(session.firsts, postRes);
 
   return (
     <div className="mx-auto min-h-dvh max-w-xl px-4 pb-10 pt-safe" data-testid="summary">
@@ -1295,6 +1411,38 @@ function Summary({ session, index, mode, ms, listId }: { session: Session; index
         </button>
       )}
 
+      {postRes && postN > 0 && (
+        <div className="mt-5 flex items-center gap-3 rounded-3xl border border-know/25 bg-know-soft px-4 py-3.5" data-testid="post-result" data-ok={postOk} data-n={postN}>
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-know text-white dark:text-[oklch(0.2_0.02_170)]">
+            <ClipboardCheck className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-bold text-know">
+              学后速测 {postOk}/{postN} · {postPct}%
+            </span>
+            <span className="block truncate text-[12px] text-muted-foreground">{postWrong.length ? `没记住：${postWrong.join("、")}` : "刚学的词全部答对，记得很牢"}</span>
+          </span>
+        </div>
+      )}
+
+      {!postRes && onPostQuiz && (
+        <button
+          type="button"
+          data-testid="post-quiz-start"
+          onClick={onPostQuiz}
+          className="mt-5 flex w-full items-center gap-3 rounded-3xl border border-know/25 bg-know-soft px-4 py-3.5 text-left transition active:scale-[0.99]"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-know text-white dark:text-[oklch(0.2_0.02_170)]">
+            <ClipboardCheck className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-bold text-know">学后速测 {words.filter(([w]) => !st.cards[w]?.k).length} 题</span>
+            <span className="block truncate text-[12px] text-muted-foreground">刚学的词马上四选一检验，结果计入小结</span>
+          </span>
+          <ArrowRight className="size-5 shrink-0 text-know" />
+        </button>
+      )}
+
       {missed.length > 0 && (
         <button
           type="button"
@@ -1325,6 +1473,15 @@ function Summary({ session, index, mode, ms, listId }: { session: Session; index
               />
               <span className="font-display w-28 shrink-0 truncate text-[16px] font-bold">{w}</span>
               <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">{word ? shortMeaning(word, 1) : ""}</span>
+              {postRes && w in postRes && (
+                <span
+                  className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold", postRes[w] ? "bg-know-soft text-know" : "bg-forget-soft text-forget")}
+                  data-testid="post-mark"
+                  data-ok={postRes[w] ? 1 : 0}
+                >
+                  速测{postRes[w] ? "✓" : "✗"}
+                </span>
+              )}
             </div>
           );
         })}

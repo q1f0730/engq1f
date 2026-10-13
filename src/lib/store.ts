@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
-import { kill, unkill, type Card, type DayLog } from "./srs";
+import { applyPreviewKill } from "./learnflow";
+import { kill, unkill, type Card, type DayLog, type QuizMode } from "./srs";
+import { cleanOffModes } from "./modes";
 import { today } from "./clock";
 import type { QuizRecord } from "./exam";
 import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
@@ -54,6 +56,14 @@ export interface Settings {
   motion: Motion;
   /** 卡片正面显示音标 */
   frontIpa: boolean;
+  /** v9 · 关掉的复习题型 */
+  offModes: QuizMode[];
+  /** v9 · 难度递进题型 */
+  progressive: boolean;
+  /** v9 · 开始新词前先预习列表 */
+  preview: boolean;
+  /** v9 · 每组新词学完自动速测 */
+  postQuiz: boolean;
 }
 
 export interface AppState {
@@ -92,6 +102,8 @@ export interface AppState {
   installed?: boolean;
   /** 安装卡片关掉了：这天之前不出现 */
   installSnooze?: string;
+  /** v9 · 小游戏最高分：match = 配对消消乐得分，judge = 判断对错得分 */
+  gameBest: Record<string, number>;
 }
 
 export const DAILY_OPTIONS = [10, 20, 30, 50, 80, 100];
@@ -129,6 +141,10 @@ export const defaultSettings = (): Settings => ({
   swapSwipe: false,
   motion: "system",
   frontIpa: true,
+  offModes: [],
+  progressive: false,
+  preview: false,
+  postQuiz: false,
 });
 
 export function initialState(): AppState {
@@ -148,6 +164,7 @@ export function initialState(): AppState {
     badges: {},
     makeup: 0,
     patched: [],
+    gameBest: {},
   };
 }
 
@@ -171,6 +188,10 @@ export function cleanSettings(s: Settings): Settings {
     swapSwipe: s.swapSwipe === true,
     motion: cleanMotion(s.motion),
     frontIpa: typeof s.frontIpa === "boolean" ? s.frontIpa : d.frontIpa,
+    offModes: cleanOffModes(s.offModes),
+    progressive: s.progressive === true,
+    preview: s.preview === true,
+    postQuiz: s.postQuiz === true,
     examDate: typeof s.examDate === "string" && (s.examDate === "" || /^\d{4}-\d{2}-\d{2}$/.test(s.examDate)) ? s.examDate : d.examDate,
   };
 }
@@ -202,7 +223,13 @@ export function normalize(raw: unknown): AppState {
     installed: r.installed === true ? true : undefined,
     installSnooze: typeof r.installSnooze === "string" ? r.installSnooze : undefined,
     seed: typeof r.seed === "number" ? r.seed : base.seed,
+    gameBest: cleanBest(r.gameBest),
   };
+}
+
+function cleanBest(raw: unknown): Record<string, number> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(Object.entries(raw).filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v >= 0));
 }
 
 function read(): AppState {
@@ -461,6 +488,22 @@ export function snapshot(): Snapshot {
 }
 export function restoreSnapshot(s: Snapshot) {
   commit({ ...state, ...s });
+}
+
+// ---------------------------------------------------------------- v9 · 更多玩法
+
+/** 小游戏成绩：比最高分高才记；返回是否破纪录 */
+export function saveGameBest(game: string, score: number): boolean {
+  const prev = state.gameBest?.[game] ?? 0;
+  if (score <= prev) return false;
+  commit({ ...state, gameBest: { ...(state.gameBest ?? {}), [game]: score } });
+  return true;
+}
+
+/** 新词预习里斩掉的词：标记永久掌握，按「新词首答认识」计入今日（与学习中斩一致） */
+export function previewKill(words: string[], day: string, rev: (w: string, card: Card) => RevEntry) {
+  const next = applyPreviewKill(state, words, day, rev);
+  if (next.cards !== state.cards) commit({ ...state, ...next });
 }
 
 export function saveTest(est: number) {

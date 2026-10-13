@@ -113,3 +113,36 @@ export function useExamples(word: string | undefined, enabled = true): string[] 
   }, [word, enabled]);
   return list;
 }
+
+// ---------------------------------------------------------------- v9 · 例句选词
+
+const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** 例句里本词（或 -s/-es/-d/-ed/-ing/-ly 变形）出现的位置 */
+function findForm(sentence: string, word: string): { at: number; form: string } | null {
+  if (!/^[A-Za-z-]+$/.test(word)) return null;
+  const re = new RegExp(`(^|[^A-Za-z])(${escRe(word)}(?:s|es|d|ed|ing|ly)?)(?=$|[^A-Za-z])`, "i");
+  const m = sentence.match(re);
+  if (!m || m.index === undefined) return null;
+  return { at: m.index + m[1].length, form: m[2] };
+}
+
+export interface ExampleCloze {
+  /** 原句 */
+  sentence: string;
+  /** 挖空后的句子（本词换成 ____） */
+  blanked: string;
+  /** 句子里实际出现的词形 */
+  form: string;
+}
+
+/** 用缓存的例句挖空本词；没有缓存或句子里找不到本词时返回 null（不发请求） */
+export function exampleCloze(word: string, seed = 0, list?: string[]): ExampleCloze | null {
+  const sentences = (list ?? cachedExamples(word) ?? []).filter((s) => findForm(s, word));
+  if (!sentences.length) return null;
+  const sentence = sentences[(seed >>> 0) % sentences.length];
+  const hit = findForm(sentence, word)!;
+  return { sentence, blanked: sentence.slice(0, hit.at) + "____" + sentence.slice(hit.at + hit.form.length), form: hit.form };
+}
+
+export const hasExampleCloze = (word: string) => exampleCloze(word) !== null;

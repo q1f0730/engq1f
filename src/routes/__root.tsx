@@ -14,7 +14,7 @@ import { requestPersist } from "@/lib/persist";
 import { useAppBadge, useReminder } from "@/lib/nudge";
 import { MilestoneOverlay } from "@/components/app/milestone";
 
-const BARE = ["/study", "/welcome", "/test", "/tape", "/quiz"];
+const BARE = ["/study", "/welcome", "/test", "/tape", "/quiz", "/match", "/judge"];
 
 function NotFound() {
   return <Navigate to="/" replace />;

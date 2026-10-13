@@ -3,6 +3,8 @@ import { posOf } from "./data";
 import { confusables, editDistance, isInflection } from "./confusables";
 import type { AppState, Settings } from "./store";
 import { timeReached } from "./habit";
+import { hasExampleCloze } from "./examples";
+import { chooseMode, practiceMode } from "./modes";
 import {
   addDays,
   canCheckIn,
@@ -11,7 +13,6 @@ import {
   finishDate,
   hashStr,
   isLeech,
-  pickMode,
   rng,
   shuffle,
   type SessionItem,
@@ -141,8 +142,28 @@ export function registerV4Modes(fn: typeof v4Modes) {
   v4Modes = fn;
 }
 
+/** v9 题型：有合适短语 → 中选短语；有缓存例句且句中有本词 → 例句选词 */
+export function v9Modes(index: WordIndex, w: string): SessionItem["mode"][] {
+  const out: SessionItem["mode"][] = [];
+  if (hasPhrase(index, w)) out.push("cnphrase");
+  if (hasExampleCloze(w)) out.push("example");
+  return out;
+}
+
 function modeFor(index: WordIndex, st: AppState, w: string, day: string): SessionItem["mode"] {
-  return pickMode(w, day, st.settings.cnFirst, hasPhrase(index, w), hasListen(index, w), v4Modes(index, w));
+  const card = st.cards[w];
+  return chooseMode({
+    w,
+    day,
+    cnFirst: st.settings.cnFirst,
+    hasPhrase: hasPhrase(index, w),
+    hasListen: hasListen(index, w),
+    v4: v4Modes(index, w),
+    extra: v9Modes(index, w),
+    off: st.settings.offModes ?? [],
+    progressive: !!st.settings.progressive,
+    ivl: card ? card.i : undefined,
+  });
 }
 
 export function reviewGroup(index: WordIndex, st: AppState, day: string): SessionItem[] {
@@ -175,11 +196,7 @@ export function aheadGroup(index: WordIndex, st: AppState, day: string): Session
 export function practiceGroup(index: WordIndex, st: AppState, words: string[], day: string): SessionItem[] {
   return words
     .filter((w) => index.map.has(w))
-    .map((w) => {
-      let mode = pickMode(w, day + "practice", false, hasPhrase(index, w), hasListen(index, w));
-      if (mode === "recall") mode = "en2cn";
-      return { w, kind: "review" as const, mode };
-    });
+    .map((w) => ({ w, kind: "review" as const, mode: practiceMode({ w, day, hasPhrase: hasPhrase(index, w), hasListen: hasListen(index, w), off: st.settings.offModes ?? [] }) }));
 }
 
 export type Notebook = "star" | "wrong" | "mastered" | "hard";

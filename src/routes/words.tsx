@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronLeft, GraduationCap, Headphones, Play, Search, Star, X } from "lucide-react";
+import { Check, ChevronLeft, GraduationCap, Headphones, Play, Search, Shuffle, Star, X } from "lucide-react";
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Segmented, Spinner } from "@/components/app/shell";
 import { StateBadge, WordSheet } from "@/components/app/word-bits";
@@ -194,7 +194,15 @@ function WordsPage() {
 
   return (
     <div data-testid="words">
-      <PageHeader title="词库" sub={`共 ${index.list.length} 词 · 核心 ${index.coreCount}`} />
+      <PageHeader
+        title="词库"
+        sub={`共 ${index.list.length} 词 · 核心 ${index.coreCount}`}
+        right={
+          <Link to="/syn" data-testid="syn-entry" className="mb-1 flex shrink-0 items-center gap-1 rounded-full bg-secondary px-3.5 py-2 text-[13px] font-semibold text-muted-foreground transition hover:text-foreground">
+            <Shuffle className="size-3.5" /> 同义词组
+          </Link>
+        }
+      />
 
       <div ref={sticky} className="sticky top-0 z-20 -mx-4 bg-background/90 px-4 pb-3 pt-1 backdrop-blur-xl md:top-16 md:-mx-6 md:px-6">
         <div className={cn("relative", tab === "lists" && "hidden")}>

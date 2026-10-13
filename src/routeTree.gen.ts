@@ -10,10 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as JudgeRouteImport } from './routes/judge'
+import { Route as MatchRouteImport } from './routes/match'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as StudyRouteImport } from './routes/study'
+import { Route as SynRouteImport } from './routes/syn'
 import { Route as TapeRouteImport } from './routes/tape'
 import { Route as TestRouteImport } from './routes/test'
 import { Route as WelcomeRouteImport } from './routes/welcome'
@@ -22,6 +25,16 @@ import { Route as WordsRouteImport } from './routes/words'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JudgeRoute = JudgeRouteImport.update({
+  id: '/judge',
+  path: '/judge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MatchRoute = MatchRouteImport.update({
+  id: '/match',
+  path: '/match',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MeRoute = MeRouteImport.update({
@@ -42,6 +55,11 @@ const StatsRoute = StatsRouteImport.update({
 const StudyRoute = StudyRouteImport.update({
   id: '/study',
   path: '/study',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SynRoute = SynRouteImport.update({
+  id: '/syn',
+  path: '/syn',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TapeRoute = TapeRouteImport.update({
@@ -67,10 +85,13 @@ const WordsRoute = WordsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/judge': typeof JudgeRoute
+  '/match': typeof MatchRoute
   '/me': typeof MeRoute
   '/quiz': typeof QuizRoute
   '/stats': typeof StatsRoute
   '/study': typeof StudyRoute
+  '/syn': typeof SynRoute
   '/tape': typeof TapeRoute
   '/test': typeof TestRoute
   '/welcome': typeof WelcomeRoute
@@ -78,10 +99,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/judge': typeof JudgeRoute
+  '/match': typeof MatchRoute
   '/me': typeof MeRoute
   '/quiz': typeof QuizRoute
   '/stats': typeof StatsRoute
   '/study': typeof StudyRoute
+  '/syn': typeof SynRoute
   '/tape': typeof TapeRoute
   '/test': typeof TestRoute
   '/welcome': typeof WelcomeRoute
@@ -90,10 +114,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/judge': typeof JudgeRoute
+  '/match': typeof MatchRoute
   '/me': typeof MeRoute
   '/quiz': typeof QuizRoute
   '/stats': typeof StatsRoute
   '/study': typeof StudyRoute
+  '/syn': typeof SynRoute
   '/tape': typeof TapeRoute
   '/test': typeof TestRoute
   '/welcome': typeof WelcomeRoute
@@ -103,10 +130,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/judge'
+    | '/match'
     | '/me'
     | '/quiz'
     | '/stats'
     | '/study'
+    | '/syn'
     | '/tape'
     | '/test'
     | '/welcome'
@@ -114,10 +144,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/judge'
+    | '/match'
     | '/me'
     | '/quiz'
     | '/stats'
     | '/study'
+    | '/syn'
     | '/tape'
     | '/test'
     | '/welcome'
@@ -125,10 +158,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/judge'
+    | '/match'
     | '/me'
     | '/quiz'
     | '/stats'
     | '/study'
+    | '/syn'
     | '/tape'
     | '/test'
     | '/welcome'
@@ -137,10 +173,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  JudgeRoute: typeof JudgeRoute
+  MatchRoute: typeof MatchRoute
   MeRoute: typeof MeRoute
   QuizRoute: typeof QuizRoute
   StatsRoute: typeof StatsRoute
   StudyRoute: typeof StudyRoute
+  SynRoute: typeof SynRoute
   TapeRoute: typeof TapeRoute
   TestRoute: typeof TestRoute
   WelcomeRoute: typeof WelcomeRoute
@@ -154,6 +193,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/judge': {
+      id: '/judge'
+      path: '/judge'
+      fullPath: '/judge'
+      preLoaderRoute: typeof JudgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/match': {
+      id: '/match'
+      path: '/match'
+      fullPath: '/match'
+      preLoaderRoute: typeof MatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/me': {
@@ -182,6 +235,13 @@ declare module '@tanstack/react-router' {
       path: '/study'
       fullPath: '/study'
       preLoaderRoute: typeof StudyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/syn': {
+      id: '/syn'
+      path: '/syn'
+      fullPath: '/syn'
+      preLoaderRoute: typeof SynRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tape': {
@@ -217,10 +277,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  JudgeRoute: JudgeRoute,
+  MatchRoute: MatchRoute,
   MeRoute: MeRoute,
   QuizRoute: QuizRoute,
   StatsRoute: StatsRoute,
   StudyRoute: StudyRoute,
+  SynRoute: SynRoute,
   TapeRoute: TapeRoute,
   TestRoute: TestRoute,
   WelcomeRoute: WelcomeRoute,

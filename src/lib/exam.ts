@@ -10,6 +10,7 @@ import { optionMeaning, posOf, shortMeaning, type Word, type WordIndex } from ".
 import { cleanPhraseCn, hasGoodPhrase, listenOptions, newWordsLeft, phraseFor, phraseOptions, quizOptions, registerV4Modes } from "./plan";
 import { DAILY_OPTIONS, type AppState } from "./store";
 import { addDays, diffDays, hashStr, rng, shuffle, type QuizMode } from "./srs";
+import { exampleCloze, hasExampleCloze } from "./examples";
 
 // ---------------------------------------------------------------- 考试日期
 
@@ -275,9 +276,52 @@ export function eligible(index: WordIndex, word: Word, mode: QuizMode): boolean 
       return hasGoodPhrase(word);
     case "listen":
       return confusables(index, word).length > 0;
+    case "cnphrase":
+      return hasGoodPhrase(word);
+    case "example":
+      return hasExampleCloze(word.w);
     default:
       return true;
   }
+}
+
+// ---------------------------------------------------------------- v9 · 例句选词 / 中选短语
+
+/** 例句选词四选一：干扰项同词性、纯小写、长度相近、不是本词变形、不在句子里出现 */
+export function exampleChoices(index: WordIndex, word: Word, seed: number, sentence = exampleCloze(word.w, seed)?.sentence ?? ""): Choice[] {
+  const lw = word.w.toLowerCase();
+  const inSentence = (cw: string) => wholeWord(cw).test(sentence);
+  const ok = (c: Word) => {
+    const cw = c.w.toLowerCase();
+    return cw !== lw && /^[a-z]+$/.test(c.w) && Math.abs(cw.length - lw.length) <= 3 && !isInflection(cw, lw) && !inSentence(cw);
+  };
+  const pool = (index.byPos.get(posOf(word)) ?? index.list).filter(ok);
+  const src = pool.length >= 3 ? pool : index.list.filter(ok);
+  const r = rng((hashStr(word.w + "ex") ^ seed) >>> 0);
+  const picked: Word[] = [];
+  const seen = new Set([lw]);
+  for (let k = 0; picked.length < 3 && k < 400; k++) {
+    const c = src[Math.floor(r() * src.length)];
+    if (!c || seen.has(c.w.toLowerCase())) continue;
+    seen.add(c.w.toLowerCase());
+    picked.push(c);
+  }
+  const list: Choice[] = [word, ...picked].map((o) => ({ text: o.w, sub: shortMeaning(o, 1), correct: o.w === word.w, en: true }));
+  return shuffle(list, (hashStr(word.w + "es") ^ seed) >>> 0);
+}
+
+/** 中选短语的题干：[英文短语, 中文]（中文去掉 [化] 之类的领域标记） */
+export function cnPhraseOf(word: Word, seed: number): [string, string] | undefined {
+  const p = phraseFor(word, seed);
+  return p ? [p[0], p[1].replace(/\[[^\]]*\]/g, "").trim() || p[1]] : undefined;
+}
+
+/** 中选短语：给短语中文，四个英文短语里选（干扰短语来自同词性的别的词，中文不重复） */
+export function cnPhraseChoices(index: WordIndex, word: Word, seed: number): Choice[] {
+  return phraseOptions(index, word, seed).map((o) => {
+    const p = cnPhraseOf(o, seed);
+    return { text: p?.[0] ?? o.w, sub: p?.[1], correct: o.w === word.w, en: true };
+  });
 }
 
 /** 任意题型的四个选项（Study 与模拟小测共用） */
@@ -295,6 +339,10 @@ export function choicesFor(index: WordIndex, word: Word, mode: QuizMode, seed: n
       return listenOptions(index, word, seed).map((o) => ({ text: o.w, sub: shortMeaning(o, 1), correct: o.w === word.w, en: true }));
     case "cn2en":
       return quizOptions(index, word, seed).map((o) => ({ text: o.w, correct: o.w === word.w, en: true }));
+    case "example":
+      return exampleChoices(index, word, seed);
+    case "cnphrase":
+      return cnPhraseChoices(index, word, seed);
     default:
       return quizOptions(index, word, seed).map((o) => ({ text: optionMeaning(o), correct: o.w === word.w }));
   }
@@ -310,6 +358,8 @@ export const MODE_LABEL: Record<QuizMode, string> = {
   poly: "一词多义",
   pos: "词性判断",
   cloze: "短语挖空",
+  example: "例句选词",
+  cnphrase: "中选短语",
 };
 
 export const MODE_HINT: Partial<Record<QuizMode, string>> = {
@@ -321,6 +371,8 @@ export const MODE_HINT: Partial<Record<QuizMode, string>> = {
   poly: "下面哪个意思「不属于」这个词？",
   pos: "这个词的词性是？",
   cloze: "选出填入空格的单词",
+  example: "选出填入例句空格的单词",
+  cnphrase: "选出对应的英文短语",
 };
 
 // ---------------------------------------------------------------- 模拟小测

@@ -15,7 +15,9 @@ import {
   HardDriveDownload,
   Headphones,
   Play,
+  Puzzle,
   Repeat2,
+  Scale,
   Share2,
   Skull,
   Star,
@@ -385,40 +387,35 @@ function Today() {
             <NbLink tab="mastered" icon={<Swords className="size-4" />} label="熟词" n={nb.mastered} tone="text-know bg-know-soft" />
           </div>
 
-          {/* 碎片时间 */}
+          {/* 碎片时间 + v9 小游戏 */}
           <div className="grid grid-cols-2 gap-2.5" data-testid="snack">
-            <Link
-              to="/tape"
-              data-testid="tape-entry"
-              className="flex items-center gap-3 rounded-3xl border border-border/70 bg-card p-3.5 transition hover:border-primary/40 active:scale-[0.99]"
-            >
-              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
-                <Headphones className="size-5" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[15px] font-bold leading-tight">磁带模式</span>
-                <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">通勤免手听</span>
-              </span>
-            </Link>
-            <Link
+            <SnackTile to="/tape" testid="tape-entry" icon={<Headphones className="size-5" />} tone="bg-brand-soft text-primary" title="磁带模式" sub="通勤免手听" />
+            <SnackTile
               to="/study"
               search={{ mode: "speed" }}
-              data-testid="speed-entry"
-              className={cn(
-                "flex items-center gap-3 rounded-3xl border border-border/70 bg-card p-3.5 transition hover:border-primary/40 active:scale-[0.99]",
-                sum.due === 0 && "opacity-70",
-              )}
-            >
-              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-know-soft text-know">
-                <Zap className="size-5" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[15px] font-bold leading-tight">速刷</span>
-                <span className="mt-0.5 block truncate text-[12px] text-muted-foreground" data-testid="speed-sub">
-                  {sum.due > 0 ? `左右滑清 ${sum.due} 词` : "暂无到期复习"}
-                </span>
-              </span>
-            </Link>
+              testid="speed-entry"
+              dim={sum.due === 0}
+              icon={<Zap className="size-5" />}
+              tone="bg-know-soft text-know"
+              title="速刷"
+              sub={<span data-testid="speed-sub">{sum.due > 0 ? `左右滑清 ${sum.due} 词` : "暂无到期复习"}</span>}
+            />
+            <SnackTile
+              to="/match"
+              testid="match-entry"
+              icon={<Puzzle className="size-5" />}
+              tone="bg-vague-soft text-vague"
+              title="配对消消乐"
+              sub={st.gameBest?.match ? `最高 ${st.gameBest.match} 分` : "60 秒连连看"}
+            />
+            <SnackTile
+              to="/judge"
+              testid="judge-entry"
+              icon={<Scale className="size-5" />}
+              tone="bg-forget-soft text-forget"
+              title="判断对错"
+              sub={st.gameBest?.judge ? `最高 ${st.gameBest.judge} 分` : "滑一下判对错"}
+            />
           </div>
         </div>
 
@@ -718,6 +715,23 @@ function InstallCard({ day, installed, snooze }: { day: string; installed?: bool
         安装到手机桌面
       </button>
     </section>
+  );
+}
+
+function SnackTile({ to, search, testid, icon, tone, title, sub, dim }: { to: "/tape" | "/study" | "/match" | "/judge"; search?: { mode: "speed" }; testid: string; icon: React.ReactNode; tone: string; title: string; sub: React.ReactNode; dim?: boolean }) {
+  return (
+    <Link
+      to={to}
+      search={search as never}
+      data-testid={testid}
+      className={cn("flex items-center gap-3 rounded-3xl border border-border/70 bg-card p-3.5 transition hover:border-primary/40 active:scale-[0.99]", dim && "opacity-70")}
+    >
+      <span className={cn("grid size-10 shrink-0 place-items-center rounded-2xl", tone)}>{icon}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-[15px] font-bold leading-tight">{title}</span>
+        <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">{sub}</span>
+      </span>
+    </Link>
   );
 }
 

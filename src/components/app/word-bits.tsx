@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { ChevronLeft, ListPlus, Play, Star, Swords, Undo2, Volume2 } from "lucide-react";
 import { confusables } from "@/lib/confusables";
 import { sayEnglish, speak } from "@/lib/audio";
@@ -12,6 +12,9 @@ import { BottomSheet } from "./sheet";
 import { ListPicker } from "./lists";
 import { WordTrack } from "./track";
 import { wordTrack, type RevEntry } from "@/lib/stats";
+
+/** v9 · 同义词组 + 同根形词：按需加载 */
+const WordExtra = lazy(() => import("./word-extra"));
 
 export function Phonetic({ word, accent, className }: { word: Word; accent: "us" | "uk"; className?: string }) {
   if (!word.p) return null;
@@ -259,6 +262,11 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
         </div>
         <div className="mt-5 empty:hidden">
           <Confusables index={getWordsSync()} word={word} accent={accent} onOpen={(c) => setTrail((t) => [...t, c])} />
+        </div>
+        <div className="mt-5 empty:hidden">
+          <Suspense fallback={null}>
+            <WordExtra word={word} onOpen={(c) => setTrail((t) => [...t, c])} />
+          </Suspense>
         </div>
         <div className="mt-5 empty:hidden">
           <Examples word={word} enabled={open} />
