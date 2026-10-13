@@ -85,6 +85,8 @@ export function newCard(today: string): Card {
 export interface ScheduleOptions {
   /** 组内重学的再次回答 */
   repeat?: boolean;
+  /** 提前复习（还没到期就复习）：认识时按实际经过天数计算，且不短于原间隔 */
+  early?: boolean;
 }
 
 /** 根据一次评分计算新的卡片状态 */
@@ -113,6 +115,7 @@ export function schedule(card: Card | undefined, rating: Rating, today: string, 
     case "know":
       if (isNew) i = FIRST_KNOWN_DAYS;
       else if (i === 0) i = 1;
+      else if (opts.early) i = Math.max(i, Math.round(Math.max(1, diffDays(base.t, today)) * e));
       else i = Math.max(i + 1, Math.round(i * e));
       r += 1;
       break;
@@ -150,6 +153,35 @@ export function isDue(card: Card | undefined, today: string): boolean {
 export function masteryOf(card: Card | undefined): Mastery {
   if (!card) return "new";
   return card.st === "mastered" ? "mastered" : "learning";
+}
+
+/** 顽固词：遗忘次数达到这个数（Anki 的 leech） */
+export const LEECH_LAPSES = 3;
+
+export function isLeech(card: Card | undefined): boolean {
+  return !!card && !card.k && card.l >= LEECH_LAPSES;
+}
+
+/** 间隔 → 按钮上的简短文案 */
+export function intervalLabel(i: number): string {
+  if (i <= 0) return "今天";
+  if (i < 30) return `${i}天`;
+  if (i < 365) return `${Math.round(i / 30)}个月`;
+  return `${Math.round((i / 365) * 10) / 10}年`;
+}
+
+/** 三个评分各自的下次复习时间（与 schedule 完全一致） */
+export function previewIntervals(
+  card: Card | undefined,
+  today: string,
+  opts: ScheduleOptions = {},
+): Record<Rating, string> {
+  const out = {} as Record<Rating, string>;
+  for (const r of ["know", "vague", "forget"] as Rating[]) {
+    const c = schedule(card, r, today, opts);
+    out[r] = c.k ? "已斩" : intervalLabel(diffDays(today, c.d));
+  }
+  return out;
 }
 
 /** 到期词（最早到期、间隔最短优先） */
@@ -249,7 +281,7 @@ export function finishDate(today: string, remaining: number, perDay: number): st
 
 // ---------------------------------------------------------------- session (group study)
 
-export type QuizMode = "recall" | "en2cn" | "cn2en" | "audio";
+export type QuizMode = "recall" | "en2cn" | "cn2en" | "audio" | "phrase";
 
 export interface SessionItem {
   w: string;
@@ -257,6 +289,8 @@ export interface SessionItem {
   mode: QuizMode;
   /** 组内重学 */
   repeat?: boolean;
+  /** 提前复习 */
+  early?: boolean;
 }
 
 interface HistoryEntry {
@@ -303,7 +337,7 @@ export function answer(
   const item = s.queue[0];
   if (!item) throw new Error("session finished");
   const first = !(item.w in s.firsts);
-  const card = schedule(prev, rating, today, { repeat: !first });
+  const card = schedule(prev, rating, today, { repeat: !first, early: item.early });
   const nextLog = first ? logAnswer(log, item.kind, rating, ms) : { ...emptyLog(), ...log, ms: (log?.ms ?? 0) + Math.min(ms, 60000) };
   const rest = s.queue.slice(1);
   let queue = rest;
@@ -339,6 +373,19 @@ export function killCurrent(s: Session, prev: Card | undefined, today: string, l
     },
     card,
     log: nextLog,
+  };
+}
+
+/** 明天再说：当前词移出本组（含重学项），不计对错；已有卡片推到明天，新词由调用方记到搁置表 */
+export function buryCurrent(s: Session, prev: Card | undefined, today: string, log: DayLog | undefined): { session: Session; card: Card | undefined } {
+  const item = s.queue[0];
+  if (!item) throw new Error("session finished");
+  const card = prev ? { ...prev, d: addDays(today, 1) } : undefined;
+  const queue = s.queue.slice(1).filter((q) => q.w !== item.w);
+  const entry: HistoryEntry = { queue: s.queue, done: s.done, firsts: s.firsts, w: item.w, prev, prevLog: log };
+  return {
+    session: { ...s, queue, done: [...s.done, item.w], history: [...s.history, entry] },
+    card,
   };
 }
 
@@ -400,9 +447,9 @@ export function hashStr(s: string): number {
   return h >>> 0;
 }
 
-/** 复习题型：按词+日期稳定分配，混合四种 */
-export function pickMode(w: string, today: string, cnFirst = false): QuizMode {
-  const modes: QuizMode[] = ["en2cn", "cn2en", "audio", "recall"];
+/** 复习题型：按词+日期稳定分配；有短语的词多一种「短语选义」 */
+export function pickMode(w: string, today: string, cnFirst = false, hasPhrase = false): QuizMode {
+  const modes: QuizMode[] = hasPhrase ? ["en2cn", "cn2en", "audio", "recall", "phrase"] : ["en2cn", "cn2en", "audio", "recall"];
   const m = modes[hashStr(w + today) % modes.length];
   return cnFirst && m === "recall" ? "cn2en" : m;
 }

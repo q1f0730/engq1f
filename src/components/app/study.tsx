@@ -1,48 +1,71 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check, CircleHelp, Flame, Keyboard, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
+import { CalendarClock, Check, CircleHelp, Dumbbell, Flame, Keyboard, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { speak } from "@/lib/audio";
 import { now, today } from "@/lib/clock";
 import { optionMeaning, shortMeaning, type Word, type WordIndex } from "@/lib/data";
-import { nextNewGroup, notebookGroup, quizOptions, reviewGroup, summarize, type Notebook } from "@/lib/plan";
 import {
+  aheadGroup,
+  nextNewGroup,
+  notebookGroup,
+  phraseFor,
+  phraseOptions,
+  practiceGroup,
+  quizOptions,
+  reviewGroup,
+  summarize,
+  type Notebook,
+} from "@/lib/plan";
+import { buzz } from "@/lib/haptics";
+import {
+  addDays,
   answer,
+  buryCurrent,
   createSession,
   current,
   hashStr,
   isFinished,
+  isLeech,
   killCurrent,
+  previewIntervals,
   sessionAccuracy,
   streak,
   undo,
+  type Card,
+  type DayLog,
   type Rating,
   type Session,
   type SessionItem,
 } from "@/lib/srs";
-import { applyAnswer, checkIn, getState, toggleStar, useApp } from "@/lib/store";
+import { applyAnswer, checkIn, getState, setBury, toggleStar, useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Examples, Meanings, Phonetic, Phrases } from "./word-bits";
+import { Confusables, Examples, Meanings, Phonetic, Phrases } from "./word-bits";
 import { ShortcutsSheet } from "./shortcuts";
 import { ShareSheet } from "./share-sheet";
 import { useShareInfo } from "@/lib/use-share";
 
-export type StudyMode = "new" | "review" | Notebook;
+export type StudyMode = "new" | "review" | "ahead" | "practice" | Notebook;
 
 const MODE_TITLE: Record<StudyMode, string> = {
   new: "学新词",
   review: "复习",
+  ahead: "提前复习",
+  practice: "错词再练",
   star: "生词本复习",
   wrong: "错词本复习",
   mastered: "熟词回顾",
+  hard: "顽固词专项",
 };
 
-function buildItems(index: WordIndex, mode: StudyMode): SessionItem[] {
+function buildItems(index: WordIndex, mode: StudyMode, words: string[]): SessionItem[] {
   const st = getState();
   const day = today();
   if (mode === "new") return nextNewGroup(index, st, day);
-  if (mode === "review") return reviewGroup(st, day);
-  return notebookGroup(st, mode, day);
+  if (mode === "review") return reviewGroup(index, st, day);
+  if (mode === "ahead") return aheadGroup(index, st, day);
+  if (mode === "practice") return practiceGroup(index, st, words, day);
+  return notebookGroup(index, st, mode, day);
 }
 
 function wordSize(w: string) {
@@ -54,11 +77,25 @@ function wordSize(w: string) {
 
 type Last = { item: SessionItem; rating: Rating; pick?: number; via: "rate" | "quiz" | "peek" };
 
-export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
+export function Study({ index, mode, words = [] }: { index: WordIndex; mode: StudyMode; words?: string[] }) {
   const st = useApp();
   const navigate = useNavigate();
   const accent = st.settings.accent;
-  const [items] = useState(() => buildItems(index, mode));
+  const practice = mode === "practice";
+  const [items] = useState(() => buildItems(index, mode, words));
+  // 错词再练：作答只记在这里，不写入学习记录
+  const scratch = useRef<{ cards: Record<string, Card | undefined>; log: DayLog | undefined }>({ cards: {}, log: undefined });
+  const getCard = useCallback((w: string) => (practice ? scratch.current.cards[w] : getState().cards[w]), [practice]);
+  const getLog = useCallback((d: string) => (practice ? scratch.current.log : getState().log[d]), [practice]);
+  const put = useCallback(
+    (w: string, card: Card | undefined, d: string, log: DayLog | undefined) => {
+      if (practice) {
+        scratch.current.cards[w] = card;
+        scratch.current.log = log;
+      } else applyAnswer(w, card, d, log);
+    },
+    [practice],
+  );
   const [session, setSession] = useState<Session>(() => createSession(items));
   const [phase, setPhase] = useState<"front" | "back">("front");
   const [peek, setPeek] = useState(false);
@@ -77,8 +114,9 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
   const cnFirst = st.settings.cnFirst;
   const finished = isFinished(session) && phase === "front";
 
+  const seed = (hashStr(today()) ^ turn) >>> 0;
   const options = useMemo(
-    () => (word && isQuiz ? quizOptions(index, word, hashStr(today()) ^ turn) : []),
+    () => (word && isQuiz ? (shownItem?.mode === "phrase" ? phraseOptions(index, word, seed) : quizOptions(index, word, seed)) : []),
     // 选项只随当前题变化
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [word?.w, isQuiz, turn],
@@ -100,13 +138,13 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
     (rating: Rating, via: Last["via"], pick?: number) => {
       const it = current(session);
       if (!it) return;
-      const s = getState();
-      const res = answer(session, s.cards[it.w], rating, day, s.log[day], now() - shownAt.current);
-      applyAnswer(it.w, res.card, day, res.log);
+      const res = answer(session, getCard(it.w), rating, day, getLog(day), now() - shownAt.current);
+      put(it.w, res.card, day, res.log);
       setSession(res.session);
+      buzz(rating);
       return { it, res, via, pick };
     },
-    [session, day],
+    [session, day, getCard, getLog, put],
   );
 
   const rate = useCallback(
@@ -181,35 +219,60 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
       toast("没有可以撤销的操作");
       return;
     }
-    applyAnswer(u.w, u.card, day, u.log);
+    put(u.w, u.card, day, u.log);
+    if (!practice && getState().bury[u.w]) setBury(u.w, undefined);
     setSession(u.session);
     setLast(null);
     setPhase("front");
     toast(`已撤销：${u.w}`);
-  }, [session, peek, day]);
+  }, [session, peek, day, put, practice]);
 
   /** 记错了：撤销刚才的「认识/模糊」，改记为不认识 */
   const mistake = useCallback(() => {
     if (phase !== "back" || !last || last.rating === "forget" || peek) return;
     const u = undo(session);
     if (!u) return;
-    applyAnswer(u.w, u.card, day, u.log);
-    const s = getState();
-    const res = answer(u.session, s.cards[u.w], "forget", day, s.log[day], 0);
-    applyAnswer(u.w, res.card, day, res.log);
+    put(u.w, u.card, day, u.log);
+    const res = answer(u.session, getCard(u.w), "forget", day, getLog(day), 0);
+    put(u.w, res.card, day, res.log);
     setSession(res.session);
     setLast({ ...last, rating: "forget" });
+    buzz("forget");
     toast("已改为「不认识」，稍后再来一遍");
-  }, [phase, last, peek, session, day]);
+  }, [phase, last, peek, session, day, put, getCard, getLog]);
 
-  const doKill = useCallback(() => {
-    let s0 = session;
+  /** 背面时先撤销刚才的评分，回到这个词的正面状态 */
+  const rewind = useCallback((): Session | null => {
     if (phase === "back" && last && !peek) {
       const u = undo(session);
-      if (!u) return;
-      applyAnswer(u.w, u.card, day, u.log);
-      s0 = u.session;
+      if (!u) return null;
+      put(u.w, u.card, day, u.log);
+      return u.session;
     }
+    return session;
+  }, [phase, last, peek, session, day, put]);
+
+  const doBury = useCallback(() => {
+    if (practice) return;
+    const s0 = rewind();
+    const it = s0 && current(s0);
+    if (!s0 || !it) return;
+    const prev = getState().cards[it.w];
+    const res = buryCurrent(s0, prev, day, getState().log[day]);
+    if (res.card) applyAnswer(it.w, res.card, day, getState().log[day]);
+    else setBury(it.w, addDays(day, 1));
+    setSession(res.session);
+    setPeek(false);
+    setLast(null);
+    setPhase("front");
+    bump();
+    toast(`明天再说：${it.w}`, { description: "不计对错，明天再出现" });
+  }, [practice, rewind, day]);
+
+  const doKill = useCallback(() => {
+    if (practice) return;
+    const s0 = rewind();
+    if (!s0) return;
     const it = current(s0);
     if (!it) return;
     const s = getState();
@@ -221,7 +284,7 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
     setPhase("front");
     bump();
     toast(`已斩：${it.w}`, { description: "标记为已掌握，以后不再出现" });
-  }, [session, phase, last, peek, day]);
+  }, [practice, rewind, day]);
 
   const star = useCallback(() => {
     if (!shownItem) return;
@@ -253,6 +316,7 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
       if (k === "z") return doUndo();
       if (k === "s") return star();
       if (k === "d") return doKill();
+      if (k === "b") return doBury();
       if (k === "r") return replay();
       if (isQuiz && phase === "front" && ["1", "2", "3", "4"].includes(k)) return pick(Number(k) - 1);
       if (!isQuiz && (phase === "front" || peek)) {
@@ -267,7 +331,7 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [help, finished, next, doUndo, star, doKill, replay, isQuiz, phase, peek, pick, rate, navigate]);
+  }, [help, finished, next, doUndo, star, doKill, doBury, replay, isQuiz, phase, peek, pick, rate, navigate]);
 
   if (!items.length) return <Empty mode={mode} />;
   if (finished) return <Summary session={session} index={index} mode={mode} ms={now() - startedAt.current} />;
@@ -278,6 +342,11 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
   const doneN = session.done.length;
   const flipped = phase === "back" && !isQuiz;
   const relearn = !!shownItem.repeat;
+  const leech = !practice && isLeech(st.cards[word.w]);
+  const preview =
+    !practice && head && !isQuiz && (phase === "front" || peek)
+      ? previewIntervals(getState().cards[head.w], day, { repeat: head.w in session.firsts, early: head.early })
+      : null;
 
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe md:py-6" data-testid="study" data-mode={mode}>
@@ -297,6 +366,11 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
         <IconBtn label="撤销 (Z)" onClick={doUndo} testid="undo" disabled={!session.history.length && !peek}>
           <Undo2 className="size-[18px]" />
         </IconBtn>
+        {!practice && (
+          <IconBtn label="明天再说 (B)" onClick={doBury} testid="bury">
+            <CalendarClock className="size-[18px]" />
+          </IconBtn>
+        )}
         <IconBtn label="生词本 (S)" onClick={star} testid="star" active={starred}>
           <Star className={cn("size-[18px]", starred && "fill-current")} />
         </IconBtn>
@@ -310,11 +384,18 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
         {relearn && <span className="rounded-full bg-forget-soft px-2 py-px text-forget" data-testid="relearn-tag">再来一遍</span>}
         {isQuiz && <span className="rounded-full bg-secondary px-2 py-px">{QUIZ_LABEL[shownItem.mode]}</span>}
         {word.c && <span className="rounded-full bg-brand-soft px-2 py-px text-primary">核心</span>}
+        {leech && (
+          <span className="rounded-full bg-forget px-2 py-px text-white" data-testid="leech-tag">
+            顽固
+          </span>
+        )}
+        {practice && <span className="rounded-full bg-secondary px-2 py-px">不影响复习计划</span>}
       </div>
 
       {isQuiz ? (
         <QuizView
           key={cardKey}
+          seed={seed}
           word={word}
           mode={shownItem.mode}
           accent={accent}
@@ -330,6 +411,8 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
         <>
           <FlipCard
             key={cardKey}
+            index={index}
+            canKill={!practice}
             word={word}
             accent={accent}
             flipped={flipped}
@@ -343,9 +426,9 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
           <div className="shrink-0 pb-4 pt-4">
             {phase === "front" || peek ? (
               <div className="grid grid-cols-3 gap-2.5" data-testid="rate-buttons">
-                <RateBtn tone="know" k="1" label="认识" onClick={() => rate("know")} />
-                <RateBtn tone="vague" k="2" label="模糊" onClick={() => rate("vague")} />
-                <RateBtn tone="forget" k="3" label="不认识" onClick={() => rate("forget")} />
+                <RateBtn tone="know" k="1" label="认识" hint={preview?.know} onClick={() => rate("know")} />
+                <RateBtn tone="vague" k="2" label="模糊" hint={preview?.vague} onClick={() => rate("vague")} />
+                <RateBtn tone="forget" k="3" label="不认识" hint={preview?.forget} onClick={() => rate("forget")} />
               </div>
             ) : (
               <div className="flex gap-2.5">
@@ -381,7 +464,7 @@ export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
   );
 }
 
-const QUIZ_LABEL: Record<string, string> = { en2cn: "英选中", cn2en: "中选英", audio: "听音选义", recall: "回想" };
+const QUIZ_LABEL: Record<string, string> = { en2cn: "英选中", cn2en: "中选英", audio: "听音选义", recall: "回想", phrase: "短语选义" };
 
 function IconBtn({
   children,
@@ -419,7 +502,7 @@ function IconBtn({
   );
 }
 
-function RateBtn({ tone, label, k, onClick }: { tone: "know" | "vague" | "forget"; label: string; k: string; onClick: () => void }) {
+function RateBtn({ tone, label, k, hint, onClick }: { tone: "know" | "vague" | "forget"; label: string; k: string; hint?: string; onClick: () => void }) {
   const cls = {
     know: "bg-know text-white shadow-know/25 dark:text-[oklch(0.2_0.02_170)]",
     vague: "bg-vague-soft text-vague",
@@ -432,13 +515,20 @@ function RateBtn({ tone, label, k, onClick }: { tone: "know" | "vague" | "forget
       data-testid={`rate-${tone}`}
       className={cn("relative flex h-16 flex-col items-center justify-center rounded-2xl text-[16px] font-bold shadow-sm transition active:scale-[0.97]", cls)}
     >
-      {label}
+      <span className="leading-tight">{label}</span>
+      {hint && (
+        <span className="tnum mt-0.5 text-[11px] font-semibold leading-none opacity-75" data-testid={`ivl-${tone}`}>
+          {hint}
+        </span>
+      )}
       <span className="absolute right-2 top-1.5 hidden text-[10px] font-semibold opacity-60 md:block">{k}</span>
     </button>
   );
 }
 
 function FlipCard({
+  index,
+  canKill,
   word,
   accent,
   flipped,
@@ -458,6 +548,8 @@ function FlipCard({
   onTap: () => void;
   onKill: () => void;
   last: Last | null;
+  index: WordIndex;
+  canKill: boolean;
 }) {
   const [drag, setDragState] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
@@ -563,6 +655,9 @@ function FlipCard({
         <Phrases word={word} />
       </div>
       <div className="mt-6 empty:hidden">
+        <Confusables index={index} word={word} accent={accent} />
+      </div>
+      <div className="mt-6 empty:hidden">
         <Examples word={word} enabled={flipped} />
       </div>
     </div>
@@ -598,7 +693,7 @@ function FlipCard({
           >
             <div className="paper-grain absolute inset-0 opacity-60" />
             <div className="relative h-full">{front}</div>
-            <button
+            {canKill && <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
@@ -608,7 +703,7 @@ function FlipCard({
               className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-secondary/90 px-3.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:text-know"
             >
               <Swords className="size-3.5" /> 斩 · 已掌握
-            </button>
+            </button>}
             {hint && (
               <div
                 className={cn(
@@ -630,6 +725,7 @@ function FlipCard({
 }
 
 function QuizView({
+  seed,
   word,
   mode,
   accent,
@@ -651,10 +747,13 @@ function QuizView({
   onNext: () => void;
   onUndo: () => void;
   shake: number;
+  seed: number;
 }) {
   const done = !!answered;
   const correctIdx = options.findIndex((o) => o.w === word.w);
   const revealWord = mode === "en2cn" || done;
+  const phrase = mode === "phrase" ? phraseFor(word, seed) : undefined;
+  const optText = (o: Word) => (mode === "cn2en" ? o.w : mode === "phrase" ? (phraseFor(o, seed)?.[1] ?? optionMeaning(o)) : optionMeaning(o));
   return (
     <div className="flex min-h-0 flex-1 flex-col card-in" data-testid="quiz" data-quiz-mode={mode}>
       <div className="relative flex min-h-[150px] flex-1 flex-col items-center justify-center overflow-y-auto rounded-[32px] border border-border/70 bg-card px-6 py-6 text-center shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]">
@@ -673,6 +772,14 @@ function QuizView({
           >
             <Volume2 className="size-10" />
           </button>
+        )}
+        {mode === "phrase" && phrase && (
+          <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3 text-left" : "")} data-testid="quiz-phrase">
+            <div className={cn("font-display font-bold leading-snug tracking-tight", done ? "text-[16px]" : "text-[30px]")}>
+              <PhraseText phrase={phrase[0]} word={word.w} />
+            </div>
+            {done ? <div className="mt-0.5 text-[14px] text-muted-foreground">{phrase[1]}</div> : null}
+          </div>
         )}
         {revealWord && (
           <>
@@ -697,7 +804,11 @@ function QuizView({
             <Phrases word={word} max={3} />
           </div>
         ) : null}
-        {!done && <p className="mt-5 text-[13px] text-muted-foreground">{mode === "cn2en" ? "选出对应的英文" : mode === "audio" ? "听发音，选出意思" : "选出正确的意思"}</p>}
+        {!done && (
+          <p className="mt-5 text-[13px] text-muted-foreground">
+            {mode === "cn2en" ? "选出对应的英文" : mode === "audio" ? "听发音，选出意思" : mode === "phrase" ? "选出这个短语的意思" : "选出正确的意思"}
+          </p>
+        )}
       </div>
 
       <div key={shake} className={cn("mt-3 grid shrink-0 gap-2", done && answered?.rating === "forget" && answered.pick !== -1 && "shake")} data-testid="quiz-options">
@@ -730,7 +841,7 @@ function QuizView({
                 {done && isCorrect ? <Check className="size-3.5" /> : done && picked ? <X className="size-3.5" /> : k + 1}
               </span>
               <span className={cn("min-w-0 line-clamp-2", mode === "cn2en" && "font-display text-[17px] font-semibold")}>
-                {mode === "cn2en" ? o.w : optionMeaning(o)}
+                {optText(o)}
               </span>
             </button>
           );
@@ -765,10 +876,25 @@ function QuizView({
   );
 }
 
+function PhraseText({ phrase, word }: { phrase: string; word: string }) {
+  const i = phrase.toLowerCase().indexOf(word.toLowerCase());
+  if (i < 0) return <>{phrase}</>;
+  return (
+    <>
+      {phrase.slice(0, i)}
+      <span className="text-primary">{phrase.slice(i, i + word.length)}</span>
+      {phrase.slice(i + word.length)}
+    </>
+  );
+}
+
 function Empty({ mode }: { mode: StudyMode }) {
   const text: Record<StudyMode, [string, string]> = {
     new: ["新词都学完了", "整本词书已经过了一遍，去复习巩固吧。"],
     review: ["暂时没有要复习的词", "到期的词会在这里出现，先去学点新词吧。"],
+    ahead: ["明天没有要复习的词", "今天的任务已经全部完成，休息一下吧。"],
+    practice: ["没有需要再练的词", "这一组全部一次答对，太强了。"],
+    hard: ["没有顽固词", "遗忘 3 次以上的词会出现在这里。"],
     star: ["生词本是空的", "学习时按 S 或点星标收藏生词。"],
     wrong: ["错词本是空的", "选择题答错或点「不认识」的词会自动进来。"],
     mastered: ["还没有熟词", "学习时按 D「斩」掉已经掌握的词。"],
@@ -799,6 +925,7 @@ function Summary({ session, index, mode, ms }: { session: Session; index: WordIn
   const s = streak(st.checkins, day);
 
   const restart = (m: StudyMode) => navigate({ to: "/study", search: { mode: m, t: Date.now() } });
+  const missed = words.filter(([, r]) => r !== "know").map(([w]) => w);
 
   return (
     <div className="mx-auto min-h-dvh max-w-xl px-4 pb-10 pt-safe" data-testid="summary">
@@ -835,6 +962,23 @@ function Summary({ session, index, mode, ms }: { session: Session; index: WordIn
           className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25"
         >
           <Flame className="size-5" /> 今日任务完成，打卡
+        </button>
+      )}
+
+      {missed.length > 0 && (
+        <button
+          type="button"
+          data-testid="retry-wrong"
+          onClick={() => navigate({ to: "/study", search: { mode: "practice", words: missed.join(","), t: Date.now() } })}
+          className="mt-5 flex w-full items-center gap-3 rounded-3xl border border-forget/25 bg-forget-soft px-4 py-3.5 text-left transition active:scale-[0.99]"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-forget text-white">
+            <Dumbbell className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-bold text-forget">{mode === "practice" ? "还有错的，再练一遍" : "错词再练"} {missed.length}</span>
+            <span className="block truncate text-[12px] text-muted-foreground">换成选择题再过一遍，不影响复习计划</span>
+          </span>
         </button>
       )}
 

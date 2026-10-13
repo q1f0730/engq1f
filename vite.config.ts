@@ -6,6 +6,8 @@ import { readFileSync } from "node:fs";
 import { defineConfig, type Plugin } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 
+const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string };
+
 /**
  * 生成 service worker：预缓存构建产物（app shell）+ 词库数据。
  * 版本号取自产物哈希，发布新版自动替换旧缓存。
@@ -60,6 +62,9 @@ export default defineConfig({
     allowedHosts: true,
   },
   base: "./",
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   build: {
     outDir: "dist",
     assetsDir: "assets",

@@ -8,9 +8,9 @@ import { notebookWords, orderedWords } from "@/lib/plan";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-type Tab = "all" | "star" | "wrong" | "mastered";
+type Tab = "all" | "star" | "wrong" | "hard" | "mastered";
 type Filter = "any" | "new" | "learning" | "mastered";
-const TABS: Tab[] = ["all", "star", "wrong", "mastered"];
+const TABS: Tab[] = ["all", "star", "wrong", "hard", "mastered"];
 
 export const Route = createFileRoute("/words")({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } => ({
@@ -101,6 +101,7 @@ function WordsPage() {
     star: notebookWords(st, "star").length,
     wrong: notebookWords(st, "wrong").length,
     mastered: notebookWords(st, "mastered").length,
+    hard: notebookWords(st, "hard").length,
   };
   const nbMode = tab === "all" ? null : tab;
 
@@ -132,6 +133,7 @@ function WordsPage() {
               ["all", "全部"],
               ["star", `生词本 ${counts.star}`],
               ["wrong", `错词本 ${counts.wrong}`],
+              ["hard", `顽固词 ${counts.hard}`],
               ["mastered", `熟词 ${counts.mastered}`],
             ] as [Tab, string][]
           ).map(([t, label]) => (
@@ -171,7 +173,7 @@ function WordsPage() {
           className="mb-3 flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20"
         >
           <Play className="size-4 fill-current" />
-          {nbMode === "star" ? "复习生词本" : nbMode === "wrong" ? "复习错词本" : "回顾熟词"}（{Math.min(20, results.length)} 词）
+          {nbMode === "star" ? "复习生词本" : nbMode === "wrong" ? "复习错词本" : nbMode === "hard" ? "顽固词专项" : "回顾熟词"}（{Math.min(20, results.length)} 词）
         </Link>
       )}
 
@@ -181,7 +183,7 @@ function WordsPage() {
 
       {results.length === 0 ? (
         <div className="py-16 text-center text-sm text-muted-foreground" data-testid="no-results">
-          {dq ? "没有找到匹配的词" : tab === "star" ? "生词本还是空的，学习时按 S 收藏" : tab === "wrong" ? "错词本是空的，继续保持" : tab === "mastered" ? "还没有斩掉的词" : "没有词"}
+          {dq ? "没有找到匹配的词" : tab === "star" ? "生词本还是空的，学习时按 S 收藏" : tab === "wrong" ? "错词本是空的，继续保持" : tab === "hard" ? "没有顽固词：遗忘 3 次以上的词会出现在这里" : tab === "mastered" ? "还没有斩掉的词" : "没有词"}
         </div>
       ) : (
         <ul className="mt-2 divide-y divide-border/60 overflow-hidden rounded-3xl border border-border/70 bg-card" data-testid="word-list">

@@ -1,5 +1,21 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { BookMarked, CalendarCheck, Check, ChevronRight, Flame, Play, Repeat2, Share2, Star, Swords, TriangleAlert, Volume2 } from "lucide-react";
+import {
+  BookMarked,
+  CalendarCheck,
+  Check,
+  ChevronRight,
+  FastForward,
+  Flame,
+  HardDriveDownload,
+  Play,
+  Repeat2,
+  Share2,
+  Skull,
+  Star,
+  Swords,
+  TriangleAlert,
+  Volume2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Bars, Ring, WeekStrip } from "@/components/app/charts";
@@ -10,8 +26,9 @@ import { speak } from "@/lib/audio";
 import { now, today } from "@/lib/clock";
 import { shortMeaning, useWords } from "@/lib/data";
 import { notebookWords, summarize, wordOfDay } from "@/lib/plan";
-import { forecast, streak } from "@/lib/srs";
-import { checkIn, useApp } from "@/lib/store";
+import { addDays, forecast, streak } from "@/lib/srs";
+import { checkIn, snoozeBackup, useApp } from "@/lib/store";
+import { backupDue } from "@/lib/persist";
 import { useShareInfo } from "@/lib/use-share";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/format";
@@ -49,7 +66,9 @@ function Today() {
     star: notebookWords(st, "star").length,
     wrong: notebookWords(st, "wrong").length,
     mastered: notebookWords(st, "mastered").length,
+    hard: notebookWords(st, "hard").length,
   };
+  const backupDays = backupDue(st, day);
   const dateLine = `${fmtDate(day)} ${WEEK[new Date(day + "T12:00:00").getDay()]}`;
 
   const doCheckIn = () => {
@@ -97,6 +116,11 @@ function Today() {
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-white/85">
                   <span data-testid="due-count">待复习 {sum.due}</span>
                   <span>已复习 {sum.reviewed}</span>
+                  {sum.deferred > 0 && (
+                    <span className="rounded-full bg-white/18 px-2 text-[12px] font-semibold" data-testid="deferred">
+                      已达上限 · 顺延 {sum.deferred}
+                    </span>
+                  )}
                 </div>
               </div>
               <Ring value={pct} size={104} stroke={11} className="shrink-0 text-white" track="rgba(255,255,255,0.22)">
@@ -131,6 +155,56 @@ function Today() {
               </Link>
             </div>
           </section>
+
+          {sum.dueList.length === 0 && sum.aheadCount > 0 && (
+            <Notice
+              testid="ahead"
+              icon={<FastForward className="size-5" />}
+              tone="bg-know-soft text-know"
+              title="今日复习已清零"
+              sub={`还有余力？提前复习明天到期的 ${sum.aheadCount} 词`}
+              action={
+                <Link to="/study" search={{ mode: "ahead" }} data-testid="start-ahead" className="shrink-0 rounded-full bg-know px-3.5 py-2 text-[13px] font-bold text-white dark:text-[oklch(0.2_0.02_170)]">
+                  提前复习
+                </Link>
+              }
+            />
+          )}
+          {nb.hard > 0 && (
+            <Link to="/words" search={{ tab: "hard" }} className="block" data-testid="hard-entry">
+              <Notice
+                icon={<Skull className="size-5" />}
+                tone="bg-forget-soft text-forget"
+                title={`${nb.hard} 个顽固词`}
+                sub="忘了 3 次以上，单独拎出来攻克"
+                action={<ChevronRight className="size-5 shrink-0 text-muted-foreground" />}
+              />
+            </Link>
+          )}
+          {backupDays !== null && (
+            <Notice
+              testid="backup-nag"
+              icon={<HardDriveDownload className="size-5" />}
+              tone="bg-vague-soft text-vague"
+              title={st.lastBackup ? `${backupDays} 天没备份了` : "还没备份过学习记录"}
+              sub="记录只在本机，清理浏览器就没了"
+              action={
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    data-testid="backup-snooze"
+                    onClick={() => snoozeBackup(addDays(day, 3))}
+                    className="rounded-full px-2.5 py-2 text-[13px] font-semibold text-muted-foreground"
+                  >
+                    稍后
+                  </button>
+                  <Link to="/me" className="rounded-full bg-foreground px-3.5 py-2 text-[13px] font-bold text-background">
+                    去备份
+                  </Link>
+                </div>
+              }
+            />
+          )}
 
           {/* 打卡 */}
           <Panel data-testid="checkin-panel">
@@ -255,6 +329,19 @@ function Today() {
 
       <ShareSheet open={share} onOpenChange={setShare} info={info} />
       <WordSheet word={wod} open={sheet} onOpenChange={setSheet} />
+    </div>
+  );
+}
+
+function Notice({ icon, tone, title, sub, action, testid }: { icon: React.ReactNode; tone: string; title: string; sub: string; action: React.ReactNode; testid?: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-3xl border border-border/70 bg-card p-3.5 pr-4" data-testid={testid}>
+      <span className={cn("grid size-10 shrink-0 place-items-center rounded-2xl", tone)}>{icon}</span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[15px] font-bold leading-tight">{title}</div>
+        <div className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{sub}</div>
+      </div>
+      {action}
     </div>
   );
 }

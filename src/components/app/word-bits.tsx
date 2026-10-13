@@ -1,8 +1,10 @@
-import { Star, Swords, Undo2, Volume2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronLeft, Star, Swords, Undo2, Volume2 } from "lucide-react";
+import { confusables } from "@/lib/confusables";
 import { speak } from "@/lib/audio";
 import { useExamples } from "@/lib/examples";
-import { posLabel, type Word } from "@/lib/data";
-import { diffDays, type Card } from "@/lib/srs";
+import { getWordsSync, posLabel, shortMeaning, type Word, type WordIndex } from "@/lib/data";
+import { diffDays, isLeech, type Card } from "@/lib/srs";
 import { killWord, resetWord, toggleStar, unkillWord, useApp } from "@/lib/store";
 import { today } from "@/lib/clock";
 import { cn } from "@/lib/utils";
@@ -99,7 +101,72 @@ export function Examples({ word, enabled = true }: { word: Word; enabled?: boole
   );
 }
 
+/** 形近词：拼写相近的四级词，点一下发音（或在详情里跳转） */
+export function Confusables({
+  index,
+  word,
+  accent,
+  onOpen,
+}: {
+  index: WordIndex | null;
+  word: Word;
+  accent: "us" | "uk";
+  onOpen?: (w: Word) => void;
+}) {
+  if (!index) return null;
+  const list = confusables(index, word);
+  if (!list.length) return null;
+  return (
+    <div data-testid="confusables">
+      <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">形近词 · 别认混</div>
+      <ul className="space-y-1.5">
+        {list.map((c) => (
+          <li key={c.w}>
+            <button
+              type="button"
+              data-testid="confusable"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpen) onOpen(c);
+                else speak(c.w, accent);
+              }}
+              className="flex w-full items-baseline gap-2.5 rounded-xl bg-secondary/70 px-3 py-2 text-left transition hover:bg-secondary active:scale-[0.99]"
+            >
+              <span className="font-display shrink-0 text-[15px] font-bold">
+                <DiffWord a={word.w} b={c.w} />
+              </span>
+              <span className="min-w-0 truncate text-[13px] text-muted-foreground">{shortMeaning(c, 1)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** 标出 b 中和 a 不同的字母 */
+function DiffWord({ a, b }: { a: string; b: string }) {
+  let pre = 0;
+  while (pre < a.length && pre < b.length && a[pre] === b[pre]) pre++;
+  let suf = 0;
+  while (suf < a.length - pre && suf < b.length - pre && a[a.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
+  const mid = b.slice(pre, b.length - suf);
+  return (
+    <>
+      {b.slice(0, pre)}
+      {mid && <span className="text-primary underline decoration-2 underline-offset-2">{mid}</span>}
+      {b.slice(b.length - suf)}
+    </>
+  );
+}
+
 export function StateBadge({ card }: { card: Card | undefined }) {
+  if (isLeech(card))
+    return (
+      <span className="rounded-full bg-forget px-2 py-0.5 text-[11px] font-semibold text-white" data-testid="leech-badge">
+        顽固
+      </span>
+    );
   const s = !card ? "new" : card.k ? "killed" : card.st;
   const map = {
     new: ["未学", "bg-secondary text-muted-foreground"],
@@ -121,8 +188,12 @@ function fmtDay(d: string) {
   return d.replace(/-/g, "/");
 }
 
-export function WordSheet({ word, open, onOpenChange }: { word: Word | null; open: boolean; onOpenChange: (v: boolean) => void }) {
+export function WordSheet({ word: base, open, onOpenChange }: { word: Word | null; open: boolean; onOpenChange: (v: boolean) => void }) {
   const st = useApp();
+  // 从形近词跳转过来的词（可以返回）
+  const [trail, setTrail] = useState<Word[]>([]);
+  useEffect(() => setTrail([]), [base?.w, open]);
+  const word = trail.length ? trail[trail.length - 1] : base;
   if (!word) return null;
   const card = st.cards[word.w];
   const starred = !!st.star[word.w];
@@ -130,6 +201,16 @@ export function WordSheet({ word, open, onOpenChange }: { word: Word | null; ope
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="单词详情" testid="word-sheet" hideTitle>
       <div className="pt-1">
+        {trail.length > 0 && (
+          <button
+            type="button"
+            data-testid="sheet-back"
+            onClick={() => setTrail((t) => t.slice(0, -1))}
+            className="-ml-1 mb-1 flex items-center gap-0.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="size-4" /> 返回 {trail.length > 1 ? trail[trail.length - 2].w : base?.w}
+          </button>
+        )}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="font-display break-words text-[38px] font-extrabold leading-tight tracking-tight" data-testid="sheet-word">
@@ -156,6 +237,9 @@ export function WordSheet({ word, open, onOpenChange }: { word: Word | null; ope
         </div>
         <div className="mt-5">
           <Phrases word={word} />
+        </div>
+        <div className="mt-5 empty:hidden">
+          <Confusables index={getWordsSync()} word={word} accent={accent} onOpen={(c) => setTrail((t) => [...t, c])} />
         </div>
         <div className="mt-5 empty:hidden">
           <Examples word={word} enabled={open} />

@@ -14,6 +14,10 @@ export interface Settings {
   autoplay: boolean;
   cnFirst: boolean;
   theme: Theme;
+  /** 每日复习上限，0 = 不限 */
+  reviewCap: number;
+  /** 震动反馈 */
+  haptics: boolean;
 }
 
 export interface AppState {
@@ -26,9 +30,16 @@ export interface AppState {
   log: Record<string, DayLog>;
   checkins: string[];
   test?: { at: string; est: number };
+  /** 明天再说：新词 → 搁置到哪天（这天之前不出现） */
+  bury: Record<string, string>;
+  /** 上次导出备份的日期 */
+  lastBackup?: string;
+  /** 备份提醒稍后再说：这天之前不提醒 */
+  backupSnooze?: string;
 }
 
 export const DAILY_OPTIONS = [10, 20, 30, 50, 80, 100];
+export const REVIEW_CAP_OPTIONS = [0, 50, 100, 200];
 const KEY = "cet4v-state-v1";
 export const THEME_KEY = "cet4v-theme";
 
@@ -40,6 +51,8 @@ export const defaultSettings = (): Settings => ({
   autoplay: true,
   cnFirst: false,
   theme: "system",
+  reviewCap: 0,
+  haptics: true,
 });
 
 export function initialState(): AppState {
@@ -52,6 +65,7 @@ export function initialState(): AppState {
     star: {},
     log: {},
     checkins: [],
+    bury: {},
   };
 }
 
@@ -70,6 +84,7 @@ export function normalize(raw: unknown): AppState {
     star: r.star ?? {},
     log: r.log ?? {},
     checkins: Array.isArray(r.checkins) ? r.checkins : [],
+    bury: r.bury && typeof r.bury === "object" ? r.bury : {},
     seed: typeof r.seed === "number" ? r.seed : base.seed,
   };
 }
@@ -180,6 +195,22 @@ export function batchKill(words: string[]) {
   const cards = { ...state.cards };
   for (const w of words) cards[w] = kill(cards[w], d);
   commit({ ...state, cards });
+}
+
+/** 明天再说：新词记入搁置表；已有卡片的到期日由调用方改 */
+export function setBury(w: string, until: string | undefined) {
+  const bury = { ...state.bury };
+  if (until) bury[w] = until;
+  else delete bury[w];
+  commit({ ...state, bury });
+}
+
+export function markBackedUp(day: string) {
+  commit({ ...state, lastBackup: day });
+}
+
+export function snoozeBackup(until: string) {
+  commit({ ...state, backupSnooze: until });
 }
 
 export function checkIn(day: string) {

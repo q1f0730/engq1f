@@ -5,6 +5,8 @@ import { getState, resolvedTheme, useApp } from "@/lib/store";
 import { applyUpdate, useSwUpdate } from "@/lib/sw";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
+import { requestPersist } from "@/lib/persist";
 
 const BARE = ["/study", "/welcome", "/test"];
 
@@ -41,6 +43,10 @@ function Root() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const theme = useApp().settings.theme;
   const bare = BARE.some((p) => path.startsWith(p));
+  // 申请持久化存储，避免浏览器清理学习记录
+  useEffect(() => {
+    void requestPersist();
+  }, []);
   return (
     <>
       {bare ? <Outlet /> : <AppShell><Outlet /></AppShell>}
