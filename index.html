@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>四级单词打卡</title>
+    <meta name="description" content="免费、无广告、离线可用的四级背单词应用：分组学习、智能复习、每日打卡。" />
+    <meta name="theme-color" content="#faf7f2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="四级单词" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; min-height: 100%; }
+      html.light, html.light body { background-color: #faf7f2; color: #1f2230; }
+      html.dark, html.dark body { background-color: #16171d; color: #f3f0ea; }
+      #boot { position: fixed; inset: 0; display: grid; place-items: center; font: 600 15px/1.4 -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif; letter-spacing: .08em; opacity: .55; }
+    </style>
+    <script>
+      // React 加载前设置主题，避免闪烁（用户设置优先；iframe 内跟随父窗口）
+      (function () {
+        var root = document.documentElement;
+        function apply(t) {
+          root.classList.remove('light', 'dark');
+          root.classList.add(t);
+          root.setAttribute('data-theme', t);
+        }
+        var saved = null;
+        try { saved = localStorage.getItem('cet4v-theme'); } catch (e) {}
+        var sys = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        apply(saved === 'light' || saved === 'dark' ? saved : sys);
+        if (window.self !== window.top && (!saved || saved === 'system')) {
+          window.addEventListener('message', function (e) {
+            if (e.data && (e.data.theme === 'light' || e.data.theme === 'dark')) apply(e.data.theme);
+          });
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"><div id="boot">四级单词打卡</div></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

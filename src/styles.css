@@ -1,0 +1,327 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * 四级单词打卡 · 设计系统
+ * 主色：朱砂（vermilion）；纸色背景 + 墨色文字；暗色为深墨蓝。
+ * 评分色：认识 = 青绿 / 模糊 = 琥珀 / 不认识 = 玫红
+ */
+
+@theme inline {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
+    "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Inter Display", "Inter", -apple-system, "SF Pro Display", "Segoe UI", "PingFang SC",
+    "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  --font-ipa: "Lucida Sans Unicode", "Segoe UI", "Noto Sans", "DejaVu Sans", "Arial Unicode MS", sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 14px);
+  --radius-4xl: calc(var(--radius) + 20px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-know: var(--know);
+  --color-know-soft: var(--know-soft);
+  --color-vague: var(--vague);
+  --color-vague-soft: var(--vague-soft);
+  --color-forget: var(--forget);
+  --color-forget-soft: var(--forget-soft);
+  --color-brand-soft: var(--brand-soft);
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.982 0.007 80);
+  --surface: oklch(0.955 0.01 75);
+  --foreground: oklch(0.22 0.02 265);
+  --ink: oklch(0.22 0.02 265);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.02 265);
+  --primary: oklch(0.6 0.2 33);
+  --primary-foreground: oklch(0.99 0.005 80);
+  --brand-soft: oklch(0.94 0.04 40);
+  --secondary: oklch(0.94 0.012 75);
+  --secondary-foreground: oklch(0.25 0.02 265);
+  --muted: oklch(0.94 0.012 75);
+  --muted-foreground: oklch(0.5 0.02 265);
+  --accent: oklch(0.93 0.02 60);
+  --accent-foreground: oklch(0.25 0.02 265);
+  --destructive: oklch(0.56 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.012 75);
+  --input: oklch(0.88 0.012 75);
+  --ring: oklch(0.6 0.2 33);
+  --know: oklch(0.56 0.12 170);
+  --know-soft: oklch(0.94 0.04 170);
+  --vague: oklch(0.6 0.14 70);
+  --vague-soft: oklch(0.95 0.05 85);
+  --forget: oklch(0.56 0.19 5);
+  --forget-soft: oklch(0.95 0.035 5);
+  --chart-1: oklch(0.6 0.2 33);
+  --chart-2: oklch(0.56 0.12 170);
+  --chart-3: oklch(0.75 0.14 75);
+  --chart-4: oklch(0.55 0.15 265);
+  --chart-5: oklch(0.7 0.02 265);
+  --sidebar: oklch(0.982 0.007 80);
+  --sidebar-foreground: oklch(0.22 0.02 265);
+  --sidebar-primary: oklch(0.6 0.2 33);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0.012 75);
+  --sidebar-accent-foreground: oklch(0.22 0.02 265);
+  --sidebar-border: oklch(0.9 0.012 75);
+  --sidebar-ring: oklch(0.6 0.2 33);
+}
+
+.dark {
+  --background: oklch(0.17 0.012 265);
+  --surface: oklch(0.2 0.014 265);
+  --foreground: oklch(0.95 0.008 80);
+  --ink: oklch(0.95 0.008 80);
+  --card: oklch(0.215 0.015 265);
+  --card-foreground: oklch(0.95 0.008 80);
+  --popover: oklch(0.23 0.016 265);
+  --popover-foreground: oklch(0.95 0.008 80);
+  --primary: oklch(0.7 0.17 38);
+  --primary-foreground: oklch(0.18 0.02 265);
+  --brand-soft: oklch(0.3 0.06 38);
+  --secondary: oklch(0.27 0.016 265);
+  --secondary-foreground: oklch(0.95 0.008 80);
+  --muted: oklch(0.26 0.016 265);
+  --muted-foreground: oklch(0.72 0.015 265);
+  --accent: oklch(0.29 0.02 265);
+  --accent-foreground: oklch(0.95 0.008 80);
+  --destructive: oklch(0.68 0.19 22);
+  --destructive-foreground: oklch(0.18 0.02 265);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.7 0.17 38);
+  --know: oklch(0.76 0.12 170);
+  --know-soft: oklch(0.3 0.05 170);
+  --vague: oklch(0.82 0.13 80);
+  --vague-soft: oklch(0.31 0.05 80);
+  --forget: oklch(0.74 0.15 5);
+  --forget-soft: oklch(0.31 0.06 5);
+  --chart-1: oklch(0.7 0.17 38);
+  --chart-2: oklch(0.76 0.12 170);
+  --chart-3: oklch(0.82 0.13 80);
+  --chart-4: oklch(0.7 0.13 265);
+  --chart-5: oklch(0.5 0.02 265);
+  --sidebar: oklch(0.17 0.012 265);
+  --sidebar-foreground: oklch(0.95 0.008 80);
+  --sidebar-primary: oklch(0.7 0.17 38);
+  --sidebar-primary-foreground: oklch(0.18 0.02 265);
+  --sidebar-accent: oklch(0.27 0.016 265);
+  --sidebar-accent-foreground: oklch(0.95 0.008 80);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.7 0.17 38);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html,
+  body {
+    overflow-x: clip;
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  button {
+    touch-action: manipulation;
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .font-ipa {
+    font-family: var(--font-ipa);
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  /* 卡片翻转 */
+  .flip-scene {
+    perspective: 1600px;
+  }
+  .flip-inner {
+    display: grid;
+    transform-style: preserve-3d;
+    transition: transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .flip-inner.is-flipped {
+    transform: rotateY(180deg);
+  }
+  .flip-face {
+    grid-area: 1 / 1;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip-back {
+    transform: rotateY(180deg);
+  }
+
+  /* 卡片入场 */
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateX(36px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .card-in {
+    animation: card-in 340ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes pop {
+    0% {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    60% {
+      transform: scale(1.08);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .pop {
+    animation: pop 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-6px);
+    }
+    75% {
+      transform: translateX(6px);
+    }
+  }
+  .shake {
+    animation: shake 260ms ease-in-out;
+  }
+
+  .paper-grain {
+    background-image: radial-gradient(color-mix(in oklab, var(--foreground) 5%, transparent) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+
+  .hero-gradient {
+    background:
+      radial-gradient(120% 90% at 100% 0%, oklch(0.72 0.17 55 / 0.9), transparent 60%),
+      linear-gradient(135deg, oklch(0.6 0.2 33), oklch(0.52 0.19 25));
+  }
+  .dark .hero-gradient {
+    background:
+      radial-gradient(120% 90% at 100% 0%, oklch(0.6 0.14 55 / 0.7), transparent 60%),
+      linear-gradient(135deg, oklch(0.5 0.16 33), oklch(0.4 0.13 25));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-inner,
+  .card-in,
+  .pop,
+  .shake {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ---- toast（sonner）：位置与入场 ----
+ * 底栏高 4rem + 安全区；md 以上没有底栏。
+ * sonner 默认入场是 opacity 0→1 + 位移，浅色模式下半透明的卡片压在文字上像"透明"；
+ * 改成只做位移/缩放，整张卡片始终不透明。规则不放进 @layer，才能盖过 sonner 运行时注入的样式。 */
+:root {
+  --toast-bottom: calc(4rem + env(safe-area-inset-bottom) + 12px);
+  --toast-top: calc(env(safe-area-inset-top) + 12px);
+}
+@media (min-width: 768px) {
+  :root {
+    --toast-bottom: 24px;
+    --toast-top: 24px;
+  }
+}
+html [data-sonner-toaster] [data-sonner-toast][data-removed="false"][data-visible="true"] {
+  opacity: 1;
+}
+html [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  background: var(--card);
+  box-shadow: 0 10px 30px -12px rgba(40, 20, 10, 0.35);
+}
+html [data-sonner-toaster][data-y-position="bottom"] [data-sonner-toast][data-mounted="false"] {
+  --y: translateY(24px) scale(0.96);
+}
+html [data-sonner-toaster][data-y-position="top"] [data-sonner-toast][data-mounted="false"] {
+  --y: translateY(-24px) scale(0.96);
+}

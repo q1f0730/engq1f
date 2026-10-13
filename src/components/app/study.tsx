@@ -1,0 +1,897 @@
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Check, CircleHelp, Flame, Keyboard, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { speak } from "@/lib/audio";
+import { now, today } from "@/lib/clock";
+import { optionMeaning, shortMeaning, type Word, type WordIndex } from "@/lib/data";
+import { nextNewGroup, notebookGroup, quizOptions, reviewGroup, summarize, type Notebook } from "@/lib/plan";
+import {
+  answer,
+  createSession,
+  current,
+  hashStr,
+  isFinished,
+  killCurrent,
+  sessionAccuracy,
+  streak,
+  undo,
+  type Rating,
+  type Session,
+  type SessionItem,
+} from "@/lib/srs";
+import { applyAnswer, checkIn, getState, toggleStar, useApp } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { Examples, Meanings, Phonetic, Phrases } from "./word-bits";
+import { ShortcutsSheet } from "./shortcuts";
+import { ShareSheet } from "./share-sheet";
+import { useShareInfo } from "@/lib/use-share";
+
+export type StudyMode = "new" | "review" | Notebook;
+
+const MODE_TITLE: Record<StudyMode, string> = {
+  new: "学新词",
+  review: "复习",
+  star: "生词本复习",
+  wrong: "错词本复习",
+  mastered: "熟词回顾",
+};
+
+function buildItems(index: WordIndex, mode: StudyMode): SessionItem[] {
+  const st = getState();
+  const day = today();
+  if (mode === "new") return nextNewGroup(index, st, day);
+  if (mode === "review") return reviewGroup(st, day);
+  return notebookGroup(st, mode, day);
+}
+
+function wordSize(w: string) {
+  if (w.length <= 7) return "text-[56px] md:text-[64px]";
+  if (w.length <= 10) return "text-[46px] md:text-[56px]";
+  if (w.length <= 14) return "text-[36px] md:text-[44px]";
+  return "text-[30px] md:text-[36px]";
+}
+
+type Last = { item: SessionItem; rating: Rating; pick?: number; via: "rate" | "quiz" | "peek" };
+
+export function Study({ index, mode }: { index: WordIndex; mode: StudyMode }) {
+  const st = useApp();
+  const navigate = useNavigate();
+  const accent = st.settings.accent;
+  const [items] = useState(() => buildItems(index, mode));
+  const [session, setSession] = useState<Session>(() => createSession(items));
+  const [phase, setPhase] = useState<"front" | "back">("front");
+  const [peek, setPeek] = useState(false);
+  const [last, setLast] = useState<Last | null>(null);
+  const [help, setHelp] = useState(false);
+  const [shake, setShake] = useState(0);
+  const [turn, setTurn] = useState(0);
+  const bump = () => setTurn((t) => t + 1);
+  const shownAt = useRef(now());
+  const startedAt = useRef(now());
+
+  const head = current(session);
+  const shownItem: SessionItem | undefined = phase === "back" && last && !peek ? last.item : head;
+  const word: Word | undefined = shownItem ? index.map.get(shownItem.w) : undefined;
+  const isQuiz = !!shownItem && shownItem.mode !== "recall" && !shownItem.repeat;
+  const cnFirst = st.settings.cnFirst;
+  const finished = isFinished(session) && phase === "front";
+
+  const options = useMemo(
+    () => (word && isQuiz ? quizOptions(index, word, hashStr(today()) ^ turn) : []),
+    // 选项只随当前题变化
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [word?.w, isQuiz, turn],
+  );
+
+  // 进入新卡片：计时 + 自动发音
+  const cardKey = `${shownItem?.w ?? "none"}-${turn}`;
+  useEffect(() => {
+    if (phase !== "front" || !shownItem) return;
+    shownAt.current = now();
+    const m = shownItem.repeat ? "recall" : shownItem.mode;
+    if (m === "audio" || (st.settings.autoplay && (m === "en2cn" || (m === "recall" && !cnFirst)))) speak(shownItem.w, accent);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardKey, phase]);
+
+  const day = today();
+
+  const doAnswer = useCallback(
+    (rating: Rating, via: Last["via"], pick?: number) => {
+      const it = current(session);
+      if (!it) return;
+      const s = getState();
+      const res = answer(session, s.cards[it.w], rating, day, s.log[day], now() - shownAt.current);
+      applyAnswer(it.w, res.card, day, res.log);
+      setSession(res.session);
+      return { it, res, via, pick };
+    },
+    [session, day],
+  );
+
+  const rate = useCallback(
+    (rating: Rating) => {
+      if (!head || isQuiz) return;
+      if (phase === "back" && !peek) return;
+      const r = doAnswer(rating, peek ? "peek" : "rate");
+      if (!r) return;
+      if (peek) {
+        // 看过答案后的评分：直接下一张
+        setPeek(false);
+        setLast({ item: r.it, rating, via: "peek" });
+        setPhase("front");
+        bump();
+      } else {
+        setLast({ item: r.it, rating, via: "rate" });
+        setPhase("back");
+        if (cnFirst) speak(r.it.w, accent);
+      }
+    },
+    [head, isQuiz, phase, peek, doAnswer, cnFirst, accent],
+  );
+
+  const pick = useCallback(
+    (k: number) => {
+      if (!head || !isQuiz || phase !== "front" || !word) return;
+      const opt = options[k];
+      if (!opt) return;
+      const ok = opt.w === word.w;
+      const r = doAnswer(ok ? "know" : "forget", "quiz", k);
+      if (!r) return;
+      if (!ok) setShake((x) => x + 1);
+      setLast({ item: r.it, rating: ok ? "know" : "forget", pick: k, via: "quiz" });
+      setPhase("back");
+      if (shownItem?.mode === "cn2en" || shownItem?.mode === "audio") speak(word.w, accent);
+    },
+    [head, isQuiz, phase, word, options, doAnswer, shownItem, accent],
+  );
+
+  const giveUp = useCallback(() => {
+    if (!isQuiz || phase !== "front" || !word) return;
+    const r = doAnswer("forget", "quiz", -1);
+    if (!r) return;
+    setLast({ item: r.it, rating: "forget", pick: -1, via: "quiz" });
+    setPhase("back");
+    speak(word.w, accent);
+  }, [isQuiz, phase, word, doAnswer, accent]);
+
+  const next = useCallback(() => {
+    if (phase === "back" && !peek) {
+      setPhase("front");
+      bump();
+      return;
+    }
+    if (phase === "front" && !isQuiz && head) {
+      // 翻面偷看
+      setPeek(true);
+      setPhase("back");
+      if (cnFirst) speak(head.w, accent);
+    }
+  }, [phase, peek, isQuiz, head, cnFirst, accent]);
+
+  const doUndo = useCallback(() => {
+    if (peek) {
+      setPeek(false);
+      setPhase("front");
+      return;
+    }
+    bump();
+    const u = undo(session);
+    if (!u) {
+      toast("没有可以撤销的操作");
+      return;
+    }
+    applyAnswer(u.w, u.card, day, u.log);
+    setSession(u.session);
+    setLast(null);
+    setPhase("front");
+    toast(`已撤销：${u.w}`);
+  }, [session, peek, day]);
+
+  /** 记错了：撤销刚才的「认识/模糊」，改记为不认识 */
+  const mistake = useCallback(() => {
+    if (phase !== "back" || !last || last.rating === "forget" || peek) return;
+    const u = undo(session);
+    if (!u) return;
+    applyAnswer(u.w, u.card, day, u.log);
+    const s = getState();
+    const res = answer(u.session, s.cards[u.w], "forget", day, s.log[day], 0);
+    applyAnswer(u.w, res.card, day, res.log);
+    setSession(res.session);
+    setLast({ ...last, rating: "forget" });
+    toast("已改为「不认识」，稍后再来一遍");
+  }, [phase, last, peek, session, day]);
+
+  const doKill = useCallback(() => {
+    let s0 = session;
+    if (phase === "back" && last && !peek) {
+      const u = undo(session);
+      if (!u) return;
+      applyAnswer(u.w, u.card, day, u.log);
+      s0 = u.session;
+    }
+    const it = current(s0);
+    if (!it) return;
+    const s = getState();
+    const res = killCurrent(s0, s.cards[it.w], day, s.log[day]);
+    applyAnswer(it.w, res.card, day, res.log);
+    setSession(res.session);
+    setPeek(false);
+    setLast(null);
+    setPhase("front");
+    bump();
+    toast(`已斩：${it.w}`, { description: "标记为已掌握，以后不再出现" });
+  }, [session, phase, last, peek, day]);
+
+  const star = useCallback(() => {
+    if (!shownItem) return;
+    const had = !!getState().star[shownItem.w];
+    toggleStar(shownItem.w);
+    toast(had ? "已移出生词本" : "已加入生词本");
+  }, [shownItem]);
+
+  const replay = useCallback(() => shownItem && speak(shownItem.w, accent), [shownItem, accent]);
+
+  // 键盘
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (help && e.key !== "?") return;
+      const k = e.key.toLowerCase();
+      if (k === "?" || (k === "/" && e.shiftKey)) {
+        setHelp((h) => !h);
+        return;
+      }
+      if (finished) return;
+      if (k === "escape") return navigate({ to: "/" });
+      if (k === " " || k === "enter") {
+        e.preventDefault();
+        return next();
+      }
+      if (k === "z") return doUndo();
+      if (k === "s") return star();
+      if (k === "d") return doKill();
+      if (k === "r") return replay();
+      if (isQuiz && phase === "front" && ["1", "2", "3", "4"].includes(k)) return pick(Number(k) - 1);
+      if (!isQuiz && (phase === "front" || peek)) {
+        if (k === "1") return rate("know");
+        if (k === "2") return rate("vague");
+        if (k === "3") return rate("forget");
+      }
+      if (phase === "back" && !peek && (k === "1" || k === "2" || k === "3")) {
+        // 背面按数字 = 下一个（方便连按）
+        return next();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [help, finished, next, doUndo, star, doKill, replay, isQuiz, phase, peek, pick, rate, navigate]);
+
+  if (!items.length) return <Empty mode={mode} />;
+  if (finished) return <Summary session={session} index={index} mode={mode} ms={now() - startedAt.current} />;
+  if (!shownItem || !word) return null;
+
+  const starred = !!st.star[word.w];
+  const total = session.total;
+  const doneN = session.done.length;
+  const flipped = phase === "back" && !isQuiz;
+  const relearn = !!shownItem.repeat;
+
+  return (
+    <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe md:py-6" data-testid="study" data-mode={mode}>
+      {/* 顶栏 */}
+      <div className="flex shrink-0 items-center gap-2 pt-3 pt-safe">
+        <Link to="/" aria-label="退出" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+          <X className="size-5" />
+        </Link>
+        <div className="flex-1">
+          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${(doneN / total) * 100}%` }} />
+          </div>
+        </div>
+        <span className="tnum min-w-12 text-center text-[13px] font-semibold text-muted-foreground" data-testid="progress">
+          {doneN}/{total}
+        </span>
+        <IconBtn label="撤销 (Z)" onClick={doUndo} testid="undo" disabled={!session.history.length && !peek}>
+          <Undo2 className="size-[18px]" />
+        </IconBtn>
+        <IconBtn label="生词本 (S)" onClick={star} testid="star" active={starred}>
+          <Star className={cn("size-[18px]", starred && "fill-current")} />
+        </IconBtn>
+        <IconBtn label="快捷键 (?)" onClick={() => setHelp(true)} className="hidden md:grid">
+          <Keyboard className="size-[18px]" />
+        </IconBtn>
+      </div>
+
+      <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-[12px] font-medium text-muted-foreground">
+        <span>{MODE_TITLE[mode]}</span>
+        {relearn && <span className="rounded-full bg-forget-soft px-2 py-px text-forget" data-testid="relearn-tag">再来一遍</span>}
+        {isQuiz && <span className="rounded-full bg-secondary px-2 py-px">{QUIZ_LABEL[shownItem.mode]}</span>}
+        {word.c && <span className="rounded-full bg-brand-soft px-2 py-px text-primary">核心</span>}
+      </div>
+
+      {isQuiz ? (
+        <QuizView
+          key={cardKey}
+          word={word}
+          mode={shownItem.mode}
+          accent={accent}
+          options={options}
+          answered={phase === "back" ? last : null}
+          onPick={pick}
+          onGiveUp={giveUp}
+          onNext={next}
+          onUndo={doUndo}
+          shake={shake}
+        />
+      ) : (
+        <>
+          <FlipCard
+            key={cardKey}
+            word={word}
+            accent={accent}
+            flipped={flipped}
+            cnFirst={cnFirst}
+            canSwipe={phase === "front"}
+            onSwipe={rate}
+            onTap={next}
+            onKill={doKill}
+            last={phase === "back" && !peek ? last : null}
+          />
+          <div className="shrink-0 pb-4 pt-4">
+            {phase === "front" || peek ? (
+              <div className="grid grid-cols-3 gap-2.5" data-testid="rate-buttons">
+                <RateBtn tone="know" k="1" label="认识" onClick={() => rate("know")} />
+                <RateBtn tone="vague" k="2" label="模糊" onClick={() => rate("vague")} />
+                <RateBtn tone="forget" k="3" label="不认识" onClick={() => rate("forget")} />
+              </div>
+            ) : (
+              <div className="flex gap-2.5">
+                {last && last.rating !== "forget" ? (
+                  <button
+                    type="button"
+                    onClick={mistake}
+                    data-testid="mistake"
+                    className="h-14 w-[38%] rounded-2xl bg-secondary text-[15px] font-semibold text-muted-foreground transition active:scale-[0.98]"
+                  >
+                    记错了
+                  </button>
+                ) : (
+                  <div className="flex h-14 w-[38%] items-center justify-center rounded-2xl bg-forget-soft text-[13px] font-semibold text-forget">
+                    稍后再来
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={next}
+                  data-testid="next"
+                  className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25 transition active:scale-[0.98]"
+                >
+                  下一个 <span className="rounded-md bg-white/20 px-1.5 text-[11px] font-semibold">空格</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      <ShortcutsSheet open={help} onOpenChange={setHelp} />
+    </div>
+  );
+}
+
+const QUIZ_LABEL: Record<string, string> = { en2cn: "英选中", cn2en: "中选英", audio: "听音选义", recall: "回想" };
+
+function IconBtn({
+  children,
+  label,
+  onClick,
+  testid,
+  active,
+  disabled,
+  className,
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  testid?: string;
+  active?: boolean;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      data-testid={testid}
+      disabled={disabled}
+      className={cn(
+        "grid size-10 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary disabled:opacity-35",
+        active && "text-vague",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function RateBtn({ tone, label, k, onClick }: { tone: "know" | "vague" | "forget"; label: string; k: string; onClick: () => void }) {
+  const cls = {
+    know: "bg-know text-white shadow-know/25 dark:text-[oklch(0.2_0.02_170)]",
+    vague: "bg-vague-soft text-vague",
+    forget: "bg-forget-soft text-forget",
+  }[tone];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={`rate-${tone}`}
+      className={cn("relative flex h-16 flex-col items-center justify-center rounded-2xl text-[16px] font-bold shadow-sm transition active:scale-[0.97]", cls)}
+    >
+      {label}
+      <span className="absolute right-2 top-1.5 hidden text-[10px] font-semibold opacity-60 md:block">{k}</span>
+    </button>
+  );
+}
+
+function FlipCard({
+  word,
+  accent,
+  flipped,
+  cnFirst,
+  canSwipe,
+  onSwipe,
+  onTap,
+  onKill,
+  last,
+}: {
+  word: Word;
+  accent: "us" | "uk";
+  flipped: boolean;
+  cnFirst: boolean;
+  canSwipe: boolean;
+  onSwipe: (r: Rating) => void;
+  onTap: () => void;
+  onKill: () => void;
+  last: Last | null;
+}) {
+  const [drag, setDragState] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const setDrag = (d: { x: number; y: number } | null) => {
+    dragRef.current = d;
+    setDragState(d);
+  };
+  const origin = useRef<{ x: number; y: number; id: number } | null>(null);
+  const hint = drag ? (drag.x > 60 ? "know" : drag.x < -60 ? "forget" : drag.y < -60 ? "vague" : null) : null;
+
+  const onDown = (e: React.PointerEvent) => {
+    if (!canSwipe || e.pointerType === "mouse") return;
+    origin.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+  };
+  const onMove = (e: React.PointerEvent) => {
+    if (!origin.current || origin.current.id !== e.pointerId) return;
+    const x = e.clientX - origin.current.x;
+    const y = e.clientY - origin.current.y;
+    if (!dragRef.current && Math.hypot(x, y) < 8) return;
+    setDrag({ x, y });
+  };
+  const swiped = useRef(false);
+  const onUp = () => {
+    const d = dragRef.current;
+    origin.current = null;
+    setDrag(null);
+    if (!d) return;
+    swiped.current = Math.hypot(d.x, d.y) > 8;
+    if (d.x > 90) onSwipe("know");
+    else if (d.x < -90) onSwipe("forget");
+    else if (d.y < -90) onSwipe("vague");
+  };
+
+  const front = (
+    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+      {cnFirst ? (
+        <div className="w-full max-w-md text-left">
+          <Meanings word={word} size="lg" />
+          <p className="mt-6 text-center text-[13px] text-muted-foreground">想一想对应的英文单词</p>
+        </div>
+      ) : (
+        <>
+          <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} data-testid="card-word">
+            {word.w}
+          </h2>
+          <div className="mt-4 flex items-center gap-2.5 text-[17px] text-muted-foreground">
+            <Phonetic word={word} accent={accent} />
+            <button
+              type="button"
+              aria-label="播放发音"
+              onClick={(e) => {
+                e.stopPropagation();
+                speak(word.w, accent);
+              }}
+              className="grid size-10 place-items-center rounded-full bg-brand-soft text-primary active:scale-90"
+            >
+              <Volume2 className="size-5" />
+            </button>
+          </div>
+          <p className="mt-10 text-[13px] text-muted-foreground/80">认识这个词吗？点卡片可以先看释义</p>
+        </>
+      )}
+    </div>
+  );
+
+  const ratingTag = last ? (
+    <span
+      className={cn(
+        "pop rounded-full px-2.5 py-1 text-[12px] font-bold",
+        last.rating === "know" ? "bg-know-soft text-know" : last.rating === "vague" ? "bg-vague-soft text-vague" : "bg-forget-soft text-forget",
+      )}
+      data-testid="rated-tag"
+    >
+      {last.rating === "know" ? "认识" : last.rating === "vague" ? "模糊" : "不认识"}
+    </span>
+  ) : null;
+
+  const back = (
+    <div className="flex h-full flex-col overflow-y-auto px-6 py-6 text-left" data-testid="card-back">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight">{word.w}</h2>
+          <div className="mt-1 flex items-center gap-2 text-[15px] text-muted-foreground">
+            <Phonetic word={word} accent={accent} />
+            <button
+              type="button"
+              aria-label="播放发音"
+              onClick={(e) => {
+                e.stopPropagation();
+                speak(word.w, accent);
+              }}
+              className="grid size-8 place-items-center rounded-full bg-brand-soft text-primary"
+            >
+              <Volume2 className="size-4" />
+            </button>
+          </div>
+        </div>
+        {ratingTag}
+      </div>
+      <div className="my-5 h-px bg-border" />
+      <Meanings word={word} size="lg" />
+      <div className="mt-6 empty:hidden">
+        <Phrases word={word} />
+      </div>
+      <div className="mt-6 empty:hidden">
+        <Examples word={word} enabled={flipped} />
+      </div>
+    </div>
+  );
+
+  const style = drag
+    ? { transform: `translate(${drag.x}px, ${Math.min(0, drag.y) * 0.6}px) rotate(${drag.x / 18}deg)`, transition: "none" }
+    : { transition: "transform 260ms cubic-bezier(.2,.8,.2,1)" };
+
+  return (
+    <div className="relative min-h-0 flex-1 card-in">
+      <div
+        className="flip-scene h-full touch-pan-y select-none"
+        style={style}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        onClick={() => {
+          if (swiped.current) {
+            swiped.current = false;
+            return;
+          }
+          if (!flipped) onTap();
+        }}
+      >
+        <div className={cn("flip-inner h-full", flipped && "is-flipped")}>
+          <div
+            className={cn(
+              "flip-face relative h-full overflow-hidden rounded-[32px] border border-border/70 bg-card shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]",
+            )}
+            aria-hidden={flipped}
+          >
+            <div className="paper-grain absolute inset-0 opacity-60" />
+            <div className="relative h-full">{front}</div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onKill();
+              }}
+              data-testid="kill"
+              className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-secondary/90 px-3.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:text-know"
+            >
+              <Swords className="size-3.5" /> 斩 · 已掌握
+            </button>
+            {hint && (
+              <div
+                className={cn(
+                  "absolute inset-0 grid place-items-center rounded-[32px] text-[28px] font-extrabold",
+                  hint === "know" ? "bg-know/15 text-know" : hint === "vague" ? "bg-vague/15 text-vague" : "bg-forget/15 text-forget",
+                )}
+              >
+                {hint === "know" ? "认识" : hint === "vague" ? "模糊" : "不认识"}
+              </div>
+            )}
+          </div>
+          <div className="flip-face flip-back h-full overflow-hidden rounded-[32px] border border-border/70 bg-card shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]" aria-hidden={!flipped}>
+            {back}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuizView({
+  word,
+  mode,
+  accent,
+  options,
+  answered,
+  onPick,
+  onGiveUp,
+  onNext,
+  onUndo,
+  shake,
+}: {
+  word: Word;
+  mode: SessionItem["mode"];
+  accent: "us" | "uk";
+  options: Word[];
+  answered: Last | null;
+  onPick: (k: number) => void;
+  onGiveUp: () => void;
+  onNext: () => void;
+  onUndo: () => void;
+  shake: number;
+}) {
+  const done = !!answered;
+  const correctIdx = options.findIndex((o) => o.w === word.w);
+  const revealWord = mode === "en2cn" || done;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col card-in" data-testid="quiz" data-quiz-mode={mode}>
+      <div className="relative flex min-h-[150px] flex-1 flex-col items-center justify-center overflow-y-auto rounded-[32px] border border-border/70 bg-card px-6 py-6 text-center shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]">
+        {mode === "cn2en" && !done && (
+          <div className="w-full max-w-md text-left">
+            <Meanings word={word} size="lg" />
+          </div>
+        )}
+        {mode === "audio" && !done && (
+          <button
+            type="button"
+            onClick={() => speak(word.w, accent)}
+            className="grid size-24 place-items-center rounded-full bg-brand-soft text-primary transition active:scale-95"
+            aria-label="再听一遍"
+            data-testid="quiz-audio"
+          >
+            <Volume2 className="size-10" />
+          </button>
+        )}
+        {revealWord && (
+          <>
+            <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", done ? "text-[38px]" : wordSize(word.w))} data-testid="quiz-word">
+              {word.w}
+            </h2>
+            <div className="mt-2 flex items-center gap-2 text-[16px] text-muted-foreground">
+              <Phonetic word={word} accent={accent} />
+              <button type="button" aria-label="播放发音" onClick={() => speak(word.w, accent)} className="grid size-9 place-items-center rounded-full bg-brand-soft text-primary">
+                <Volume2 className="size-[18px]" />
+              </button>
+            </div>
+          </>
+        )}
+        {done && (
+          <div className="mt-4 w-full max-w-md text-left">
+            <Meanings word={word} />
+          </div>
+        )}
+        {done && word.ph?.length ? (
+          <div className="mt-4 w-full max-w-md text-left">
+            <Phrases word={word} max={3} />
+          </div>
+        ) : null}
+        {!done && <p className="mt-5 text-[13px] text-muted-foreground">{mode === "cn2en" ? "选出对应的英文" : mode === "audio" ? "听发音，选出意思" : "选出正确的意思"}</p>}
+      </div>
+
+      <div key={shake} className={cn("mt-3 grid shrink-0 gap-2", done && answered?.rating === "forget" && answered.pick !== -1 && "shake")} data-testid="quiz-options">
+        {options.map((o, k) => {
+          const isCorrect = k === correctIdx;
+          const picked = answered?.pick === k;
+          return (
+            <button
+              key={o.w}
+              type="button"
+              disabled={done}
+              onClick={() => onPick(k)}
+              data-testid={`opt-${k + 1}`}
+              data-correct={isCorrect ? 1 : 0}
+              className={cn(
+                "flex min-h-[52px] items-center gap-3 rounded-2xl border px-4 py-2.5 text-left text-[15px] transition active:scale-[0.99]",
+                !done && "border-border/80 bg-card hover:border-primary/50",
+                done && isCorrect && "border-know bg-know-soft text-foreground",
+                done && picked && !isCorrect && "border-forget bg-forget-soft",
+                done && !isCorrect && !picked && "border-border/60 bg-card opacity-55",
+              )}
+            >
+              <span
+                className={cn(
+                  "grid size-6 shrink-0 place-items-center rounded-lg bg-secondary text-[12px] font-bold text-muted-foreground",
+                  done && isCorrect && "bg-know text-white",
+                  done && picked && !isCorrect && "bg-forget text-white",
+                )}
+              >
+                {done && isCorrect ? <Check className="size-3.5" /> : done && picked ? <X className="size-3.5" /> : k + 1}
+              </span>
+              <span className={cn("min-w-0 line-clamp-2", mode === "cn2en" && "font-display text-[17px] font-semibold")}>
+                {mode === "cn2en" ? o.w : optionMeaning(o)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="shrink-0 pb-4 pt-3">
+        {done ? (
+          <div className="flex gap-2.5">
+            <button type="button" onClick={onUndo} className="h-14 w-[30%] rounded-2xl bg-secondary text-[15px] font-semibold text-muted-foreground">
+              撤销
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              data-testid="next"
+              className={cn(
+                "flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl text-[16px] font-bold shadow-lg transition active:scale-[0.98]",
+                answered?.rating === "know" ? "bg-know text-white shadow-know/25" : "bg-primary text-primary-foreground shadow-primary/25",
+              )}
+            >
+              {answered?.rating === "know" ? "答对了 · 下一个" : "记住它 · 下一个"}
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={onGiveUp} data-testid="give-up" className="h-11 w-full rounded-2xl text-[14px] font-semibold text-muted-foreground hover:bg-secondary">
+            <CircleHelp className="mr-1.5 inline size-4" />
+            不认识，看答案
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Empty({ mode }: { mode: StudyMode }) {
+  const text: Record<StudyMode, [string, string]> = {
+    new: ["新词都学完了", "整本词书已经过了一遍，去复习巩固吧。"],
+    review: ["暂时没有要复习的词", "到期的词会在这里出现，先去学点新词吧。"],
+    star: ["生词本是空的", "学习时按 S 或点星标收藏生词。"],
+    wrong: ["错词本是空的", "选择题答错或点「不认识」的词会自动进来。"],
+    mastered: ["还没有熟词", "学习时按 D「斩」掉已经掌握的词。"],
+  };
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 text-center" data-testid="study-empty">
+      <div className="pop grid size-20 place-items-center rounded-full bg-know-soft text-know">
+        <Check className="size-9" />
+      </div>
+      <h1 className="mt-6 text-[22px] font-extrabold">{text[mode][0]}</h1>
+      <p className="mt-2 text-[15px] text-muted-foreground">{text[mode][1]}</p>
+      <Link to="/" className="mt-8 flex h-12 items-center rounded-2xl bg-primary px-8 font-semibold text-primary-foreground">
+        回到今日
+      </Link>
+    </div>
+  );
+}
+
+function Summary({ session, index, mode, ms }: { session: Session; index: WordIndex; mode: StudyMode; ms: number }) {
+  const st = useApp();
+  const navigate = useNavigate();
+  const day = today();
+  const sum = summarize(index, st, day);
+  const acc = Math.round(sessionAccuracy(session) * 100);
+  const words = Object.entries(session.firsts);
+  const [share, setShare] = useState(false);
+  const info = useShareInfo(index);
+  const s = streak(st.checkins, day);
+
+  const restart = (m: StudyMode) => navigate({ to: "/study", search: { mode: m, t: Date.now() } });
+
+  return (
+    <div className="mx-auto min-h-dvh max-w-xl px-4 pb-10 pt-safe" data-testid="summary">
+      <div className="flex items-center pt-3">
+        <Link to="/" aria-label="关闭" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+          <X className="size-5" />
+        </Link>
+      </div>
+      <div className="flex flex-col items-center pt-4 text-center">
+        <div className="pop grid size-20 place-items-center rounded-[28px] bg-primary text-primary-foreground shadow-xl shadow-primary/30">
+          <Check className="size-10" strokeWidth={3} />
+        </div>
+        <h1 className="mt-5 font-display text-[28px] font-extrabold tracking-tight">本组完成！</h1>
+        <p className="mt-1 text-[15px] text-muted-foreground">
+          {MODE_TITLE[mode]} {words.length} 词 · 首次正确率 {acc}% · 用时 {Math.max(1, Math.round(ms / 60000))} 分钟
+        </p>
+      </div>
+
+      <div className="mt-6 grid grid-cols-3 gap-2.5 text-center">
+        <MiniStat label="今日新学" value={`${sum.learned}/${sum.goal}`} />
+        <MiniStat label="待复习" value={String(sum.due)} />
+        <MiniStat label="连续打卡" value={`${s} 天`} />
+      </div>
+
+      {sum.ready && !sum.checked && (
+        <button
+          type="button"
+          data-testid="summary-checkin"
+          onClick={() => {
+            checkIn(day);
+            setShare(true);
+            toast.success("打卡成功！");
+          }}
+          className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25"
+        >
+          <Flame className="size-5" /> 今日任务完成，打卡
+        </button>
+      )}
+
+      <div className="mt-6 rounded-3xl border border-border/70 bg-card p-2">
+        {words.map(([w, r]) => {
+          const word = index.map.get(w);
+          return (
+            <div key={w} className="flex items-center gap-3 rounded-2xl px-3 py-2.5">
+              <span
+                className={cn(
+                  "size-2.5 shrink-0 rounded-full",
+                  r === "know" ? "bg-know" : r === "vague" ? "bg-vague" : "bg-forget",
+                )}
+              />
+              <span className="font-display w-28 shrink-0 truncate text-[16px] font-bold">{w}</span>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">{word ? shortMeaning(word, 1) : ""}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex gap-2.5">
+        {mode === "new" && sum.newLeft > 0 ? (
+          <button
+            type="button"
+            onClick={() => restart("new")}
+            data-testid="again"
+            className="flex h-13 flex-1 items-center justify-center gap-2 rounded-2xl bg-secondary py-3.5 font-semibold"
+          >
+            <RotateCcw className="size-4" />
+            {sum.remainingGoal > 0 ? "下一组" : "再学一组"}
+          </button>
+        ) : null}
+        {sum.due > 0 ? (
+          <button
+            type="button"
+            onClick={() => restart("review")}
+            data-testid="go-review"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-secondary py-3.5 font-semibold"
+          >
+            去复习 {sum.due}
+          </button>
+        ) : null}
+        <Link to="/" data-testid="back-home" className="flex flex-1 items-center justify-center rounded-2xl bg-primary py-3.5 font-semibold text-primary-foreground">
+          回到今日
+        </Link>
+      </div>
+      <ShareSheet open={share} onOpenChange={setShare} info={info} />
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-secondary/80 px-2 py-3">
+      <div className="tnum text-[20px] font-extrabold">{value}</div>
+      <div className="mt-0.5 text-[12px] text-muted-foreground">{label}</div>
+    </div>
+  );
+}
