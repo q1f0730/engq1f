@@ -58,7 +58,7 @@ function Welcome() {
 
   const finishSetup = (to: "/" | "/test") => {
     // 引导里已经把计划说清楚了：当天不再弹冲刺卡；学不完的信息卡这一场也不再弹
-    completeOnboarding({ book: curBook, daily: curDaily, examDate: exam === exams[0].day ? "" : exam }, { sprintSeen: day, ...(cap || soon ? { sprintOff: exam } : {}) });
+    completeOnboarding({ book: curBook, daily: curDaily, examDate: exam === exams[0].day ? "" : exam }, { sprintSeen: day, ...(cap || soon ? { sprintOff: exam } : {}), ...(!cap && !soon && spare < 0 ? { paceOk: day } : {}) });
     navigate({ to, replace: true });
   };
 

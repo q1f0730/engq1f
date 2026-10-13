@@ -116,7 +116,7 @@ function BackupPanel() {
       toast.error(`口令至少 ${PASS_MIN} 位`);
       return null;
     }
-    const plain = exportBackup();
+    const plain = exportBackup(true);
     if (!pass) return plain;
     if (!cryptoReady()) {
       toast.error("这个浏览器不支持加密（需要 HTTPS）");

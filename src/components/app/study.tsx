@@ -17,6 +17,7 @@ import {
   reviewItems,
   speedGroup,
   summarize,
+  dayRuleOf,
   type Notebook,
 } from "@/lib/plan";
 import { listGroup } from "@/lib/lists";
@@ -41,7 +42,7 @@ import {
   type Session,
   type SessionItem,
 } from "@/lib/srs";
-import { applyAnswer, checkIn, getState, markGoalMet, onExternalChange, previewKill, setBury, toggleStar, useApp } from "@/lib/store";
+import { applyAnswer, checkIn, getState, markGoalMet, onExternalChange, previewKill, setBury, snapDayRule, toggleStar, useApp } from "@/lib/store";
 import { PostQuiz, PreviewList } from "./study-extra";
 import { postQuizWords, postSummary, retryWords } from "@/lib/learnflow";
 import { curStreak } from "@/lib/habit";
@@ -107,6 +108,12 @@ function wordSize(w: string) {
   if (w.length <= 14) return "text-[36px] md:text-[44px]";
   return "text-[30px] md:text-[36px]";
 }
+
+/** 11.4 · 跨 0 点的宽限：停了这么久（或者过了这个钟点）再接着做，就记到新的一天 */
+const ROLL_IDLE_MS = 30 * 60000;
+const ROLL_HOUR = 4;
+/** 11.4 · 「用时」里每题最多算多久 */
+const CARD_MS_CAP = 60000;
 
 type Last = { item: SessionItem; rating: Rating; pick?: number; via: "rate" | "quiz" | "peek" };
 
@@ -202,25 +209,61 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardKey, phase, previewing]);
 
-  // 11.3 · 一组学到一半跨过 0 点：整组都记在开始的那一天（打卡、今日新学都按这一天算）
-  const [day] = useState(() => today());
+  // 11.3 · 一组学到一半跨过 0 点：接着做的还记在开始的那一天（打卡、今日新学都按这一天算）。
+  // 11.4 · 但只给一个宽限：中途停了超过 30 分钟、或者已经过了凌晨 4 点，之后的作答记到它真正发生的那一天
+  const [day, setDay] = useState(() => today());
+  const dayRef = useRef(day);
+  const lastAct = useRef(now());
+  const rollDay = useCallback(() => {
+    const t = today();
+    const at = now();
+    if (t !== dayRef.current && (at - lastAct.current > ROLL_IDLE_MS || new Date(at).getHours() >= ROLL_HOUR)) {
+      dayRef.current = t;
+      setDay(t);
+    }
+    lastAct.current = at;
+    return dayRef.current;
+  }, []);
+  // 11.4 · 「用时」按作答累计：每题最多算 60 秒（放下手机、睡一觉不算进去）
+  const activeMs = useRef(0);
+  /** 11.4 · 这一天第一次作答：按当天的设置记下任务快照；作答后任务达标就记下「任务完成」 */
+  const beforeAnswer = useCallback(
+    (d: string) => {
+      if (practice) return;
+      const s0 = getState();
+      if (!s0.dayRule?.[d]) snapDayRule(d, dayRuleOf(summarize(index, s0, d)));
+    },
+    [practice, index],
+  );
+  const afterAnswer = useCallback(
+    (d: string) => {
+      if (practice) return;
+      const s1 = summarize(index, getState(), d);
+      if (s1.ready && !s1.checked) markGoalMet(d);
+    },
+    [practice, index],
+  );
 
   const doAnswer = useCallback(
     (rating: Rating, via: Last["via"], pick?: number, easy = false) => {
       const it = current(session);
       if (!it) return;
+      const day = rollDay();
+      beforeAnswer(day);
       const first = !(it.w in session.firsts);
       const spent = now() - shownAt.current;
       const algo = practice ? undefined : { ...algoNow(day), easy: easy || undefined };
       const res = answer(session, getCard(it.w), rating, day, getLog(day), spent, algo);
       answerMs.current.push(spent);
+      activeMs.current += Math.min(Math.max(0, spent), CARD_MS_CAP);
       put(it.w, res.card, day, res.log, revEntry(it.w, now(), easy ? "easy" : rating, { isNew: it.kind === "new", repeat: !first, card: res.card }));
+      afterAnswer(day);
       revSteps.current.push(true);
       setSession(res.session);
       buzz(rating);
       return { it, res, via, pick };
     },
-    [session, day, getCard, getLog, put, practice],
+    [session, getCard, getLog, put, practice, rollDay, beforeAnswer, afterAnswer],
   );
 
   const rate = useCallback(
@@ -357,6 +400,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     const s0 = rewind();
     const it = s0 && current(s0);
     if (!s0 || !it) return;
+    const day = rollDay();
     const prev = getState().cards[it.w];
     const res = buryCurrent(s0, prev, day, getState().log[day]);
     if (res.card) applyAnswer(it.w, res.card, day, getState().log[day]);
@@ -368,7 +412,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     setPhase("front");
     bump();
     toast(`明天再说：${it.w}`, { description: "不计对错，明天再出现" });
-  }, [practice, rewind, day]);
+  }, [practice, rewind, rollDay]);
 
   const doKill = useCallback(() => {
     if (practice) return;
@@ -376,6 +420,8 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     if (!s0) return;
     const it = current(s0);
     if (!it) return;
+    const day = rollDay();
+    beforeAnswer(day);
     const s = getState();
     const first = !(it.w in s0.firsts);
     const res = killCurrent(s0, s.cards[it.w], day, s.log[day]);
@@ -386,8 +432,9 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     setLast(null);
     setPhase("front");
     bump();
+    afterAnswer(day);
     toast(`已斩：${it.w}`, { description: "本来就会，以后不再出现" });
-  }, [practice, rewind, day]);
+  }, [practice, rewind, rollDay, beforeAnswer, afterAnswer]);
 
   const star = useCallback(() => {
     if (!shownItem) return;
@@ -517,7 +564,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         session={session}
         index={index}
         mode={mode}
-        ms={now() - startedAt.current}
+        ms={activeMs.current}
         listId={listId}
         postRes={postRes}
         day={day}
@@ -1520,6 +1567,9 @@ function Summary({
       <div className="mt-6 grid grid-cols-3 gap-2.5 text-center">
         {sum.timeMode ? (
           <MiniStat label="今日用时" value={`${Math.floor(sum.ms / 60000)}/${sum.goalMin}分`} />
+        ) : sum.goal === 0 && (sum.examMode || sum.paused || sum.recovering) ? (
+          // 11.4 · 考前 / 休息 / 恢复期不排新词：第一格是今天复习了多少（不出现 0/0）
+          <MiniStat label="今日复习" value={`${sum.reviewed}/${sum.reviewed + sum.due}`} testid="summary-reviewed" />
         ) : (
           <MiniStat label="今日新学" value={`${sum.learned}/${sum.goal}`} />
         )}

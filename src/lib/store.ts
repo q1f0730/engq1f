@@ -6,7 +6,7 @@ import { today } from "./clock";
 import type { QuizRecord } from "./exam";
 import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
 import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
-import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, autoCredit, parseHM, type CheckInResult, type GoalMode, type PatchResult } from "./habit";
+import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, autoCredit, parseHM, type CheckInResult, type DayRule, type GoalMode, type PatchResult } from "./habit";
 import type { ShareTpl } from "./share";
 import { cleanFontSize, cleanMotion, motionReduced, type FontSize, type Motion } from "./ux";
 import { ACTIVE_PROFILE, revKeyOf, stateKeyOf } from "./profiles";
@@ -142,6 +142,12 @@ export interface AppState {
   goalMet?: string[];
   /** 11.3 · 考后「先休息」：from 起不排新词、复习只留维持量、不算断签；until = 结束休息的那天 */
   pause?: { from: string; until?: string };
+  /** 11.4 · 每天的任务快照（当天第一次打开 / 第一次作答时按当天的设置记下，最近 21 天）：自动补记只按它判断 */
+  dayRule?: Record<string, DayRule>;
+  /** 11.4 · 用户在引导 / 设置里知情选了「考后才学完」的量：这一天起 7 天内不弹冲刺卡 */
+  paceOk?: string;
+  /** 11.4 · 冲刺卡点了「知道了」：这天之前不再出现 */
+  sprintSnooze?: string;
   /** 11.2 · 整份替换（清空 / 覆盖导入 / 回滚）时换一个新值：别的窗口据此知道「记录被整份换掉了」，不再往上合并 */
   epoch?: string;
 }
@@ -336,8 +342,31 @@ export function normalize(raw: unknown, has?: (w: string) => boolean, rep: Clean
     examPause: r.examPause === true ? true : undefined,
     goalMet: Array.isArray(r.goalMet) ? r.goalMet.filter(isDay).slice(-14) : undefined,
     pause: r.pause && typeof r.pause === "object" && isDay(r.pause.from) ? { from: r.pause.from, ...(isDay(r.pause.until) ? { until: r.pause.until } : {}) } : undefined,
+    dayRule: cleanDayRules(r.dayRule),
+    paceOk: optDay(r.paceOk),
+    sprintSnooze: optDay(r.sprintSnooze),
     epoch: str(r.epoch),
   };
+}
+
+/** 11.4 · 每天的任务快照：日期 → { g, r, t?, x?, p? }，只留格式对的、最近 21 天 */
+export const DAY_RULE_KEEP = 21;
+function cleanDayRules(raw: unknown): Record<string, DayRule> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const nat = (x: unknown) => typeof x === "number" && Number.isInteger(x) && x >= 0;
+  const out: Record<string, DayRule> = {};
+  for (const [d, v] of Object.entries(raw as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1)).slice(-DAY_RULE_KEEP)) {
+    const o = v as Record<string, unknown> | null;
+    if (!isDay(d) || !o || typeof o !== "object" || !nat(o.g) || !nat(o.r)) continue;
+    out[d] = {
+      g: o.g as number,
+      r: o.r as number,
+      ...(nat(o.t) && (o.t as number) > 0 ? { t: o.t as number } : {}),
+      ...(o.x === 1 || o.x === 2 ? { x: o.x } : {}),
+      ...(o.p === 1 ? { p: 1 as const } : {}),
+    };
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 function cleanBest(raw: unknown): Record<string, number> {
@@ -620,7 +649,7 @@ export function setSettings(patch: Partial<Settings>) {
 }
 
 /** extra：引导里已经看过的计划提示（当天不再弹冲刺卡等） */
-export function completeOnboarding(patch: Partial<Settings>, extra: Partial<Pick<AppState, "sprintSeen" | "sprintOff">> = {}) {
+export function completeOnboarding(patch: Partial<Settings>, extra: Partial<Pick<AppState, "sprintSeen" | "sprintOff" | "paceOk">> = {}) {
   commit({ ...state, ...extra, onboarded: true, settings: { ...state.settings, ...patch } });
 }
 
@@ -719,6 +748,19 @@ export function checkIn(day: string): CheckInResult {
 export function markGoalMet(day: string) {
   if (state.goalMet?.includes(day)) return;
   commit({ ...state, goalMet: [...(state.goalMet ?? []), day].sort().slice(-14) });
+}
+
+/** 11.4 · 记下这一天的任务快照（只记第一次：之后改设置不改旧日子的标准） */
+export function snapDayRule(day: string, rule: DayRule) {
+  if (state.dayRule?.[day]) return;
+  const all = { ...(state.dayRule ?? {}), [day]: rule };
+  const keep = Object.keys(all).sort().slice(-DAY_RULE_KEEP);
+  commit({ ...state, dayRule: Object.fromEntries(keep.map((d) => [d, all[d]])) });
+}
+
+/** 11.4 · 用户知情选了「考后才学完」的量（引导 / 我的）：冲刺卡先别劝 */
+export function markPaceOk(day: string | undefined) {
+  commit({ ...state, paceOk: day });
 }
 
 /** 11.3 · 打开时补记最近几天达标却没打卡的日子；返回补上的日子（没有就是空数组） */
@@ -847,8 +889,8 @@ export function respreadRecover(cards: Record<string, Card>, until: string, n: n
 }
 
 /** 11.2 · 冲刺卡：今天处理过（应用 / 关掉）就不再出现；off = 这一场考试都不再出现 */
-export function dismissSprint(day: string, offExam?: string) {
-  commit({ ...state, sprintSeen: day, ...(offExam ? { sprintOff: offExam } : {}) });
+export function dismissSprint(day: string, offExam?: string, snoozeUntil?: string) {
+  commit({ ...state, sprintSeen: day, ...(offExam ? { sprintOff: offExam } : {}), ...(snoozeUntil ? { sprintSnooze: snoozeUntil } : {}) });
 }
 
 /**
@@ -876,6 +918,7 @@ export function endPause(day: string, spread?: { cards: Record<string, Card>; un
     ...state,
     examPause: undefined,
     pause,
+    sprintSeen: day,
     ...(spread ? { cards: spread.cards, recover: { from: day, until: spread.until, n: spread.n, perDay: spread.perDay, spread: day }, recoverSeen: day } : {}),
   });
 }
@@ -900,8 +943,14 @@ export function saveTest(est: number) {
 export const BACKUP_VERSION = 1;
 export const STATE_VERSION = 1;
 
-export function exportBackup(): string {
-  return JSON.stringify({ app: "cet4-vocab", version: BACKUP_VERSION, exportedAt: new Date().toISOString(), state }, null, 0);
+/**
+ * 导出整份记录。asBackup = 用户导出的备份文件 / 复制（11.4 · 文件里写上备份日期，从它恢复后不再说「还没备份过」）；
+ * 自动快照不算备份。
+ */
+export function exportBackup(asBackup = false): string {
+  if (!asBackup) return JSON.stringify({ app: "cet4-vocab", version: BACKUP_VERSION, exportedAt: new Date().toISOString(), state }, null, 0);
+  const d = today();
+  return JSON.stringify({ app: "cet4-vocab", version: BACKUP_VERSION, exportedAt: new Date().toISOString(), backupDay: d, state: { ...state, lastBackup: d } }, null, 0);
 }
 
 export const NEWER_MSG = "这份备份来自更新的版本，请先更新 app 再导入";
@@ -915,7 +964,7 @@ export function parseBackup(text: string, has?: (w: string) => boolean, rep: Cle
   } catch {
     throw new Error("文件不是有效的 JSON");
   }
-  let p = parsed as { app?: string; version?: unknown; state?: unknown; salvaged?: unknown };
+  let p = parsed as { app?: string; version?: unknown; state?: unknown; salvaged?: unknown; backupDay?: unknown };
   // 11.3 · 救援页导出的原始数据：能读就读，坏了就逐条抢救
   if (isRawDump(p)) {
     const u = unwrapRaw(p.raw);
@@ -926,7 +975,10 @@ export function parseBackup(text: string, has?: (w: string) => boolean, rep: Cle
   if (typeof p.salvaged === "number") rep.salvaged = p.salvaged;
   const sv = (p.state as { v?: unknown }).v;
   if ((typeof p.version === "number" && p.version > BACKUP_VERSION) || (typeof sv === "number" && sv > STATE_VERSION)) throw new Error(NEWER_MSG);
-  return normalize(p.state, has, rep);
+  const next = normalize(p.state, has, rep);
+  // 11.4 · 用户导出的备份：恢复后按这份备份的日期算「上次备份」
+  if (isDay(p.backupDay) && (!next.lastBackup || next.lastBackup < (p.backupDay as string))) next.lastBackup = p.backupDay as string;
+  return next;
 }
 
 const newEpoch = () => Math.random().toString(36).slice(2, 10);

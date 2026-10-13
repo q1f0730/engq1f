@@ -153,6 +153,9 @@ export function mergeStates(local: AppState, remote: AppState): { state: AppStat
       makeup: Math.min(MAKEUP_MAX, Math.max(local.makeup ?? 0, remote.makeup ?? 0)),
       makeupEarned: later(local.makeupEarned, remote.makeupEarned),
       lastBackup: later(local.lastBackup, remote.lastBackup),
+      // 11.4 · 两边记下的「任务完成」都算；每天的任务快照以先记下的为准（本机优先，缺的补上）
+      goalMet: [...new Set([...(local.goalMet ?? []), ...(remote.goalMet ?? [])])].sort().slice(-14),
+      dayRule: local.dayRule || remote.dayRule ? { ...(remote.dayRule ?? {}), ...(local.dayRule ?? {}) } : undefined,
     },
     stats,
   };

@@ -17,6 +17,7 @@ import {
   RATE_OPTIONS,
   exportBackup,
   markBackedUp,
+  markPaceOk,
   resetAll,
   setSettings,
   useApp,
@@ -33,7 +34,7 @@ import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 import { BASE_MODES, REVIEW_MODES, TIER_LONG, TIER_SHORT, toggleMode } from "@/lib/modes";
 import { MODE_LABEL } from "@/lib/exam";
 import { FIT_MIN, RETENTION_OPTIONS, balanceAll, fitInitialEase } from "@/lib/algo";
-import { diffDays, retentionScale } from "@/lib/srs";
+import { diffDays, finishDate, retentionScale } from "@/lib/srs";
 import { getState, replaceCards } from "@/lib/store";
 import { ImportFlow } from "@/components/app/import-flow";
 import { ACTIVE_PROFILE, readRegistry } from "@/lib/profiles";
@@ -162,7 +163,11 @@ function MePage() {
                 <button
                   key={n}
                   type="button"
-                  onClick={() => setSettings({ daily: n })}
+                  onClick={() => {
+                    setSettings({ daily: n });
+                    // 11.4 · 知情选了考后才学完的量：首页先不劝加量
+                    markPaceOk(sum.newLeft > 0 && finishDate(day, sum.newLeft, n) > exam.day ? day : undefined);
+                  }}
                   className={cn(
                     "tnum rounded-xl py-2 text-[14px] font-bold transition",
                     s.daily === n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
@@ -310,7 +315,7 @@ function MePage() {
                 icon={<Download className="size-4" />}
                 label="导出备份"
                 onClick={() => {
-                  download(`四级单词打卡-备份-${day}.json`, exportBackup());
+                  download(`四级单词打卡-备份-${day}.json`, exportBackup(true));
                   markBackedUp(day);
                   toast.success("备份已导出");
                 }}

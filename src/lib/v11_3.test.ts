@@ -35,7 +35,8 @@ const st0 = (o: Partial<AppState> = {}): AppState => ({ ...initialState(), onboa
 
 describe("R3-1 任务达标 = 打卡", () => {
   it("昨天新学达到目标但没点打卡：打开时补上，连续天数不断", () => {
-    const st = st0({ checkins: days(2, 6), log: { [Y]: { n: 20, r: 0, ok: 18, a: 20, ms: 300000 } } });
+    // 11.4 · 补记只按当天的任务快照判断（dayRule）
+    const st = st0({ checkins: days(2, 6), dayRule: { [Y]: { g: 20, r: 0 } }, log: { [Y]: { n: 20, r: 0, ok: 18, a: 20, ms: 300000 } } });
     expect(curStreak(st, T)).toBe(0);
     const r = autoCredit(st, T)!;
     expect(r.days).toEqual([Y]);
@@ -52,13 +53,13 @@ describe("R3-1 任务达标 = 打卡", () => {
     expect(autoCredit(st0({ log: { [addDays(T, -9)]: { n: 20, r: 0, ok: 20, a: 20, ms: 1 } } }), T)).toBeNull();
   });
   it("按时长打卡：学满目标分钟才算", () => {
-    const st = st0({ log: { [Y]: { n: 3, r: 0, ok: 3, a: 3, ms: 21 * 60000 } } });
+    const st = st0({ dayRule: { [Y]: { g: 20, r: 0, t: 20 } }, log: { [Y]: { n: 3, r: 0, ok: 3, a: 3, ms: 21 * 60000 } } });
     st.settings = { ...st.settings, goalMode: "time", goalMin: 20 };
     expect(dayMet(st, Y)).toBe(true);
     expect(dayMet({ ...st, log: { [Y]: { n: 3, r: 0, ok: 3, a: 3, ms: 5 * 60000 } } } as AppState, Y)).toBe(false);
   });
   it("补出来的连续天数照样发补卡（第 7 天）", () => {
-    const st = st0({ checkins: days(2, 7), log: { [Y]: { n: 20, r: 0, ok: 20, a: 20, ms: 1 } } });
+    const st = st0({ checkins: days(2, 7), dayRule: { [Y]: { g: 20, r: 0 } }, log: { [Y]: { n: 20, r: 0, ok: 20, a: 20, ms: 1 } } });
     const r = autoCredit(st, T)!;
     expect(r.streak).toBe(7);
     expect(r.makeup).toBe(1);

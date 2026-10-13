@@ -2,7 +2,7 @@ import type { WordIndex, Word } from "./data";
 import { posOf } from "./data";
 import { confusables, editDistance, isInflection } from "./confusables";
 import type { AppState, Settings } from "./store";
-import { pausedOn, timeReached } from "./habit";
+import { pausedOn, timeReached, type DayRule } from "./habit";
 import { daysUntil, effectiveExam, examModeOn } from "./examdate";
 import { hasExampleCloze } from "./examples";
 import { chooseMode, practiceMode } from "./modes";
@@ -154,6 +154,20 @@ export function summarize(index: WordIndex, st: AppState, day: string): TodaySum
     timeMode,
     ms: log.ms,
     goalMin,
+  };
+}
+
+/**
+ * 11.4 · 今天的任务快照（当天第一次打开 / 第一次作答时记下）：当天的新词目标、要做完的复习量、打卡标准、考前 / 休息。
+ * 以后回头判断这一天有没有完成，只按这份快照（habit.ruleMet）。
+ */
+export function dayRuleOf(sum: TodaySummary): DayRule {
+  return {
+    g: sum.newLeft === 0 ? 0 : sum.goal,
+    r: sum.due + sum.reviewed,
+    ...(sum.timeMode ? { t: sum.goalMin } : {}),
+    ...(sum.examDay ? { x: 2 as const } : sum.examMode ? { x: 1 as const } : {}),
+    ...(sum.paused ? { p: 1 as const } : {}),
   };
 }
 

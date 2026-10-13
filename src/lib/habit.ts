@@ -5,6 +5,7 @@
 import type { Card } from "./srs";
 import { addDays, dueWords, longestStreak, streak, weekdayOf } from "./srs";
 import { F_NEW, F_REPEAT, entryDay, type Grade, type RevEntry } from "./stats";
+import { examOf } from "./examdate";
 
 /** 每连续打卡几天得 1 张补卡 */
 export const MAKEUP_EVERY = 7;
@@ -22,14 +23,59 @@ export const WEEKDAY_CN = ["日", "一", "二", "三", "四", "五", "六"];
 
 export type GoalMode = "words" | "time";
 
+/**
+ * 11.4 · 每一天的任务快照：这一天第一次打开首页 / 第一次作答时，按「当天」的设置记下来，
+ * 以后回头判断这一天有没有完成，只认这份快照（改设置不会回头改旧日子）。
+ */
+export interface DayRule {
+  /** 当天的新词目标（词书学完 / 考前 / 休息 = 0） */
+  g: number;
+  /** 当天要做完的复习量（快照那一刻还要复习的 + 已经复习的） */
+  r: number;
+  /** 按时长打卡：目标分钟；按词数打卡时没有 */
+  t?: number;
+  /** 考前模式：1 = 考前一天，2 = 考试当天 */
+  x?: 1 | 2;
+  /** 休息中（考后「先休息」） */
+  p?: 1;
+}
+
 interface HabitState {
   checkins: string[];
   makeup?: number;
   makeupEarned?: string;
   patched?: string[];
-  settings: { restDay?: number };
+  settings: { restDay?: number; examDate?: string };
   /** 11.3 · 考后「先休息」：from 起（到 until 之前）这些天不打卡也不断连续 */
   pause?: { from: string; until?: string };
+  /** 11.4 · 确认过「考完了」的那一场（考试当天不算断签） */
+  examDone?: string;
+  /** 11.4 · 每天的任务快照 */
+  dayRule?: Record<string, DayRule>;
+}
+
+/** 11.4 · 这一天是四级考试日：官方 / 预估的场次、用户自定的日期、确认过考完的那一场、快照里记下的考试当天 */
+export function examDayOn(st: Pick<HabitState, "settings" | "examDone" | "dayRule">, d: string): boolean {
+  if (d === st.examDone || (!!st.settings.examDate && d === st.settings.examDate) || st.dayRule?.[d]?.x === 2) return true;
+  const m = d.slice(5, 7);
+  if (m !== "06" && m !== "12") return false;
+  return examOf(Number(d.slice(0, 4)), m === "06" ? 6 : 12).day === d;
+}
+
+/**
+ * 11.4 · 不打卡也不断连续的日子（周休息日之外）：考后「先休息」期间、考试当天、
+ * 考前模式下当天一点任务都没有的日子（快照里记着 考前 + 没有新词 + 没有复习）。
+ */
+export function skipDay(st: HabitState, d: string): boolean {
+  if (pausedOn(st, d) || examDayOn(st, d)) return true;
+  const r = st.dayRule?.[d];
+  return !!r && (!!r.p || (!!r.x && r.g === 0 && r.r === 0));
+}
+
+/** 11.4 · 周历上的「考」/「休」 */
+export function skipKind(st: HabitState, d: string): "exam" | "rest" | null {
+  if (examDayOn(st, d)) return "exam";
+  return skipDay(st, d) ? "rest" : null;
 }
 
 /** 11.3 · 这一天在「先休息」期间（不算断签） */
@@ -43,8 +89,11 @@ export const restOf = (st: { settings: { restDay?: number } }) => {
 export const isRestDay = (day: string, rest: number) => rest >= 0 && weekdayOf(day) === rest;
 
 /** 当前连续天数（算上休息日） */
-export const curStreak = (st: HabitState, day: string) => streak(st.checkins, day, restOf(st), st.pause ? (d) => pausedOn(st, d) : undefined);
-export const bestStreak = (st: HabitState) => longestStreak(st.checkins, restOf(st));
+export const curStreak = (st: HabitState, day: string) => streak(st.checkins, day, restOf(st), (d) => skipDay(st, d));
+export const bestStreak = (st: HabitState) => longestStreak(st.checkins, restOf(st), (d) => skipDay(st, d));
+
+/** 11.4 · 连续几天以上才说「要断了 / 断了」（1–2 天谈不上连续，不拿刚开始的习惯吓人） */
+export const STREAK_WARN_MIN = 3;
 
 /** 连续天数从 prev 变成 next 时跨过了哪个里程碑 */
 export function milestoneOf(prev: number, next: number): number | null {
@@ -86,7 +135,7 @@ export function applyCheckIn(st: HabitState, day: string): CheckInResult {
 /** 能不能补昨天：昨天没打卡、不是休息日、手里有补卡 */
 export function canPatch(st: HabitState, day: string): boolean {
   const y = addDays(day, -1);
-  return (st.makeup ?? 0) > 0 && !st.checkins.includes(y) && !isRestDay(y, restOf(st)) && !pausedOn(st, y);
+  return (st.makeup ?? 0) > 0 && !st.checkins.includes(y) && !isRestDay(y, restOf(st)) && !skipDay(st, y);
 }
 
 /** 补上昨天之后的连续天数（预览用） */
@@ -198,24 +247,29 @@ export function dayDetail(log: RevEntry[], cards: Record<string, Card>, day: str
 interface MetState extends HabitState {
   log: Record<string, { n: number; r: number; ms?: number } | undefined>;
   goalMet?: string[];
-  newCut?: { d: string; n: number };
-  settings: { restDay?: number; daily: number; goalMode?: GoalMode; goalMin?: number };
 }
 
 /** 往回看几天：这几天里任务达标、却没点打卡的，打开时自动补记 */
 export const AUTO_CREDIT_DAYS = 7;
 
 /**
- * 某一天的任务达标了吗：当天记下过「任务完成」（goalMet），或者当天的日志达到了目标
- * （按词数：新学 ≥ 当天的新词目标；按时长：学满目标分钟）。
+ * 11.4 · 按这一天的快照判断：当天的完整规则（新词达标且复习做完；按时长打卡时学满时长）。
+ * 没有快照 = 判断不了 → 不算。
+ */
+export function ruleMet(rule: DayRule | undefined, log: { n: number; r: number; ms?: number } | undefined): boolean {
+  if (!rule || !log) return false;
+  if (rule.t) return (log.ms ?? 0) >= rule.t * 60000;
+  if (log.n + log.r <= 0) return false;
+  return log.n >= rule.g && log.r >= rule.r;
+}
+
+/**
+ * 某一天的任务达标了吗（11.4 · 只认「当天」）：当天按当天的完整规则记下过「任务完成」（goalMet），
+ * 或者当天的日志达到了当天快照里的目标。不用今天的设置回头重算旧日子；没有快照又没有 goalMet 的不补。
  */
 export function dayMet(st: MetState, d: string): boolean {
   if (st.goalMet?.includes(d)) return true;
-  const log = st.log[d];
-  if (!log) return false;
-  if (st.settings.goalMode === "time") return (log.ms ?? 0) >= (st.settings.goalMin || 20) * 60000;
-  const goal = st.newCut?.d === d ? Math.min(st.settings.daily, st.newCut.n) : st.settings.daily;
-  return goal > 0 && log.n >= goal;
+  return ruleMet(st.dayRule?.[d], st.log[d]);
 }
 
 /**
@@ -242,6 +296,6 @@ export function autoCredit(st: MetState, day: string): { days: string[]; checkin
  */
 export function brokenStreak(st: HabitState, day: string): number {
   const y = addDays(day, -1);
-  if (st.checkins.includes(y) || isRestDay(y, restOf(st)) || pausedOn(st, y)) return 0;
+  if (st.checkins.includes(y) || isRestDay(y, restOf(st)) || skipDay(st, y)) return 0;
   return curStreak(st, y);
 }

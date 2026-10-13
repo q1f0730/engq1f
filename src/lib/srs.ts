@@ -367,10 +367,10 @@ export function streak(checkins: string[], today: string, rest = -1, skip?: (d: 
   return n;
 }
 
-export function longestStreak(checkins: string[], rest = -1): number {
+export function longestStreak(checkins: string[], rest = -1, skip?: (d: string) => boolean): number {
   const days = [...new Set(checkins)].sort();
   if (!days.length) return 0;
-  if (rest < 0) {
+  if (rest < 0 && !skip) {
     let best = 0;
     let cur = 0;
     let prev = "";
@@ -388,7 +388,7 @@ export function longestStreak(checkins: string[], rest = -1): number {
   const last = days[days.length - 1];
   for (let d = days[0], guard = 0; d <= last && guard < 20000; d = addDays(d, 1), guard++) {
     if (set.has(d)) best = Math.max(best, ++cur);
-    else if (weekdayOf(d) !== rest) cur = 0;
+    else if (!(rest >= 0 && weekdayOf(d) === rest) && !skip?.(d)) cur = 0;
   }
   return best;
 }

@@ -20,6 +20,16 @@ export function parseChecked(plain: string): { remote: AppState; rep: CleanRepor
   const idx = getWordsSync();
   const rep = emptyReport();
   const remote = parseBackup(plain, idx ? (w) => idx.map.has(w) : undefined, rep);
+  // 11.4 · 老版本导出的备份文件没写备份日期：用导出时间（本地日期）算「上次备份」（救援原始数据不算）
+  if (!remote.lastBackup) {
+    try {
+      const o = JSON.parse(plain) as { exportedAt?: unknown; raw?: unknown };
+      const t = typeof o.exportedAt === "string" && o.raw === undefined ? Date.parse(o.exportedAt) : NaN;
+      if (Number.isFinite(t)) remote.lastBackup = dayKey(new Date(t));
+    } catch {
+      /* 解析过了，不会到这里 */
+    }
+  }
   return { remote, rep };
 }
 

@@ -257,6 +257,7 @@ export function WeekStrip({
   rest = -1,
   patched = [],
   pause,
+  skip,
 }: {
   checkins: string[];
   logs: Record<string, DayLog>;
@@ -265,6 +266,8 @@ export function WeekStrip({
   patched?: string[];
   /** 11.3 · 考后「先休息」的日子也显示成「休」 */
   pause?: { from: string; until?: string };
+  /** 11.4 · 不算断签的日子：exam = 考试当天（「考」），rest = 考前没任务 / 休息中（「休」） */
+  skip?: (d: string) => "exam" | "rest" | null;
 }) {
   const set = new Set(checkins);
   const patchSet = new Set(patched);
@@ -281,9 +284,11 @@ export function WeekStrip({
         const studied = (logs[d]?.n ?? 0) + (logs[d]?.r ?? 0) > 0;
         const isToday = d === today;
         const isPatch = checked && patchSet.has(d);
-        const isRest = !checked && ((rest >= 0 && new Date(d + "T12:00:00").getDay() === rest) || (!!pause && d >= pause.from && (!pause.until || d < pause.until) && d <= today));
+        const sk = !checked && d <= today && skip ? skip(d) : null;
+        const isExam = sk === "exam";
+        const isRest = !checked && (isExam || sk === "rest" || (rest >= 0 && new Date(d + "T12:00:00").getDay() === rest) || (!!pause && d >= pause.from && (!pause.until || d < pause.until) && d <= today));
         return (
-          <div key={d} className="flex min-w-0 flex-col items-center gap-1.5" data-day={d} data-state={isPatch ? "patched" : checked ? "checked" : isRest ? "rest" : studied ? "studied" : "none"}>
+          <div key={d} className="flex min-w-0 flex-col items-center gap-1.5" data-day={d} data-state={isPatch ? "patched" : checked ? "checked" : isExam ? "exam" : isRest ? "rest" : studied ? "studied" : "none"}>
             <span className={cn("text-[11px]", isToday ? "font-bold text-foreground" : "text-muted-foreground")}>{n}</span>
             <span
               className={cn(
@@ -300,7 +305,7 @@ export function WeekStrip({
                 isToday && !checked && "ring-2 ring-primary/60",
               )}
             >
-              {isPatch ? "补" : checked ? "✓" : isRest ? "休" : Number(d.slice(8))}
+              {isPatch ? "补" : checked ? "✓" : isExam ? "考" : isRest ? "休" : Number(d.slice(8))}
             </span>
           </div>
         );
