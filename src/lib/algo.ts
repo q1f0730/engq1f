@@ -69,7 +69,7 @@ export function fitInitialEase(log: RevEntry[]): EaseFit {
   const firsts = log.filter((e) => (e[3] & F_NEW) && !(e[3] & F_REPEAT) && e[2] !== 3).slice(-FIT_WINDOW);
   const n = firsts.length;
   if (!n) return { ease: DEFAULT_EASE, acc: null, n: 0, ok: false };
-  const acc = firsts.filter((e) => e[2] === 2).length / n;
+  const acc = firsts.filter((e) => e[2] === 2 || e[2] === 4).length / n;
   if (n < FIT_MIN) return { ease: DEFAULT_EASE, acc, n, ok: false };
   const raw = DEFAULT_EASE + (acc - 0.8) * 2;
   const ease = Math.round(Math.min(FIT_MAX_EASE, Math.max(FIT_MIN_EASE, raw)) * 20) / 20;

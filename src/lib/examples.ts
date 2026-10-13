@@ -37,6 +37,20 @@ function save(word: string, list: string[]) {
   }
 }
 
+/** v11 · 存储管理：清空例句缓存，返回清掉了多少个词 */
+export function clearExamples(): number {
+  const n = Object.keys(load()).length;
+  mem = {};
+  try {
+    localStorage.removeItem(EXAMPLES_KEY);
+  } catch {
+    /* ignore */
+  }
+  return n;
+}
+
+export const examplesCount = () => Object.keys(load()).length;
+
 export function cachedExamples(word: string): string[] | undefined {
   return load()[word.toLowerCase()];
 }

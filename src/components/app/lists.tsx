@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronRight, ListPlus, Pencil, Play, Plus, Star, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Check, ChevronRight, Link2, ListPlus, Pencil, Play, Plus, Star, Trash2 } from "lucide-react";
+import { lazy, Suspense, useState } from "react";
 import { toast } from "sonner";
 import { today } from "@/lib/clock";
 import type { WordIndex } from "@/lib/data";
@@ -8,37 +8,9 @@ import { LIST_MAX, LIST_NAME_MAX, listGroup, listProgress, listStepLabel, type W
 import { addToList, createList, deleteList, getState, removeFromList, renameList, restoreSnapshot, snapshot, useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { BottomSheet } from "./sheet";
+import { NameField } from "./name-field";
 
-/** 词单名输入框 + 确认按钮（回车也行） */
-function NameField({ initial = "", placeholder, action, onSubmit, testid }: { initial?: string; placeholder: string; action: string; onSubmit: (name: string) => void; testid: string }) {
-  const [v, setV] = useState(initial);
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => setV(initial), [initial]);
-  return (
-    <form
-      className="flex gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit(v);
-        setV("");
-      }}
-    >
-      <input
-        ref={ref}
-        value={v}
-        maxLength={LIST_NAME_MAX}
-        onChange={(e) => setV(e.target.value)}
-        placeholder={placeholder}
-        data-testid={`${testid}-name`}
-        enterKeyHint="done"
-        className="h-11 min-w-0 flex-1 rounded-2xl border border-border/80 bg-background px-4 text-[15px] outline-none transition placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-4 focus:ring-primary/10"
-      />
-      <button type="submit" data-testid={`${testid}-ok`} className="h-11 shrink-0 rounded-2xl bg-primary px-4 text-[14px] font-bold text-primary-foreground">
-        {action}
-      </button>
-    </form>
-  );
-}
+const ListLinkSheet = lazy(() => import("./list-link-sheet"));
 
 /**
  * 加入词单：
@@ -229,6 +201,7 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
   const p = listProgress(index, st, list, day);
   const g = listGroup(index, st, list.words, day);
   const [renaming, setRenaming] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const starWords = Object.keys(st.star).filter((w) => !list.words.includes(w) && index.map.has(w));
   return (
     <div className="mb-3 rounded-3xl border border-border/70 bg-card p-4" data-testid="list-panel">
@@ -241,6 +214,11 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
             {p.total} 词 · 未学 {p.unlearned} · 学习中 {p.learning} · 已掌握 {p.mastered}
           </div>
         </div>
+        {list.words.length > 0 && (
+          <button type="button" aria-label="分享词单链接" title="分享链接" data-testid="list-share" onClick={() => setSharing(true)} className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground hover:text-foreground">
+            <Link2 className="size-4" />
+          </button>
+        )}
         <button type="button" aria-label="重命名词单" title="重命名" data-testid="list-rename" onClick={() => setRenaming(true)} className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground hover:text-foreground">
           <Pencil className="size-4" />
         </button>
@@ -292,6 +270,11 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
           </button>
         )}
       </div>
+      {sharing && (
+        <Suspense fallback={null}>
+          <ListLinkSheet open={sharing} onOpenChange={setSharing} list={list} />
+        </Suspense>
+      )}
       <BottomSheet open={renaming} onOpenChange={setRenaming} title="重命名词单" testid="list-rename-sheet">
         <div className="pt-1">
           <NameField

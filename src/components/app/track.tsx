@@ -8,6 +8,7 @@ const GRADE_TONE: Record<number, string> = {
   1: "bg-vague text-white dark:text-[oklch(0.2_0.02_80)]",
   2: "bg-know text-white dark:text-[oklch(0.2_0.02_170)]",
   3: "bg-foreground text-background",
+  4: "bg-primary text-primary-foreground",
 };
 
 export function GradeChip({ g, className }: { g: number; className?: string }) {

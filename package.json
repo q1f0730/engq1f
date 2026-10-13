@@ -1,6 +1,9 @@
 {
-  "name": "meoo-app-name",
-  "version": "10.0.0",
+  "name": "cet4-vocab",
+  "version": "11.0.0",
+  "description": "四级单词打卡：免费、无广告、离线可用的 CET-4 背单词 PWA",
+  "author": "Q1f730",
+  "license": "GPL-3.0-only",
   "private": true,
   "type": "module",
   "scripts": {

@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Accessibility, Scale, BellRing, CalendarDays, Check, Contrast, MonitorDown, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
+import { Accessibility, Database, Scale, BellRing, CalendarDays, Check, Contrast, MonitorDown, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
@@ -15,7 +15,6 @@ import {
   REVIEW_CAP_OPTIONS,
   RATE_OPTIONS,
   exportBackup,
-  importBackup,
   markBackedUp,
   resetAll,
   setSettings,
@@ -35,6 +34,8 @@ import { MODE_LABEL } from "@/lib/exam";
 import { FIT_MIN, RETENTION_OPTIONS, balanceAll, fitInitialEase } from "@/lib/algo";
 import { retentionScale } from "@/lib/srs";
 import { getState, replaceCards } from "@/lib/store";
+import { ImportFlow } from "@/components/app/import-flow";
+import { ACTIVE_PROFILE, readRegistry } from "@/lib/profiles";
 
 const APP_VERSION = __APP_VERSION__;
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ function MePage() {
   const [help, setHelp] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const file = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState<string | null>(null);
   const persist = usePersist();
   if (!index) return <Spinner />;
   const s = st.settings;
@@ -57,11 +59,12 @@ function MePage() {
   const examPick = !exam.custom || s.examDate === exams[0].day ? 0 : s.examDate === exams[1].day ? 1 : 2;
   const plan = sprintPlan(day, exam.day, sum.newLeft);
 
+  const reg = readRegistry();
+  const profile = reg.list.find((p) => p.id === ACTIVE_PROFILE);
   const onImport = async (f: File | undefined) => {
     if (!f) return;
     try {
-      const next = importBackup(await f.text());
-      toast.success(`已恢复备份：${Object.keys(next.cards).length} 个学习记录`);
+      setPending(await f.text());
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -281,8 +284,18 @@ function MePage() {
             </Panel>
           </Link>
 
-          <Panel>
-            <PanelTitle>数据</PanelTitle>
+          <Panel data-testid="data-panel">
+            <PanelTitle
+              right={
+                reg.list.length > 1 && profile ? (
+                  <span className="max-w-[45%] truncate rounded-full bg-brand-soft px-2.5 py-1 text-[12px] font-bold text-primary" data-testid="me-profile">
+                    {profile.name}
+                  </span>
+                ) : undefined
+              }
+            >
+              数据
+            </PanelTitle>
             <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">不用注册，记录只存在这台设备上。换设备前先导出备份。</p>
             <div className="mb-3 grid grid-cols-2 gap-2 text-[12px]" data-testid="data-status">
               <div className={cn("flex items-center gap-2 rounded-2xl px-3 py-2.5", persist === "persisted" ? "bg-know-soft text-know" : "bg-secondary text-muted-foreground")} data-testid="persist-status" data-state={persist ?? "pending"}>
@@ -314,6 +327,18 @@ function MePage() {
               <ActionBtn testid="import" icon={<FileUp className="size-4" />} label="导入备份" onClick={() => file.current?.click()} />
             </div>
             <input ref={file} type="file" accept="application/json,.json" className="hidden" data-testid="import-file" onChange={(e) => onImport(e.target.files?.[0])} />
+            <Link
+              to="/data"
+              data-testid="go-data"
+              className="mt-2 flex items-center gap-3 rounded-2xl bg-brand-soft px-4 py-3 text-left transition hover:brightness-[0.98]"
+            >
+              <Database className="size-5 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1">
+                <b className="block text-[14px]">数据中心</b>
+                <span className="block truncate text-[12px] text-muted-foreground">合并导入 · 自动快照 · 加密备份 · 学习档案 · 体检</span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+            </Link>
             <button
               type="button"
               onClick={() => setConfirm(true)}
@@ -345,12 +370,15 @@ function MePage() {
               <p>词表与释义：KyleBing/english-vocabulary（BSD-3-Clause）</p>
               <p>音标：qwerty-learner 词典数据（GPL-3.0）</p>
               <p>发音：有道词典 dictvoice，离线时使用系统语音</p>
+              <p>例句：Free Dictionary API（dictionaryapi.dev）</p>
+              <p>本应用以 GPL-3.0 开源</p>
             </div>
           </Panel>
         </div>
       </div>
 
       <ShortcutsSheet open={help} onOpenChange={setHelp} />
+      <ImportFlow text={pending} onDone={() => setPending(null)} />
       <BottomSheet open={confirm} onOpenChange={setConfirm} title="清空所有学习记录？" testid="reset-confirm">
         <p className="text-[14px] text-muted-foreground">学习进度、打卡、生词本都会被删除，且无法恢复。建议先导出备份。</p>
         <div className="mt-5 grid grid-cols-2 gap-2">

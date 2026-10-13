@@ -9,6 +9,7 @@ import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
 import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, parseHM, type CheckInResult, type GoalMode, type PatchResult } from "./habit";
 import type { ShareTpl } from "./share";
 import { cleanFontSize, cleanMotion, motionReduced, type FontSize, type Motion } from "./ux";
+import { ACTIVE_PROFILE, revKeyOf, stateKeyOf } from "./profiles";
 
 export type Book = "all" | "core";
 export type Order = "core" | "alpha" | "random";
@@ -133,8 +134,9 @@ export const RATE_OPTIONS = [0.75, 1, 1.25];
 export const REPEAT_OPTIONS = [1, 2, 3];
 /** 磁带模式定时停止（分钟），0 = 不定时 */
 export const SLEEP_OPTIONS = [0, 10, 20, 30];
-const KEY = "cet4v-state-v1";
-export const REV_KEY = "cet4v-revlog-v1";
+/** 当前档案的存储 key（默认档案 = cet4v-state-v1 / cet4v-revlog-v1） */
+export const KEY = stateKeyOf(ACTIVE_PROFILE);
+export const REV_KEY = revKeyOf(ACTIVE_PROFILE);
 export const THEME_KEY = "cet4v-theme";
 
 export const defaultSettings = (): Settings => ({
@@ -167,13 +169,23 @@ export const defaultSettings = (): Settings => ({
   preview: false,
   postQuiz: false,
   retention: 90,
+  // v11 · 新安装默认打开高级排程（保持目标仍是 90%，四键模式仍关）
+  fuzz: true,
+  balance: true,
+  overdue: true,
+  steps: true,
+  fourKey: false,
+  fitEase: true,
+});
+
+/** v11 之前的默认值：存档里没有这些开关（v10 之前的存档 / 旧备份）时按旧默认补，老用户的排程不变 */
+export const LEGACY_ALGO: Pick<Settings, "fuzz" | "balance" | "overdue" | "steps" | "fitEase"> = {
   fuzz: false,
   balance: false,
   overdue: false,
   steps: false,
-  fourKey: false,
   fitEase: false,
-});
+};
 
 export function initialState(): AppState {
   return {
@@ -237,11 +249,14 @@ export function normalize(raw: unknown): AppState {
   const r = raw as Partial<AppState>;
   if (r.cards && typeof r.cards !== "object") throw new Error("备份格式不对");
   const base = initialState();
+  const rs = (r.settings && typeof r.settings === "object" ? r.settings : {}) as Partial<Settings>;
+  // 已有存档：v10 起每次保存都会写全这些开关；缺了就是更早的存档，沿用旧默认（关）
+  const defaults = "fuzz" in rs ? base.settings : { ...base.settings, ...LEGACY_ALGO };
   return {
     ...base,
     ...r,
     v: 1,
-    settings: cleanSettings({ ...base.settings, ...(r.settings ?? {}) }),
+    settings: cleanSettings({ ...defaults, ...rs }),
     cards: r.cards ?? {},
     star: r.star ?? {},
     log: r.log ?? {},
@@ -568,7 +583,8 @@ export function exportBackup(): string {
   return JSON.stringify({ app: "cet4-vocab", version: 1, exportedAt: new Date().toISOString(), state }, null, 0);
 }
 
-export function importBackup(text: string): AppState {
+/** 解析明文备份（不提交）：文件 / 剪贴板 / 快照共用 */
+export function parseBackup(text: string): AppState {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -577,9 +593,18 @@ export function importBackup(text: string): AppState {
   }
   const p = parsed as { app?: string; state?: unknown };
   if (p?.app !== "cet4-vocab" || !p.state) throw new Error("这不是四级单词打卡的备份文件");
-  const next = normalize(p.state);
+  return normalize(p.state);
+}
+
+export function importBackup(text: string): AppState {
+  const next = parseBackup(text);
   commit({ ...next, onboarded: true });
   return next;
+}
+
+/** v11 · 整体替换当前档案的状态（合并导入、快照回滚、数据体检修复） */
+export function replaceState(next: AppState) {
+  commit(next);
 }
 
 export function resetAll() {

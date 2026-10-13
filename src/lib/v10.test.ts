@@ -32,7 +32,7 @@ import {
   type Card,
 } from "./srs";
 import { revEntry, type RevEntry } from "./stats";
-import { cleanSettings, defaultSettings, initialState, normalize, type AppState } from "./store";
+import { LEGACY_ALGO, cleanSettings, defaultSettings, initialState, normalize, type AppState } from "./store";
 
 const T = "2026-10-13";
 
@@ -54,9 +54,9 @@ const rev = (i: number, extra: Partial<Card> = {}): Card => ({ ...newCard(addDay
 const ivl = (c: Card) => diffDays(T, c.d);
 
 // ---------------------------------------------------------------- 0 默认不变
-describe("v10 · 默认设置与 v9 算法完全一致", () => {
-  it("不给 algo / 全部默认设置时，所有评分结果相同", () => {
-    const opts = algoOptions(defaultSettings(), { cards: {}, revlog: [], today: T });
+describe("v10 · 旧默认设置与 v9 算法完全一致", () => {
+  it("不给 algo / v11 之前的默认设置（高级排程全关）时，所有评分结果相同", () => {
+    const opts = algoOptions({ ...defaultSettings(), ...LEGACY_ALGO }, { cards: {}, revlog: [], today: T });
     expect(opts).toEqual({});
     for (const c of [undefined, rev(0, { st: "learning" }), rev(1), rev(3), rev(10), rev(30, { e: 1.7 }), rev(5, { t: addDays(T, -20) })])
       for (const r of ["know", "vague", "forget"] as const) expect(schedule(c, r, T, { algo: opts })).toEqual(schedule(c, r, T));

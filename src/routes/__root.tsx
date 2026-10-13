@@ -1,7 +1,8 @@
 import { Navigate, Outlet, createRootRoute, redirect, useRouterState } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { AppShell } from "@/components/app/shell";
-import { getState, resolvedTheme, unlockBadges, useApp } from "@/lib/store";
+import { exportBackup, getState, resolvedTheme, unlockBadges, useApp } from "@/lib/store";
+import { ACTIVE_PROFILE } from "@/lib/profiles";
 import { BADGES, badgeCtx, newlyEarned } from "@/lib/stats";
 import { getWordsSync } from "@/lib/data";
 import { today } from "@/lib/clock";
@@ -36,7 +37,7 @@ function ErrorView({ error }: { error: unknown }) {
 
 export const Route = createRootRoute({
   beforeLoad: ({ location }) => {
-    if (!getState().onboarded && !["/welcome", "/test"].some((p) => location.pathname.startsWith(p))) {
+    if (!getState().onboarded && !["/welcome", "/test", "/list-link"].some((p) => location.pathname.startsWith(p))) {
       throw redirect({ to: "/welcome" });
     }
   },
@@ -69,6 +70,24 @@ function Root() {
   useEffect(() => {
     booted.current = true;
   }, []);
+  // v11 · 自动快照：每天第一次打开（或切回前台）时存一份，延后执行，不占首屏
+  useEffect(() => {
+    if (!st.onboarded) return;
+    const run = () => {
+      const s = getState();
+      if (!Object.keys(s.cards).length && !s.checkins.length) return;
+      import("@/lib/snapshots")
+        .then((m) => m.autoSnapshot(ACTIVE_PROFILE, today(), exportBackup, Object.keys(s.cards).length))
+        .catch(() => {});
+    };
+    const t = setTimeout(run, 2500);
+    const vis = () => document.visibilityState === "visible" && run();
+    document.addEventListener("visibilitychange", vis);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("visibilitychange", vis);
+    };
+  }, [st.onboarded]);
   // 学习提醒（到点发通知）与图标角标（待复习数）
   useReminder(st.settings.remindAt ?? "", st.onboarded);
   useAppBadge(st);

@@ -2,27 +2,32 @@
  * v6 · 统计与复盘（纯函数）
  *
  * 复习日志 revlog：每次作答一条，元组省空间
- *   [单词, 时间（epoch 秒）, 评分 0 不认识 / 1 模糊 / 2 认识 / 3 斩, 标记 1 新学 | 2 组内重学, 作答后的间隔（天）]
+ *   [单词, 时间（epoch 秒）, 评分 0 不认识 / 1 模糊 / 2 认识 / 3 斩 / 4 简单, 标记 1 新学 | 2 组内重学, 作答后的间隔（天）]
+ *   v11 起四键模式的「简单」单独记 4；更早的日志里「简单」记的是 2（认识），读取时原样保留。
  */
 import { MASTER_DAYS, addDays, dayKey, diffDays, type Card, type DayLog, type Rating, type SessionItem, longestStreak } from "./srs";
 import type { WordIndex } from "./data";
 import type { AppState } from "./store";
 import { reviewItems } from "./plan";
 
-export type Grade = 0 | 1 | 2 | 3;
+export type Grade = 0 | 1 | 2 | 3 | 4;
 export type RevEntry = [w: string, t: number, g: Grade, f: number, i: number];
 
 export const REV_MAX = 20000;
 export const F_NEW = 1;
 export const F_REPEAT = 2;
 
-export const GRADE_LABEL: Record<Grade, string> = { 0: "不认识", 1: "模糊", 2: "认识", 3: "斩" };
+export const GRADE_LABEL: Record<Grade, string> = { 0: "不认识", 1: "模糊", 2: "认识", 3: "斩", 4: "简单" };
+export const G_EASY = 4;
 
-export function gradeOf(r: Rating | "kill"): Grade {
-  return r === "kill" ? 3 : r === "know" ? 2 : r === "vague" ? 1 : 0;
+export function gradeOf(r: Rating | "kill" | "easy"): Grade {
+  return r === "easy" ? 4 : r === "kill" ? 3 : r === "know" ? 2 : r === "vague" ? 1 : 0;
 }
 
-export function revEntry(w: string, ms: number, r: Rating | "kill", opts: { isNew?: boolean; repeat?: boolean; card?: Card }): RevEntry {
+/** 记得（认识 / 简单）——不含斩 */
+export const isRecall = (g: number) => g === 2 || g === 4;
+
+export function revEntry(w: string, ms: number, r: Rating | "kill" | "easy", opts: { isNew?: boolean; repeat?: boolean; card?: Card }): RevEntry {
   const f = (opts.isNew ? F_NEW : 0) | (opts.repeat ? F_REPEAT : 0);
   const i = opts.card && !opts.card.k ? opts.card.i : r === "kill" ? -1 : 0;
   return [w, Math.floor(ms / 1000), gradeOf(r), f, i];
@@ -48,7 +53,7 @@ export function isRevEntry(x: unknown): x is RevEntry {
     x.length === 5 &&
     typeof x[0] === "string" &&
     typeof x[1] === "number" &&
-    [0, 1, 2, 3].includes(x[2] as number) &&
+    [0, 1, 2, 3, 4].includes(x[2] as number) &&
     typeof x[3] === "number" &&
     typeof x[4] === "number"
   );

@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlgoRouteImport } from './routes/algo'
+import { Route as DataRouteImport } from './routes/data'
 import { Route as JudgeRouteImport } from './routes/judge'
+import { Route as ListLinkRouteImport } from './routes/list-link'
 import { Route as MatchRouteImport } from './routes/match'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as QuizRouteImport } from './routes/quiz'
@@ -33,9 +35,19 @@ const AlgoRoute = AlgoRouteImport.update({
   path: '/algo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DataRoute = DataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JudgeRoute = JudgeRouteImport.update({
   id: '/judge',
   path: '/judge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListLinkRoute = ListLinkRouteImport.update({
+  id: '/list-link',
+  path: '/list-link',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MatchRoute = MatchRouteImport.update({
@@ -92,7 +104,9 @@ const WordsRoute = WordsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/algo': typeof AlgoRoute
+  '/data': typeof DataRoute
   '/judge': typeof JudgeRoute
+  '/list-link': typeof ListLinkRoute
   '/match': typeof MatchRoute
   '/me': typeof MeRoute
   '/quiz': typeof QuizRoute
@@ -107,7 +121,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/algo': typeof AlgoRoute
+  '/data': typeof DataRoute
   '/judge': typeof JudgeRoute
+  '/list-link': typeof ListLinkRoute
   '/match': typeof MatchRoute
   '/me': typeof MeRoute
   '/quiz': typeof QuizRoute
@@ -123,7 +139,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/algo': typeof AlgoRoute
+  '/data': typeof DataRoute
   '/judge': typeof JudgeRoute
+  '/list-link': typeof ListLinkRoute
   '/match': typeof MatchRoute
   '/me': typeof MeRoute
   '/quiz': typeof QuizRoute
@@ -140,7 +158,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/algo'
+    | '/data'
     | '/judge'
+    | '/list-link'
     | '/match'
     | '/me'
     | '/quiz'
@@ -155,7 +175,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/algo'
+    | '/data'
     | '/judge'
+    | '/list-link'
     | '/match'
     | '/me'
     | '/quiz'
@@ -170,7 +192,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/algo'
+    | '/data'
     | '/judge'
+    | '/list-link'
     | '/match'
     | '/me'
     | '/quiz'
@@ -186,7 +210,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlgoRoute: typeof AlgoRoute
+  DataRoute: typeof DataRoute
   JudgeRoute: typeof JudgeRoute
+  ListLinkRoute: typeof ListLinkRoute
   MatchRoute: typeof MatchRoute
   MeRoute: typeof MeRoute
   QuizRoute: typeof QuizRoute
@@ -215,11 +241,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AlgoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/data': {
+      id: '/data'
+      path: '/data'
+      fullPath: '/data'
+      preLoaderRoute: typeof DataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/judge': {
       id: '/judge'
       path: '/judge'
       fullPath: '/judge'
       preLoaderRoute: typeof JudgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/list-link': {
+      id: '/list-link'
+      path: '/list-link'
+      fullPath: '/list-link'
+      preLoaderRoute: typeof ListLinkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/match': {
@@ -298,7 +338,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlgoRoute: AlgoRoute,
+  DataRoute: DataRoute,
   JudgeRoute: JudgeRoute,
+  ListLinkRoute: ListLinkRoute,
   MatchRoute: MatchRoute,
   MeRoute: MeRoute,
   QuizRoute: QuizRoute,

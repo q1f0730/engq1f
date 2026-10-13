@@ -204,7 +204,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       const algo = practice ? undefined : { ...algoNow(day), easy: easy || undefined };
       const res = answer(session, getCard(it.w), rating, day, getLog(day), spent, algo);
       answerMs.current.push(spent);
-      put(it.w, res.card, day, res.log, revEntry(it.w, now(), rating, { isNew: it.kind === "new", repeat: !first, card: res.card }));
+      put(it.w, res.card, day, res.log, revEntry(it.w, now(), easy ? "easy" : rating, { isNew: it.kind === "new", repeat: !first, card: res.card }));
       revSteps.current.push(true);
       setSession(res.session);
       buzz(rating);
