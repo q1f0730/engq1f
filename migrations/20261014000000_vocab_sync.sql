@@ -2,6 +2,8 @@
 -- 每个用户：一行 profile（乱序种子 + 合并用的其余记录），每个学过的词一行 card。
 -- RLS：只能读写 user_id = auth.uid() 的行。
 -- 冲突规则：同一个词以「最后一次作答时间」ts（毫秒）更晚的为准，由 vocab_push_cards 在服务端保证（旧设备晚到的写入不会覆盖新的）。
+-- 13.0.0 · 墓碑：card = JSON null（'null'::jsonb）表示这个词在 ts 时刻被删掉 / 重置了。它和普通卡片一样按 ts 比较，
+-- 所以别的设备更早的那份不会把删掉的词写回来；客户端合并时 ts 相同删除赢。
 
 create table if not exists public.vocab_profile (
   user_id uuid primary key references auth.users (id) on delete cascade,
@@ -14,7 +16,7 @@ create table if not exists public.vocab_profile (
 create table if not exists public.vocab_cards (
   user_id uuid not null references auth.users (id) on delete cascade,
   word text not null check (char_length(word) between 1 and 64),
-  card jsonb not null,
+  card jsonb not null, -- 'null'::jsonb = 墓碑（删除 / 重置）
   ts bigint not null,
   updated_at timestamptz not null default now(),
   primary key (user_id, word)

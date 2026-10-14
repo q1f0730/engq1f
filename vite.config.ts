@@ -2,7 +2,7 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { defineConfig, loadEnv, type Plugin, type Rollup } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 
@@ -27,6 +27,8 @@ function serviceWorker(): Plugin {
         .update(files.sort().join("|"))
         .update(readFileSync("public/data/cet4.json"))
         .update(readFileSync("public/data/syn.json"))
+        // 13.0 · 例句分片换了也要换缓存版本（它们是空闲时由页面让 SW 存进同一个缓存的）
+        .update(readdirSync("public/data/ex").sort().map((f) => readFileSync(`public/data/ex/${f}`)).join("|"))
         .digest("hex")
         .slice(0, 10);
       const tpl = readFileSync("src/sw-template.js", "utf8")
@@ -81,16 +83,16 @@ function welcomePreload(): Plugin {
  * - outDir 'dist' / assetsDir 'assets' — 归一化产物目录
  */
 /**
- * 13.0 · 云同步配置（见 docs/cloud.md）：`meoo cloud pull-env` 写进 .env 的 SUPABASE_URL / SUPABASE_ANON_KEY，
- * 加上开关 CET4V_CLOUD=1 才会编进产物；没有开关 = 纯本机版（登录入口显示「云同步还没开通」）。
+ * 13.0 · 云同步配置（见 docs/cloud.md、docs/deploy-cloudflare.md）：构建时读环境变量（.env 文件或托管平台的环境变量都行）
+ *  - SUPABASE_URL + SUPABASE_ANON_KEY（或 VITE_ 前缀的同名变量）都在 → 默认开云同步；
+ *  - CET4V_CLOUD=0 → 强制关（纯本机版）；CET4V_CLOUD=1 且只有 key 没有 URL → 用同域 /sb-api 代理（Meoo 静态部署）。
  * anon key 本来就是公开的（RLS 把关），service role key 永远不进前端。
  */
 const env = loadEnv(process.env.NODE_ENV === "production" ? "production" : "development", process.cwd(), "");
-const cloud = {
-  on: env.CET4V_CLOUD === "1",
-  url: env.CET4V_CLOUD === "1" ? env.SUPABASE_URL || env.VITE_SUPABASE_URL || "" : "",
-  key: env.CET4V_CLOUD === "1" ? env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || "" : "",
-};
+const sbUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL || "";
+const sbKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || "";
+const cloudOn = env.CET4V_CLOUD === "0" ? false : !!sbKey && (!!sbUrl || env.CET4V_CLOUD === "1");
+const cloud = { on: cloudOn, url: cloudOn ? sbUrl : "", key: cloudOn ? sbKey : "" };
 
 export default defineConfig({
   plugins: [

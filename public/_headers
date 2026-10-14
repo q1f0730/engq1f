@@ -1,0 +1,9 @@
+# Cloudflare Pages / Netlify 的响应头（其它静态托管忽略这个文件）
+# service worker 和版本号文件每次都要拿最新的，否则发了新版用户收不到更新提示
+/sw.js
+  Cache-Control: no-cache
+/version.json
+  Cache-Control: no-cache
+# 带哈希的构建产物可以长期缓存
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

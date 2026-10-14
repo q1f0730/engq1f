@@ -1,0 +1,46 @@
+# 可选：用 wrangler 把构建好的 dist 发到 Cloudflare Pages（只在手动触发时运行，不会随 push 自动发布）
+# 需要的仓库设置（Settings → Secrets and variables → Actions）：
+#   Secrets:   CLOUDFLARE_API_TOKEN（权限：Account · Cloudflare Pages · Edit）、CLOUDFLARE_ACCOUNT_ID
+#   Variables: CF_PAGES_PROJECT（Pages 项目名，例如 cet4-vocab）、SUPABASE_URL、SUPABASE_ANON_KEY（可不设 = 纯本机版）
+# 详见 docs/deploy-cloudflare.md
+name: Deploy to Cloudflare Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+
+      - name: Deploy (wrangler pages deploy)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ vars.CF_PAGES_PROJECT }} --branch=main

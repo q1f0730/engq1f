@@ -91,7 +91,7 @@ function SignedIn() {
       )}
       {s.last && (
         <p className="border-b border-rule py-2.5 text-[0.8125rem] text-ink-2" data-testid="sync-last">
-          上次：从云端拿到 {s.last.pulled} 个词，上传 {s.last.pushed} 个{s.last.conflicts ? `，${s.last.conflicts} 个两边都改过、按最后作答时间取了较新的` : ""}
+          上次：从云端拿到 {s.last.pulled} 个词，上传 {s.last.pushed} 个{s.last.conflicts ? `，${s.last.conflicts} 个两边都改过、按最后作答时间取了较新的` : ""}{s.last.deleted ? `，${s.last.deleted} 个在别的设备上删掉 / 重置了，这里也删了` : ""}
         </p>
       )}
       <div className="mt-5 grid grid-cols-2 gap-2">

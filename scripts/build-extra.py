@@ -2,10 +2,12 @@
 """13.0 · Extra data for 四级单词打卡 (run after build-data.py; idempotent).
 
 Adds to public/data/cet4.json
-  "b": 1   basic word (hidden unless 设置 → 包含基础词). Rule, see data-licenses/README.md:
-           in the PEP (人教版) primary-school list (grades 3–6), or in the PEP junior-high list (grades 7–9)
-           AND among the 1000 most frequent English words (wordfreq), except that CET-4 core words
-           (qwerty-learner CET4_T) are kept unless they are in the top 500.
+  "b": 1   basic word (hidden unless 设置 → 包含基础词). 13.0.0 strict rule, see data-licenses/README.md —
+           basic only when one of these holds (rank = wordfreq top_n_list("en") position, 0-based):
+             1. PEP (人教版) primary list (grades 3–6) AND rank < 1000 AND ≤ 7 letters
+             2. PEP junior-high list (grades 7–9) AND rank < 500 AND ≤ 6 letters
+             3. PEP primary list AND rank < 3000 AND ≤ 5 letters AND not a CET-4 core word (qwerty-learner CET4_T)
+           (the WIP rule hid 655 incl. government / information / degree; this one hides ~360)
   "z": 47  wordfreq Zipf frequency × 10 (integer; 0 = not in wordfreq)
 
 Writes
@@ -71,6 +73,14 @@ def pep_words(names):
 # ---------------------------------------------------------------- basic words + frequency
 
 
+def is_basic(k, r, core, pri, jun):
+    if k in pri and r < 1000 and len(k) <= 7:
+        return True
+    if k in jun and r < 500 and len(k) <= 6:
+        return True
+    return k in pri and r < 3000 and len(k) <= 5 and not core
+
+
 def mark_basic(words):
     import wordfreq
 
@@ -83,8 +93,7 @@ def mark_basic(words):
         z = wordfreq.zipf_frequency(w["w"], "en")
         w["z"] = int(round(z * 10))
         r = rank.get(k, 99999)
-        listed = k in pri or (k in jun and r < 1000)
-        if listed and not (w.get("c") and r >= 500):
+        if is_basic(k, r, bool(w.get("c")), pri, jun):
             w["b"] = 1
             n += 1
     return n
@@ -313,6 +322,13 @@ def main():
     dump(path, words)
     active = [w for w in words if not w.get("b")]
     print(f"words {total} → active {len(active)} (basic hidden {nb})")
+    if "--sample" in sys.argv or "--basic-only" in sys.argv:
+        import random
+
+        hidden = [w["w"] for w in words if w.get("b")]
+        print("sample of 40 hidden:", sorted(random.Random(13).sample(hidden, min(40, len(hidden)))))
+    if "--basic-only" in sys.argv:  # only re-mark b / z; examples and synonyms already cover every word
+        return
 
     ex = build_examples(words)
     tat_active = sum(1 for w in active if w["w"] in ex)

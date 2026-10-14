@@ -63,6 +63,8 @@ const warm = () => {
     const r = (router.routesByPath as unknown as Record<string, unknown>)[path];
     if (r) Promise.resolve(router.loadRouteChunk(r as never)).catch(() => {});
   }
+  // 13.0 · 例句分片：空闲时全部取一遍（SW 缓存 + 内存），离线有例句、例句选词能出题
+  import("./lib/examples").then((m) => m.primeExamples()).catch(() => {});
 };
 window.addEventListener("load", () => {
   const ric = (window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => void }).requestIdleCallback;

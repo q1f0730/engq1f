@@ -5,10 +5,11 @@ import { decompose, difficulty, effective, knows, levelOf, morphLabel, pickByLev
 import { interleaveDue, newWordsLeft, nextNewGroup, orderedWords, reviewGroup } from "./plan";
 import { cardTs, changedRows, localRows, mergeCloud, metaOf, pickRow, rowSig, type CardRow } from "./cloud-merge";
 import { synonymsFor } from "./syn";
-import { rowToExample, shardOf, type ExampleRow } from "./examples";
+import { exampleCloze, rowToExample, setShardForTest, shardOf, SHARDS, shardUrl, type ExampleRow } from "./examples";
+import { eligible } from "./exam";
 import { isNewer } from "./sw";
 import type { Card } from "./srs";
-import { cleanSettings, defaultSettings, initialState, needLevelAsk, normalize, todayLevel, type AppState } from "./store";
+import { cleanSettings, cleanTomb, defaultSettings, initialState, needLevelAsk, normalize, rebase, todayLevel, TOMB_MAX, trackTombs, type AppState } from "./store";
 
 const RAW = JSON.parse(readFileSync(new URL("../../public/data/cet4.json", import.meta.url), "utf8")) as Word[];
 const IDX = build(RAW, false);
@@ -20,20 +21,30 @@ const card = (o: Partial<Card> = {}): Card => ({ st: "review", e: 2.5, i: 3, r: 
 const state = (o: Partial<AppState> = {}): AppState => ({ ...initialState(), onboarded: true, seed: 42, ...o, settings: { ...defaultSettings(), ...(o.settings ?? {}) } });
 
 describe("13.0 · 基础词", () => {
-  it("4544 → 3889: 655 basic words hidden by default, all still in the map", () => {
+  it("4544 → 4182: 362 basic words hidden by default, all still in the map", () => {
     expect(RAW).toHaveLength(4544);
-    expect(IDX.list).toHaveLength(3889);
-    expect(IDX.basicCount).toBe(655);
+    expect(IDX.list).toHaveLength(4182);
+    expect(IDX.basicCount).toBe(362);
     expect(IDX_B.list).toHaveLength(4544);
     expect(IDX.map.size).toBe(4544);
   });
   it("the / a / he / book / apple level words are basic; CET-4 words are not", () => {
-    for (const w of ["a", "he", "book", "apple", "banana", "classroom", "happy"]) expect(IDX.map.get(w)?.b, w).toBe(1);
+    for (const w of ["a", "he", "book", "apple", "go", "happy", "milk", "nose"]) expect(IDX.map.get(w)?.b, w).toBe(1);
     for (const w of ["abandon", "absorb", "accommodate", "contaminate", "jazz"]) {
       const x = IDX.map.get(w);
       if (x) expect(x.b, w).toBeUndefined();
     }
     expect(IDX.list.some((w) => w.b)).toBe(false);
+  });
+  it("strict rule: mid-level words stay in the book (government / information / degree …)", () => {
+    for (const w of ["government", "information", "degree", "attention", "strict", "exhibition", "national", "traffic", "secretary", "schedule", "elephant", "banana", "classroom"]) {
+      expect(IDX.map.get(w), w).toBeDefined();
+      expect(IDX.map.get(w)!.b, w).toBeUndefined();
+    }
+    // every hidden word is short: ≤ 7 letters
+    expect(RAW.filter((w) => w.b && w.w.length > 7)).toEqual([]);
+    expect(IDX.basicCount).toBeGreaterThanOrEqual(300);
+    expect(IDX.basicCount).toBeLessThanOrEqual(450);
   });
   it("core count excludes basic words", () => {
     expect(IDX.coreCount).toBe(RAW.filter((w) => w.c && !w.b).length);
@@ -299,6 +310,142 @@ describe("13.0 · 云同步合并", () => {
     expect(m.cards).toBeUndefined();
     expect(m.settings).toBeUndefined();
     expect(m.seed).toBeUndefined();
+  });
+});
+
+describe("13.0.0 · 云同步墓碑（删除 / 重置不被云端拉回来）", () => {
+  const D = (d: number) => new Date(2026, 9, d, 12).getTime();
+  const row = (word: string, ts: number, o: Partial<Card> | null = {}): CardRow => ({ word, card: o === null ? null : card(o), ts });
+  it("trackTombs: a removed card gets a tombstone at `now`; untouched cards don't", () => {
+    const prev = state({ cards: { a: card(), b: card() } });
+    const next = trackTombs(prev, { ...prev, cards: { b: prev.cards.b } }, 1000);
+    expect(next.tomb).toEqual({ a: 1000 });
+    expect(trackTombs(prev, { ...prev, star: { a: 1 } }, 1000)).toEqual({ ...prev, star: { a: 1 } });
+  });
+  it("trackTombs: whole replacements (new epoch) are not tombstoned; caller-set tombstones are kept", () => {
+    const prev = state({ cards: { a: card() }, epoch: "x" });
+    expect(trackTombs(prev, { ...prev, cards: {}, epoch: "y" }, 5).tomb).toBeUndefined();
+    expect(trackTombs(prev, { ...prev, cards: {}, tomb: { a: 3 } }, 5).tomb).toEqual({ a: 3 });
+  });
+  it("trackTombs: a deleted card coming back (undo) is marked revived (negative), so it beats the older cloud tombstone", () => {
+    const prev = state({ cards: {}, tomb: { a: D(10) } });
+    const next = trackTombs(prev, { ...prev, cards: { a: card({ t: "2026-10-05" }) } }, D(11));
+    expect(next.tomb).toEqual({ a: -D(11) });
+    const r = localRows(next);
+    expect(r).toEqual([{ word: "a", card: next.cards.a, ts: D(11) }]);
+    expect(pickRow(r[0], row("a", D(10), null))).toBe("local");
+  });
+  it("localRows: tombstones without a card become card = null rows", () => {
+    const st = state({ cards: { a: card({ t: "2026-10-12" }) }, tomb: { b: D(13) } });
+    expect(localRows(st)).toEqual([
+      { word: "a", card: st.cards.a, ts: D(12) },
+      { word: "b", card: null, ts: D(13) },
+    ]);
+  });
+  it("pickRow: deletion vs card by timestamp; same timestamp → the deletion wins", () => {
+    expect(pickRow(row("a", D(12), null), row("a", D(11)))).toBe("local");
+    expect(pickRow(row("a", D(10), null), row("a", D(11)))).toBe("remote");
+    expect(pickRow(row("a", D(11), null), row("a", D(11)))).toBe("local");
+    expect(pickRow(row("a", D(11)), row("a", D(11), null))).toBe("remote");
+  });
+  it("a word reset on this device does not come back from the cloud; the tombstone is pushed", () => {
+    const local = state({ cards: {}, tomb: { abandon: D(13) } });
+    const m = mergeCloud(local, { seed: 42, meta: null, cards: [row("abandon", D(12), { i: 9 })] });
+    expect(m.state.cards.abandon).toBeUndefined();
+    expect(m.push).toEqual([{ word: "abandon", card: null, ts: D(13) }]);
+    expect(m.state.tomb).toEqual({ abandon: D(13) });
+    expect(m.pulled).toBe(0);
+  });
+  it("a word deleted on another device is removed here (cloud tombstone newer than the local card)", () => {
+    const local = state({ cards: { abandon: card({ t: "2026-10-10" }), absorb: card({ t: "2026-10-10" }) } });
+    const m = mergeCloud(local, { seed: 42, meta: null, cards: [row("abandon", D(12), null)] });
+    expect(m.state.cards.abandon).toBeUndefined();
+    expect(m.state.cards.absorb).toBeDefined();
+    expect(m.state.tomb).toEqual({ abandon: D(12) });
+    expect(m.deleted).toBe(1);
+    expect(m.pulled).toBe(1);
+    expect(m.push.map((r) => r.word)).toEqual(["absorb"]);
+  });
+  it("studied again after the reset: the newer card wins over the tombstone on both sides", () => {
+    const local = state({ cards: { abandon: card({ t: "2026-10-14" }) } });
+    const m = mergeCloud(local, { seed: 42, meta: null, cards: [row("abandon", D(12), null)] });
+    expect(m.state.cards.abandon).toBeDefined();
+    expect(m.push.map((r) => [r.word, !!r.card])).toEqual([["abandon", true]]);
+    const remoteNewer = mergeCloud(state({ cards: {}, tomb: { abandon: D(12) } }), { seed: 42, meta: null, cards: [row("abandon", D(14), { i: 7 })] });
+    expect(remoteNewer.state.cards.abandon.i).toBe(7);
+    expect(remoteNewer.state.tomb).toBeUndefined();
+  });
+  it("resetting everything on one device: every tombstone beats the older cloud cards", () => {
+    const cloud = [row("a", D(10)), row("b", D(11)), row("c", D(12))];
+    const local = state({ cards: {}, tomb: { a: D(13), b: D(13), c: D(13) } });
+    const m = mergeCloud(local, { seed: 42, meta: null, cards: cloud });
+    expect(m.state.cards).toEqual({});
+    expect(m.push).toHaveLength(3);
+    expect(m.push.every((r) => r.card === null && r.ts === D(13))).toBe(true);
+  });
+  it("idempotent with tombstones: merging the result again changes nothing", () => {
+    const local = state({ cards: { a: card({ t: "2026-10-12" }) }, tomb: { b: D(13) } });
+    const first = mergeCloud(local, { seed: 42, meta: null, cards: [row("b", D(11)), row("c", D(9), null)] });
+    expect(first.state.tomb).toEqual({ b: D(13), c: D(9) });
+    const again = mergeCloud(first.state, { seed: 42, meta: metaOf(first.state), cards: localRows(first.state) });
+    expect(again.push).toHaveLength(0);
+    expect(again.pulled).toBe(0);
+    expect(again.state.cards).toEqual(first.state.cards);
+    expect(again.state.tomb).toEqual(first.state.tomb);
+  });
+  it("changedRows picks up a new tombstone; metaOf never carries tombstones", () => {
+    const st = state({ cards: { a: card(), b: card() } });
+    const synced = new Map(localRows(st).map((r) => [r.word, rowSig(r)]));
+    const st2 = trackTombs(st, { ...st, cards: { a: st.cards.a } }, D(14));
+    expect(changedRows(st2, synced)).toEqual([{ word: "b", card: null, ts: D(14) }]);
+    expect((metaOf(st2) as Record<string, unknown>).tomb).toBeUndefined();
+  });
+  it("cleanTomb / normalize: drops junk, keeps negatives (revived), caps to the newest TOMB_MAX", () => {
+    expect(cleanTomb({ a: 5, b: "x", c: 0, d: -7, e: Number.NaN })).toEqual({ a: 5, d: -7 });
+    expect(cleanTomb([])).toBeUndefined();
+    expect(normalize({ ...state(), tomb: { a: 1, z: "no" } } as unknown).tomb).toEqual({ a: 1 });
+    const big = Object.fromEntries(Array.from({ length: TOMB_MAX + 10 }, (_, i) => [`w${i}`, i + 1]));
+    const c = cleanTomb(big)!;
+    expect(Object.keys(c)).toHaveLength(TOMB_MAX);
+    expect(c.w0).toBeUndefined();
+    expect(c[`w${TOMB_MAX + 9}`]).toBe(TOMB_MAX + 10);
+  });
+  it("rebase (two windows): tombstones from both windows are kept", () => {
+    const prev = state({ cards: { a: card(), b: card() } });
+    const mine = trackTombs(prev, { ...prev, cards: { b: prev.cards.b } }, 100);
+    const other = { ...prev, cards: { a: prev.cards.a }, tomb: { b: 200 } };
+    const out = rebase(prev, mine, other);
+    expect(out.tomb).toEqual({ a: 100, b: 200 });
+  });
+});
+
+describe("13.0.0 · 例句选词用随应用的例句", () => {
+  const W = (w: string) => IDX.map.get(w)!;
+  it("bundled rows are blanked at the stored position (irregular forms too) and carry the Chinese", () => {
+    setShardForTest("a", { abandon: [["They abandoned the car in the snow.", "他们把车丢在雪地里。", "t1-2", 5, 9]] });
+    const c = exampleCloze("abandon", 0)!;
+    expect(c.blanked).toBe("They ____ the car in the snow.");
+    expect(c.form).toBe("abandoned");
+    expect(c.zh).toBe("他们把车丢在雪地里。");
+    expect(eligible(IDX, W("abandon"), "example")).toBe(true);
+    setShardForTest("a", null);
+    expect(exampleCloze("abandon")).toBeNull();
+  });
+  it("rows with a bad position are skipped; a passed-in list still uses the old online path", () => {
+    setShardForTest("a", { absorb: [["Plants absorb light.", "植物吸收光。", "a", -1, 0]] });
+    expect(exampleCloze("absorb", 0)).toBeNull();
+    expect(exampleCloze("absorb", 0, ["Plants absorb light."])!.blanked).toBe("Plants ____ light.");
+    setShardForTest("a", null);
+  });
+  it("every active word's bundled example can be blanked (real data)", () => {
+    const rows: Record<string, ExampleRow[]> = {};
+    for (const sh of SHARDS) Object.assign(rows, JSON.parse(readFileSync(new URL(`../../public/${shardUrl(sh)}`, import.meta.url), "utf8")));
+    let ok = 0;
+    for (const w of IDX.list) {
+      const r = rows[w.w]?.[0];
+      if (r && r[3] >= 0 && /^[A-Za-z][A-Za-z'-]*$/.test(r[0].slice(r[3], r[3] + r[4]))) ok++;
+    }
+    expect(ok / IDX.list.length).toBeGreaterThan(0.99);
   });
 });
 

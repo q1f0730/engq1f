@@ -34,7 +34,7 @@ function loadShard(sh: string): Promise<Record<string, ExampleRow[]>> {
   if (hit) return Promise.resolve(hit);
   let p = shardLoads.get(sh);
   if (!p) {
-    p = fetch(new URL(`data/ex/${sh}.json`, document.baseURI).href)
+    p = fetch(new URL(shardUrl(sh), document.baseURI).href)
       .then((r) => (r.ok ? (r.json() as Promise<Record<string, ExampleRow[]>>) : {}))
       .then((d) => {
         shards.set(sh, d);
@@ -47,6 +47,39 @@ function loadShard(sh: string): Promise<Record<string, ExampleRow[]>> {
     shardLoads.set(sh, p);
   }
   return p;
+}
+
+export const SHARDS = "abcdefghijklmnopqrstuvwxyz".split("");
+export const shardUrl = (sh: string) => `data/ex/${sh}.json`;
+
+/** 测试用：直接放一个分片进内存 */
+export function setShardForTest(sh: string, d: Record<string, ExampleRow[]> | null) {
+  if (d) shards.set(sh, d);
+  else shards.delete(sh);
+}
+
+/**
+ * 13.0 · 离线例句：装好以后、页面空闲时把 26 个例句分片都取一遍。
+ * - 交给 service worker 存进当前版本的缓存（CACHE_URLS 消息；页面还没被 SW 控制时也有效），之后断网卡片背面照样有例句；
+ * - 同时读进内存，例句选词题型就能用随应用的例句出题（判断能不能出题是同步的）。
+ * 一个一个取、每个之间让出主线程；省流量模式（Save-Data）下不预取。不进首屏：首屏 JS 一个字节不多，数据在空闲时才下。
+ */
+let primed: Promise<number> | null = null;
+export function primeExamples(opts: { sw?: boolean } = {}): Promise<number> {
+  if (primed) return primed;
+  const nav = typeof navigator !== "undefined" ? (navigator as Navigator & { connection?: { saveData?: boolean } }) : undefined;
+  if (nav?.connection?.saveData) return Promise.resolve(0);
+  if (opts.sw !== false && nav && "serviceWorker" in nav) {
+    nav.serviceWorker.ready
+      .then((reg) => reg.active?.postMessage({ type: "CACHE_URLS", urls: SHARDS.map(shardUrl) }))
+      .catch(() => {});
+  }
+  const idle = () => new Promise<void>((res) => setTimeout(res, 30));
+  primed = SHARDS.reduce<Promise<number>>((p, sh) => p.then((n) => idle().then(() => loadShard(sh)).then((d) => n + (Object.keys(d).length ? 1 : 0))), Promise.resolve(0)).then((n) => {
+    if (n < SHARDS.length) primed = null; // 有分片没取到（离线）：下次再试
+    return n;
+  });
+  return primed;
 }
 
 /** 已经下载过的分片里有没有（同步，不发请求） */
@@ -243,10 +276,28 @@ export interface ExampleCloze {
   blanked: string;
   /** 句子里实际出现的词形 */
   form: string;
+  /** 13.0 · 随应用的例句带中文翻译（在线例句没有） */
+  zh?: string;
 }
 
-/** 用缓存的例句挖空本词；没有缓存或句子里找不到本词时返回 null（不发请求） */
+/** 随应用的例句能不能挖空：位置有效、挖出来的是本词或它的变形（went / children 这种不规则变形也算，位置是构建时定好的） */
+function bundledCloze(word: string, seed: number): ExampleCloze | null {
+  const rows = (bundledSync(word) ?? []).filter((e) => e.at >= 0 && e.len > 0 && e.at + e.len <= e.en.length && /^[A-Za-z][A-Za-z'-]*$/.test(e.en.slice(e.at, e.at + e.len)));
+  if (!rows.length) return null;
+  const e = rows[(seed >>> 0) % rows.length];
+  const form = e.en.slice(e.at, e.at + e.len);
+  return { sentence: e.en, blanked: e.en.slice(0, e.at) + "____" + e.en.slice(e.at + e.len), form, zh: e.zh || undefined };
+}
+
+/**
+ * 例句选词的题干：13.0 起先用随应用分发的例句（带中文，离线可用）；这个词没有随应用的例句，才用在线缓存过的。
+ * 都没有、或句子里找不到本词时返回 null（不发请求）。传了 list 就只用 list（单元测试 / 旧逻辑）。
+ */
 export function exampleCloze(word: string, seed = 0, list?: string[]): ExampleCloze | null {
+  if (!list) {
+    const b = bundledCloze(word, seed);
+    if (b) return b;
+  }
   const sentences = (list ?? cachedExamples(word) ?? []).filter((s) => findForm(s, word));
   if (!sentences.length) return null;
   const sentence = sentences[(seed >>> 0) % sentences.length];

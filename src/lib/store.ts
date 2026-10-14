@@ -166,6 +166,12 @@ export interface AppState {
   epoch?: string;
   /** 13.0 · 今天选的新词难度（每天第一次学新词时问） */
   levelDay?: { d: string; lv: Level };
+  /**
+   * 13.0 · 云同步的删除记录（墓碑）：词 → 时间（epoch 毫秒）。
+   * 正数 = 这个时刻删掉 / 重置了这个词的卡片（云端那份更早的不会再被拉回来）；
+   * 负数 = 这个时刻又把卡片放回来了（撤销批量操作 / 回滚），卡片按这个时刻算新，盖过云端更早的墓碑。
+   */
+  tomb?: Record<string, number>;
 }
 
 /** v10 · 记忆保持目标（这里自带一份，不让首屏引入整个 algo.ts） */
@@ -370,7 +376,38 @@ export function normalize(raw: unknown, has?: (w: string) => boolean, rep: Clean
     sprintSnooze: optDay(r.sprintSnooze),
     epoch: str(r.epoch),
     levelDay: r.levelDay && typeof r.levelDay === "object" && isDay(r.levelDay.d) && LEVELS.includes(r.levelDay.lv) ? { d: r.levelDay.d, lv: r.levelDay.lv } : undefined,
+    tomb: cleanTomb(r.tomb),
   };
+}
+
+/** 墓碑最多留这么多条（最新的） */
+export const TOMB_MAX = 5000;
+
+/** 13.0 · 墓碑：词 → 非零有限整数（毫秒），超出上限丢最旧的 */
+export function cleanTomb(raw: unknown): Record<string, number> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  let list = Object.entries(raw as Record<string, unknown>).filter((e): e is [string, number] => typeof e[1] === "number" && Number.isFinite(e[1]) && e[1] !== 0 && e[0].length > 0 && e[0].length <= 64);
+  if (!list.length) return undefined;
+  if (list.length > TOMB_MAX) list = list.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, TOMB_MAX);
+  return Object.fromEntries(list.map(([w, t]) => [w, Math.round(t)]));
+}
+
+/**
+ * 13.0 · 卡片被删掉（重置 / 撤销第一次作答）→ 记墓碑；被删过的卡片又回来了（撤销批量操作）→ 记「复活」时刻。
+ * 调用方自己改了墓碑（云端合并）的词不动；整份替换（换 epoch：导入 / 回滚 / 清空）不在这里算。
+ */
+export function trackTombs(prev: Pick<AppState, "cards" | "tomb" | "epoch">, next: AppState, now = Date.now()): AppState {
+  if (next.cards === prev.cards || (next.epoch ?? "") !== (prev.epoch ?? "")) return next;
+  const before = prev.tomb ?? {};
+  const given = next.tomb ?? {};
+  let tomb: Record<string, number> | null = null;
+  const put = (w: string, t: number) => {
+    tomb ??= { ...given };
+    tomb[w] = t;
+  };
+  for (const w of Object.keys(prev.cards)) if (!next.cards[w] && given[w] === before[w]) put(w, now);
+  for (const w of Object.keys(next.cards)) if (!prev.cards[w] && (before[w] ?? 0) > 0 && given[w] === before[w]) put(w, -now);
+  return tomb ? { ...next, tomb: cleanTomb(tomb) } : next;
 }
 
 /** 11.5 · 记下来的考试日：日期列表，去重排序，最多 12 个 */
@@ -488,6 +525,8 @@ export function rebase(prev: AppState, next: AppState, other: AppState): AppStat
       out.revlog = [...other.revlog.filter((e) => !removed.has(key(e))), ...added].sort((x, y) => x[1] - y[1]);
     } else if (k === "log") {
       out.log = mergeLog(prev, next, other);
+    } else if (k === "tomb") {
+      out.tomb = cleanTomb(applyDiff(other.tomb ?? {}, (a as Record<string, number>) ?? {}, (b as Record<string, number>) ?? {}));
     } else if (k === "checkins" || k === "patched") {
       out[k] = [...new Set([...((other as unknown as Record<string, string[]>)[k] ?? []), ...(b as string[])])].sort();
     } else if (k === "settings") {
@@ -701,6 +740,7 @@ export const takeFreeze = () => {
 
 function commit(next: AppState) {
   const prev = state;
+  next = trackTombs(prev, next);
   next = withTodayRule(prev, next);
   if (next.dayRule !== prev.dayRule) {
     const ed = harvestExamDays(next.dayRule, next.examDays, today());
@@ -1152,7 +1192,11 @@ export function replaceState(next: AppState) {
 }
 
 export function resetAll() {
-  commit({ ...initialState(), epoch: newEpoch() });
+  // 13.0 · 清空也要让云端知道：每个学过的词记一条墓碑，别的设备 / 云端那份不会再被同步回来
+  const now = Date.now();
+  const tomb = { ...(state.tomb ?? {}) };
+  for (const w of Object.keys(state.cards)) tomb[w] = now;
+  commit({ ...initialState(), epoch: newEpoch(), tomb: cleanTomb(tomb) });
 }
 
 // ---------------------------------------------------------------- 13.0 · 每日新词难度

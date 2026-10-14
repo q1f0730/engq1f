@@ -14,6 +14,15 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
+  // 13.0 · 页面空闲时让 SW 把例句分片（data/ex/*.json）存进当前版本的缓存：离线也有例句，安装时不多下 480KB
+  if (event.data && event.data.type === "CACHE_URLS" && Array.isArray(event.data.urls)) {
+    const urls = event.data.urls.filter((u) => typeof u === "string" && /^data\/ex\/[a-z_]\.json$/.test(u));
+    event.waitUntil(
+      caches.open(CACHE).then((c) =>
+        urls.reduce((p, u) => p.then(() => c.match(u, { ignoreSearch: true }).then((hit) => hit || c.add(new Request(u, { cache: "reload" })).catch(() => {}))), Promise.resolve()),
+      ),
+    );
+  }
 });
 
 self.addEventListener("activate", (event) => {

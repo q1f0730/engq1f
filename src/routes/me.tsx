@@ -277,12 +277,13 @@ function MePage() {
               options={LEVELS.map((v) => ({ value: v, label: LEVEL_CN[v] }))}
             />
             <div className="mt-1 border-b border-rule">
-              <Field label="每天第一次学新词时询问" hint={s.levelAsk === false ? `不问，每天按「${LEVEL_CN[s.level ?? "mix"]}」` : `今天：${LEVEL_CN[todayLevel(st, day)]}`} testid="me-level-ask-row">
+              <Field className="py-3" label={s.levelAsk === false ? "每天第一次学新词时询问" : `每天第一次学新词时询问 · 今天${LEVEL_CN[todayLevel(st, day)]}`} hint={s.levelAsk === false ? `不问，每天按「${LEVEL_CN[s.level ?? "mix"]}」` : undefined} testid="me-level-ask-row">
                 <Switch checked={s.levelAsk !== false} onCheckedChange={(v) => setSettings({ levelAsk: v })} data-testid="me-level-ask" aria-label="每天询问难度" />
               </Field>
               <Field
+                className="py-3"
                 label="包含基础词"
-                hint={s.basic ? `已包含 ${index.basicCount ?? 0} 个小学 / 初中基础词` : `已隐藏 ${index.basicCount ?? 0} 个小学 / 初中基础词（the、book、apple 这一级）`}
+                hint={s.basic ? `已包含 ${index.basicCount ?? 0} 个小学 / 初中基础词` : `已隐藏 ${index.basicCount ?? 0} 个基础词（the、book、apple 这一级）`}
                 testid="me-basic-row"
               >
                 <Switch
@@ -295,12 +296,6 @@ function MePage() {
                   aria-label="包含基础词"
                 />
               </Field>
-            </div>
-          </Sec>
-
-          <Sec title="账号与同步" testid="account-sec">
-            <div className="border-t border-rule">
-              <Entry to="/account" title={!cloudConfig() ? "账号（云同步还没开通）" : hasSession() ? "已登录 · 账号与同步" : "登录 / 注册"} sub={cloudConfig() ? "邮箱登录后，换手机进度也在" : "现在记录只存在这台手机上"} data-testid="me-account" />
             </div>
           </Sec>
 
@@ -374,6 +369,9 @@ function MePage() {
             <input ref={file} type="file" accept="application/json,.json" className="hidden" data-testid="import-file" onChange={(e) => onImport(e.target.files?.[0])} />
             <div className="mt-4 border-t border-rule">
               <Entry to="/data" data-testid="go-data" title="数据中心" sub="快照回滚 · 合并两台设备 · 加密备份 · 学习档案" />
+              <div data-testid="account-sec">
+                <Entry to="/account" title={!cloudConfig() ? "账号（云同步还没开通）" : hasSession() ? "已登录 · 账号与同步" : "登录 / 注册"} sub={cloudConfig() ? "邮箱登录后，换手机进度也在" : "现在记录只存在这台手机上"} data-testid="me-account" />
+              </div>
             </div>
           </Sec>
 

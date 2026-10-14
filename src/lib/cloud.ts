@@ -20,7 +20,7 @@ export interface CloudStatus {
   at?: number;
   message?: string;
   /** 上次同步：拉下来几个、传上去几个、按时间戳裁决几个 */
-  last?: { pulled: number; pushed: number; conflicts: number };
+  last?: { pulled: number; pushed: number; conflicts: number; deleted?: number };
 }
 
 let status: CloudStatus = { phase: cloudConfig() ? "signed-out" : "off" };
@@ -217,7 +217,7 @@ export function syncNow(): Promise<void> {
       if (m.profileDirty || m.push.length) await pushProfile(c, user.id);
       const synced = new Map(localRows(getState()).map((r) => [r.word, rowSig(r)]));
       saveSynced(user.id, synced);
-      set({ phase: "idle", at: Date.now(), last: { pulled: m.pulled, pushed: m.push.length, conflicts: m.conflicts } });
+      set({ phase: "idle", at: Date.now(), last: { pulled: m.pulled, pushed: m.push.length, conflicts: m.conflicts, deleted: m.deleted } });
     } catch (e) {
       set({ phase: "error", message: cnError(e) });
       throw e;

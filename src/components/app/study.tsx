@@ -1400,6 +1400,11 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
                 <ClozeText text={ex.blanked} />
               )}
             </div>
+            {done && ex.zh && (
+              <div className="mt-1 text-[0.8125rem] text-ink-3" data-testid="quiz-example-zh">
+                {ex.zh}
+              </div>
+            )}
             {!done && ex.form.toLowerCase() !== word.w.toLowerCase() && (
               <div className="mt-2 text-[0.75rem] text-ink-3" data-testid="example-form-hint">
                 空格处是这个词的变形

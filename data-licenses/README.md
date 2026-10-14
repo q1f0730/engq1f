@@ -25,15 +25,16 @@
 | `cet4.json` 的 `b`（基础词，默认隐藏） | 人教版（PEP）小学 3–6 年级、初中 7–9 年级英语词表，取自 qwerty-learner `public/dicts/PEPXiaoXue*_T.json`、`PEPChuZhong*_T.json`；词频排名取自 wordfreq `top_n_list("en")` | GPL-3.0（qwerty-learner，同上）；wordfreq 数据 CC-BY-SA 4.0（Robyn Speer，https://github.com/rspeer/wordfreq） |
 | `cet4.json` 的 `z`（词频 Zipf × 10，用于难度分） | wordfreq 3.x `zipf_frequency(word, "en")` | CC-BY-SA 4.0，© Robyn Speer 及 wordfreq 引用的语料作者；`z` 这一列按 CC-BY-SA 4.0 分发（与 GPL-3.0 单向兼容） |
 | `data/ex/*.json` 例句（`src` 以 `t` 开头） | Tatoeba 英–中句对 https://tatoeba.org ，`src = t<英文句 id>-<中文句 id>`，可在 `https://tatoeba.org/sentences/show/<id>` 查看原句和作者；繁体译文用 OpenCC 转成简体 | CC-BY 2.0 FR（https://creativecommons.org/licenses/by/2.0/fr/），署名：Tatoeba 及各句作者 |
-| `data/ex/*.json` 例句（`src = "a"`） | 本应用自写（`scripts/authored-examples.tsv`，共 551 句，界面上标「自编」） | GPL-3.0，随本仓库 |
+| `data/ex/*.json` 例句（`src = "a"`） | 本应用自写（`scripts/authored-examples.tsv`，共 552 句，界面上标「自编」） | GPL-3.0，随本仓库 |
 | `data/syn.json` 同义词 | WordNet 3.0（Princeton University）；Moby Thesaurus II（Grady Ward，公有领域，Project Gutenberg #3202）。只保留**词库里有、且两边中文释义有相同两字片段**的词 | WordNet License（[WordNet-3.0-License.txt](WordNet-3.0-License.txt)）；Moby：Public Domain |
 
-### 基础词规则（`b`）
-一个词被标成基础词（默认不出现在学习、词库、统计里），当且仅当：
-1. 它在人教版小学 3–6 年级词表里，**或者**它在人教版初中 7–9 年级词表里、并且在 wordfreq 英语词频前 1000；
-2. 并且它不是四级核心词（qwerty-learner CET4_T）——核心词只有在词频前 500 时才算基础词。
+### 基础词规则（`b`，13.0.0 收紧）
+一个词被标成基础词（默认不出现在学习、词库、统计里），当且仅当满足下面任意一条（词频排名 = wordfreq `top_n_list("en")` 里的位置，从 0 数）：
+1. 在人教版小学 3–6 年级词表里，**并且**词频前 1000，**并且**不超过 7 个字母；
+2. 在人教版初中 7–9 年级词表里，**并且**词频前 500，**并且**不超过 6 个字母；
+3. 在人教版小学词表里，**并且**词频前 3000，**并且**不超过 5 个字母，**并且**不是四级核心词（qwerty-learner CET4_T）。
 
-结果：4544 个词 → 3889 个（655 个基础词隐藏，「我的 → 包含基础词」可以打开）。已经学过的基础词照常复习，不丢记录。
+结果：4544 个词 → 4182 个（362 个基础词隐藏，「我的 → 包含基础词」可以打开）。government、information、degree、attention、national、traffic 这类中等词都留在词库里（13.0 开发版的旧规则「小学词表 或 初中词表 + 前 1000」隐藏了 655 个，误伤了它们）。已经学过的基础词照常复习，不丢记录。
 
 ### 字体
 | 文件 | 来源 | 许可 |
