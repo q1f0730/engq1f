@@ -136,7 +136,6 @@ function MatchGame({ index }: { index: WordIndex }) {
       {phase === "intro" && (
         <GameIntro
           testid="match-intro"
-          icon={<Puzzle className="size-10" />}
           title="配对消消乐"
           big={`${MATCH_PAIRS} 对一轮 · 60 秒`}
           desc="左边英文、右边中文，点一个再点它的意思，配对成功就消掉。一轮清空马上换下一轮，看 60 秒能消多少。"
@@ -146,51 +145,53 @@ function MatchGame({ index }: { index: WordIndex }) {
           onStart={start}
           onQuit={quit}
           startLabel="开始计时"
+          specimen={<MatchSpecimen />}
         />
       )}
       {phase === "run" && (
         <>
-          <div className="flex shrink-0 items-center gap-2 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
-              <X className="size-5" />
+          <div className="flex shrink-0 items-center gap-3 pt-3">
+            <button type="button" onClick={quit} aria-label="退出" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
+              <X className="size-[22px]" />
             </button>
-            <div className="flex-1">
-              <div className="h-2 overflow-hidden rounded-[2px] bg-rule">
-                <div className={cn("h-full rounded-full transition-[width] duration-200", left < 10000 ? "bg-forget" : "bg-ink")} style={{ width: `${(left / MATCH_MS) * 100}%` }} />
-              </div>
-            </div>
-            <span className={cn("tnum flex items-center gap-1 rounded-lg px-2.5 py-1 text-[0.8125rem] font-semibold", left < 10000 ? "bg-forget-soft text-forget" : "bg-paper-2")} data-testid="match-timer">
-              <Timer className="size-3.5" />
+            <span className="text-[0.75rem] text-ink-3" data-testid="match-round">
+              第 {round + 1} 轮 · 已消 {score.pairs} 对
+            </span>
+            <span
+              className={cn("tnum ml-auto flex h-9 items-center gap-1.5 border-b-2 px-0.5 font-serif text-[1.375rem] leading-none", left < 10000 ? "border-forget text-forget" : "border-ink text-ink")}
+              data-testid="match-timer"
+            >
+              <Timer className="size-4" />
               {fmtClock(left)}
             </span>
           </div>
-          <div className="mt-3 flex shrink-0 items-end justify-between px-1">
-            <div>
-              <div className="text-xs font-semibold text-ink-3">得分</div>
-              <div className="tnum text-[2.875rem] font-serif leading-none" data-testid="match-score" data-score={score.score}>
+          {/* 剩余时间：一条细线从右往左收短 */}
+          <div className="mt-2 h-[3px] shrink-0 bg-rule" aria-hidden>
+            <div className={cn("h-full origin-left transition-transform duration-200", left < 10000 ? "bg-forget" : "bg-ink")} style={{ transform: `scaleX(${left / MATCH_MS})` }} />
+          </div>
+          <div className="mt-4 flex shrink-0 items-end justify-between">
+            <div className="flex items-baseline gap-2">
+              <span className="text-[0.75rem] text-ink-3">得分</span>
+              <span className="tnum font-serif text-[3rem] leading-[0.85] tracking-[-0.03em]" data-testid="match-score" data-score={score.score}>
                 {score.score}
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-1 text-xs font-semibold text-ink-3">
-              {score.combo >= 2 && (
-                <span key={score.combo} className="pop rounded-lg bg-vague-soft px-2.5 py-0.5 font-semibold text-vague" data-testid="match-combo">
-                  连对 ×{score.combo} · +{MATCH_POINT + comboBonus(score.combo)}
-                </span>
-              )}
-              <span className="tnum" data-testid="match-round">
-                第 {round + 1} 轮 · 已消 {score.pairs} 对
               </span>
             </div>
+            {score.combo >= 2 && (
+              <span key={score.combo} className="pop hl font-serif text-[1.25rem] italic text-ink" data-testid="match-combo">
+                连对 ×{score.combo} · +{MATCH_POINT + comboBonus(score.combo)}
+              </span>
+            )}
           </div>
-          <div key={round} className="card-in mt-4 grid min-h-0 flex-1 grid-cols-2 content-center gap-2.5 pb-6" data-testid="match-board">
-            <div className="flex flex-col gap-2.5">
+          {/* 棋盘：两栏，像词典左页英文、右页中文；中间一条竖细线 */}
+          <div key={round} className="card-in mt-4 grid min-h-0 flex-1 grid-cols-2 content-center gap-x-4 pb-6" data-testid="match-board">
+            <div className="flex flex-col gap-2 border-r border-rule pr-4">
               {data.left.map((w) => (
                 <Tile key={w} testid="match-l" w={w} state={tileState(w, "l", selL, flash, gone)} onClick={() => pickL(w)} en>
                   {w}
                 </Tile>
               ))}
             </div>
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2">
               {data.right.map(([w, m]) => (
                 <Tile key={w} testid="match-r" w={w} state={tileState(w, "r", selR, flash, gone)} onClick={() => pickR(w)}>
                   {m}
@@ -198,7 +199,7 @@ function MatchGame({ index }: { index: WordIndex }) {
               ))}
             </div>
           </div>
-          <p className="shrink-0 pb-4 text-center text-xs text-ink-3">点英文，再点它的中文意思</p>
+          <p className="shrink-0 pb-4 text-center text-[0.75rem] text-ink-3">点英文，再点它的中文意思</p>
         </>
       )}
       {phase === "done" && (
@@ -243,16 +244,40 @@ function Tile({ w, state, onClick, children, en, testid }: { w: string; state: T
       data-state={state}
       aria-pressed={state === "sel"}
       className={cn(
-        "flex h-[68px] items-center justify-center rounded-2xl border-2 px-2 text-center transition-all duration-200",
-        en ? "font-serif text-[1.375rem] leading-tight" : "text-[0.9375rem] font-semibold leading-tight",
-        state === "idle" && "press border-rule bg-paper-3 hover:border-ink",
-        state === "sel" && "-translate-y-0.5 border-ink bg-mark-soft text-ink",
-        state === "ok" && "scale-95 border-know bg-know-soft text-know",
-        state === "bad" && "shake border-forget bg-forget-soft text-forget",
-        state === "gone" && "pointer-events-none scale-90 border-transparent bg-transparent opacity-0",
+        "relative flex h-[64px] items-center rounded-lg px-3 text-left transition-[transform,opacity,background-color] duration-200",
+        en ? "font-serif text-[1.4375rem] leading-tight" : "text-[0.9375rem] font-medium leading-tight",
+        state === "idle" && "press bg-paper-3 ring-1 ring-rule ring-inset hover:ring-ink",
+        state === "sel" && "bg-mark text-mark-ink ring-[1.5px] ring-ink ring-inset",
+        state === "ok" && "scale-95 bg-know-soft text-know line-through decoration-1",
+        state === "bad" && "shake bg-forget-soft text-forget ring-[1.5px] ring-forget ring-inset",
+        state === "gone" && "pointer-events-none scale-90 opacity-0",
       )}
     >
       <span className="line-clamp-2 break-all">{children}</span>
     </button>
+  );
+}
+
+/** 开始页的样张：两栏三对，一对已经划了荧光笔（选中），一对配好了（划掉） */
+function MatchSpecimen() {
+  const L = ["absorb", "rapid", "vital"];
+  const R = ["快速的", "吸收", "至关重要的"];
+  return (
+    <div className="grid grid-cols-2 gap-x-4 rounded-xl bg-paper-3 p-4 ring-1 ring-rule ring-inset">
+      <div className="flex flex-col gap-1.5 border-r border-rule pr-4">
+        {L.map((w, k) => (
+          <span key={w} className={cn("flex h-10 items-center rounded-md px-2.5 font-serif text-[1.25rem]", k === 0 ? "bg-mark text-mark-ink" : k === 1 ? "text-know line-through decoration-1" : "ring-1 ring-rule ring-inset")}>
+            {w}
+          </span>
+        ))}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {R.map((m, k) => (
+          <span key={m} className={cn("flex h-10 items-center rounded-md px-2.5 text-[0.875rem] font-medium", k === 0 ? "text-know line-through decoration-1" : "ring-1 ring-rule ring-inset")}>
+            {m}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
