@@ -10,16 +10,20 @@ import { batchKill, batchReset, getState, removeFromList, restoreSnapshot, snaps
 import { cn } from "@/lib/utils";
 import { BottomSheet } from "./sheet";
 import { ListPicker } from "./lists";
+import { actClass } from "./kit";
 
-const chip = "flex h-9 shrink-0 items-center gap-1 rounded-lg px-3 text-[0.8125rem] font-semibold transition";
+/** 12.0 · 工具行里的一项：纯文字，选中的值划荧光笔；不再是灰色药丸 */
+const chip = "press flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap text-[0.8125rem] font-medium";
 
 /** 原生下拉做成的筹码：手机上弹系统选择器 */
 function SelectChip<T extends string>({ value, options, labels, onChange, icon, testid, active, idle }: { value: T; options: T[]; labels: Record<T, string>; onChange: (v: T) => void; icon: ReactNode; testid: string; active: boolean; idle: string }) {
   return (
-    <label className={cn(chip, "relative", active ? "bg-foreground text-background" : "bg-paper-2 text-ink-3")}>
-      {icon}
-      <span data-testid={`${testid}-label`}>{active ? labels[value] : idle}</span>
-      <ChevronDown className="size-3.5 opacity-70" />
+    <label className={cn(chip, "relative cursor-pointer", active ? "text-ink" : "text-ink-3 hover:text-ink")}>
+      <span className="text-[0.75rem] font-normal text-ink-3">{icon}</span>
+      <span data-testid={`${testid}-label`} className={cn(active && "hl font-semibold")}>
+        {active ? labels[value] : idle}
+      </span>
+      <ChevronDown className="size-3.5 opacity-60" />
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
@@ -64,20 +68,45 @@ export function ToolRow({
   selecting: boolean;
 }) {
   return (
-    <div className="no-scrollbar -mx-4 mb-2 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:px-0" data-testid="tool-row">
-      <SelectChip value={sort} options={SORT_KEYS} labels={SORT_LABEL} onChange={setSort} icon={<ArrowUpDown className="size-3.5" />} testid="sort-select" active={sort !== "default"} idle="排序" />
-      <SelectChip value={pos} options={POS_KEYS} labels={POS_LABEL} onChange={setPos} icon={<Layers className="size-3.5" />} testid="pos-select" active={pos !== "any"} idle="词性" />
+    /* 一行「排序：默认 ▾ · 词性：全部 ▾ · 仅核心」，右边两个图标键（多选、导出），像词典凡例 */
+    <div className="no-scrollbar -mx-4 mt-2 flex items-center gap-4 overflow-x-auto border-b border-rule px-4 md:mx-0 md:px-0" data-testid="tool-row">
+      <SelectChip value={sort} options={SORT_KEYS} labels={SORT_LABEL} onChange={setSort} icon="排序" testid="sort-select" active={sort !== "default"} idle="默认" />
+      <SelectChip value={pos} options={POS_KEYS} labels={POS_LABEL} onChange={setPos} icon="词性" testid="pos-select" active={pos !== "any"} idle="全部" />
       {showCore && (
-        <button type="button" role="switch" aria-checked={coreOnly} data-testid="core-only" onClick={() => setCoreOnly(!coreOnly)} className={cn(chip, coreOnly ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3")}>
-          <GraduationCap className="size-3.5" /> 仅核心
+        <button type="button" role="switch" aria-checked={coreOnly} data-testid="core-only" onClick={() => setCoreOnly(!coreOnly)} className={cn(chip, coreOnly ? "text-ink" : "text-ink-3 hover:text-ink")}>
+          <span
+            aria-hidden
+            className={cn("grid size-4 place-items-center rounded-[3px] text-[0.625rem] font-bold", coreOnly ? "bg-ink text-paper-3" : "border-[1.5px] border-rule-strong")}
+          >
+            {coreOnly ? "✓" : ""}
+          </span>
+          仅核心
         </button>
       )}
-      <button type="button" aria-label="多选" title="多选（也可以长按单词）" data-testid="select-mode" aria-pressed={selecting} onClick={onSelect} className={cn(chip, "ml-auto w-9 justify-center px-0", selecting ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3 hover:text-ink")}>
-        <CheckSquare className="size-4" />
-      </button>
-      <button type="button" aria-label="导出 / 打印" title="导出 CSV、Anki 或打印" data-testid="export-open" disabled={!canExport} onClick={onExport} className={cn(chip, "w-9 justify-center px-0 bg-paper-2 text-ink-3 hover:text-ink disabled:opacity-40")}>
-        <Download className="size-4" />
-      </button>
+      <span className="ml-auto flex shrink-0 items-center">
+        <button
+          type="button"
+          aria-label="多选"
+          title="多选（也可以长按单词）"
+          data-testid="select-mode"
+          aria-pressed={selecting}
+          onClick={onSelect}
+          className={cn("press grid size-10 place-items-center rounded-md", selecting ? "bg-ink text-paper-3" : "text-ink-2 hover:bg-paper-2 hover:text-ink")}
+        >
+          <CheckSquare className="size-[18px]" />
+        </button>
+        <button
+          type="button"
+          aria-label="导出 / 打印"
+          title="导出 CSV、Anki 或打印"
+          data-testid="export-open"
+          disabled={!canExport}
+          onClick={onExport}
+          className="press grid size-10 place-items-center rounded-md text-ink-2 hover:bg-paper-2 hover:text-ink disabled:opacity-40"
+        >
+          <Download className="size-[18px]" />
+        </button>
+      </span>
     </div>
   );
 }
@@ -116,7 +145,7 @@ export function AlphaRail({ have, onJump }: { have: Set<string>; onJump: (letter
         role="navigation"
         aria-label="字母索引"
         data-testid="alpha-rail"
-        className="fixed right-0.5 top-[calc(50%+4.5rem)] z-30 flex -translate-y-1/2 touch-none select-none flex-col items-center rounded-lg bg-paper px-0.5 py-1.5 md:right-[max(0.5rem,calc(50%-34rem))]"
+        className="fixed right-0.5 top-[calc(50%+4.5rem)] z-30 flex -translate-y-1/2 touch-none select-none flex-col items-center border-l border-rule bg-paper/90 py-1 pl-0.5 md:right-[max(0.5rem,calc(50%-34rem))]"
         onPointerDown={(e) => {
           (e.target as Element).releasePointerCapture?.(e.pointerId);
           e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -127,13 +156,25 @@ export function AlphaRail({ have, onJump }: { have: Set<string>; onJump: (letter
         onPointerCancel={end}
       >
         {LETTERS.map((L) => (
-          <span key={L} data-testid={`alpha-${L}`} className={cn("grid h-[15px] w-5 place-items-center text-[0.6562rem] font-semibold leading-none", have.has(L) ? "text-ink" : "text-ink-3", bubble === L && "rounded-full bg-ink text-paper-3")}>
+          <span
+            key={L}
+            data-testid={`alpha-${L}`}
+            className={cn(
+              "grid h-[15px] w-5 place-items-center font-serif text-[0.75rem] leading-none",
+              have.has(L) ? "text-ink" : "text-rule-strong",
+              bubble === L && "rounded-[2px] bg-mark text-mark-ink",
+            )}
+          >
             {L}
           </span>
         ))}
       </div>
       {bubble && (
-        <div className="pointer-events-none fixed left-1/2 top-1/2 z-40 grid size-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-2xl bg-foreground/85 font-display text-[2.5rem] font-semibold text-background shadow-2xl" data-testid="alpha-bubble">
+        /* 跳字母时屏幕中间一个大写字母：衬线、纸色底、细线框——像词典书口上的拇指索引 */
+        <div
+          className="float-shell pointer-events-none fixed left-1/2 top-1/2 z-40 grid size-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-2xl font-serif text-[3.5rem] leading-none text-ink"
+          data-testid="alpha-bubble"
+        >
           {bubble}
         </div>
       )}
@@ -160,19 +201,19 @@ export function SelectBar({ selected, total, onAll, onClear, onExit, listId }: {
   if (listId) actions.push({ key: "unlist", label: "移出词单", icon: <ListMinus className="size-[18px]" />, cls: "text-forget", on: () => run("已移出词单", () => removeFromList(listId, selected)) });
   return (
     <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 px-3 pb-2 md:bottom-4" data-testid="select-bar">
-      <div className="mx-auto max-w-xl rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-2">
-        <div className="flex items-center gap-2 px-2 pb-1.5 pt-0.5">
-          <span className="tnum text-sm font-semibold" data-testid="select-count">
-            已选 {n} / {total}
+      <div className="float-shell mx-auto max-w-xl rounded-2xl px-2 pb-2 pt-1">
+        <div className="flex items-center gap-3 border-b border-rule px-2 py-1.5">
+          <span className="tnum text-[0.875rem] font-semibold" data-testid="select-count">
+            已选 <span className="font-serif text-[1.25rem] font-normal">{n}</span> / {total}
           </span>
-          <button type="button" data-testid="select-all" onClick={n === total ? onClear : onAll} className="rounded-[3px] bg-paper-2 px-2.5 py-1 text-xs font-semibold text-ink-3 hover:text-ink">
+          <button type="button" data-testid="select-all" onClick={n === total ? onClear : onAll} className={actClass("quiet") + " h-9 text-[0.8125rem]"}>
             {n === total ? "全不选" : "全选"}
           </button>
-          <button type="button" aria-label="退出多选" data-testid="select-exit" onClick={onExit} className="ml-auto grid size-8 place-items-center rounded-full bg-paper-2 text-ink-3">
+          <button type="button" aria-label="退出多选" data-testid="select-exit" onClick={onExit} className="press ml-auto grid size-10 place-items-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink">
             <X className="size-4" />
           </button>
         </div>
-        <div className={cn("grid gap-1", actions.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
+        <div className={cn("mt-1 grid", actions.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
           {actions.map((a) => (
             <button
               key={a.key}
@@ -180,7 +221,7 @@ export function SelectBar({ selected, total, onAll, onClear, onExit, listId }: {
               data-testid={`bulk-${a.key}`}
               disabled={!n}
               onClick={a.on}
-              className={cn("press flex flex-col items-center gap-1 rounded-2xl py-2 text-[0.7188rem] font-semibold hover:bg-paper-2 disabled:opacity-35", a.cls)}
+              className={cn("press flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium hover:bg-paper-2 disabled:opacity-35", a.cls)}
             >
               {a.icon}
               {a.label}
@@ -212,42 +253,39 @@ export function ExportSheet({ open, onOpenChange, words, title }: { open: boolea
     };
   }, [printing]);
 
-  const row = "press flex w-full items-center gap-3 rounded-2xl bg-paper-2 px-3.5 py-3 text-left hover:bg-paper-2";
+  const row = "press flex min-h-16 w-full items-center gap-3 border-b border-rule py-3 text-left hover:bg-paper-2/60";
   return (
     <>
       <BottomSheet open={open} onOpenChange={onOpenChange} title={`导出「${title}」· ${words.length} 词`} testid="export-sheet">
-        <div className="space-y-2 pt-1">
-          <p className="pb-1 text-xs text-ink-3">导出的是当前看到的列表（已按筛选、搜索和排序）。</p>
+        <p className="pb-3 text-[0.8125rem] text-ink-3">导出的是当前看到的列表（已按筛选、搜索和排序）。</p>
+        {/* 三种格式排成一张小目录：格式名 · 用途 · 右边一个「下载 / 打印」 */}
+        <div className="border-t border-ink">
           <button type="button" className={row} data-testid="export-csv" onClick={() => download(`${name}.csv`, toCSV(words, accent), "text/csv;charset=utf-8")}>
-            <span className="grid size-8 shrink-0 place-items-center text-ink-2">
-              <FileSpreadsheet className="size-5" />
-            </span>
+            <span className="w-14 shrink-0 font-serif text-[1.375rem] italic leading-none">.csv</span>
             <span className="min-w-0 flex-1">
               <span className="block text-[0.9375rem] font-semibold">CSV 表格</span>
-              <span className="block text-xs text-ink-3">单词, 音标, 释义 · Excel / WPS 直接打开</span>
+              <span className="block text-[0.75rem] text-ink-3">单词, 音标, 释义 · Excel / WPS 直接打开</span>
             </span>
+            <Download className="size-4 shrink-0 text-ink-3" />
           </button>
           <button type="button" className={row} data-testid="export-anki" onClick={() => download(`${name}-anki.txt`, toAnki(words, accent), "text/tab-separated-values;charset=utf-8")}>
-            <span className="grid size-8 shrink-0 place-items-center text-ink-2">
-              <Layers className="size-5" />
-            </span>
+            <span className="w-14 shrink-0 font-serif text-[1.375rem] italic leading-none">.tsv</span>
             <span className="min-w-0 flex-1">
               <span className="block text-[0.9375rem] font-semibold">Anki 卡组（TSV）</span>
-              <span className="block text-xs text-ink-3">正面单词，背面音标 + 释义 · Anki「导入文件」</span>
+              <span className="block text-[0.75rem] text-ink-3">正面单词，背面音标 + 释义 · Anki「导入文件」</span>
             </span>
+            <Download className="size-4 shrink-0 text-ink-3" />
           </button>
-          <div className="rounded-2xl bg-paper-2 p-3.5">
-            <div className="flex items-center gap-3">
-              <span className="grid size-8 shrink-0 place-items-center text-ink-2">
-                <Printer className="size-5" />
-              </span>
+          <div className="py-4">
+            <div className="flex items-baseline gap-3">
+              <span className="w-14 shrink-0 font-serif text-[1.375rem] italic leading-none">A4</span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[0.9375rem] font-semibold">打印词单</span>
-                <span className="block text-xs text-ink-3">A4 三栏紧凑排版，可存为 PDF</span>
+                <span className="block text-[0.75rem] text-ink-3">A4 三栏紧凑排版，可存为 PDF</span>
               </span>
             </div>
-            <label className="mt-3 flex items-center gap-2.5 text-sm">
-              <input type="checkbox" checked={hideMeaning} onChange={(e) => setHideMeaning(e.target.checked)} data-testid="print-hide" className="size-4 accent-[var(--primary)]" />
+            <label className="ml-[4.25rem] mt-3 flex min-h-9 items-center gap-2.5 text-[0.875rem]">
+              <input type="checkbox" checked={hideMeaning} onChange={(e) => setHideMeaning(e.target.checked)} data-testid="print-hide" className="size-4 accent-[var(--ink)]" />
               隐藏释义，做成自测纸
             </label>
             <button
@@ -257,7 +295,7 @@ export function ExportSheet({ open, onOpenChange, words, title }: { open: boolea
                 onOpenChange(false);
                 setPrinting(true);
               }}
-              className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-ink text-sm font-semibold text-paper-3"
+              className={actClass("primary") + " mt-3 h-11 w-full"}
             >
               <Printer className="size-4" /> 打印 {words.length} 词
             </button>
