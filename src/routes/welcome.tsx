@@ -68,18 +68,22 @@ function Welcome() {
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-5 pb-safe pt-safe" data-testid="welcome" data-step={step}>
       <div className="flex h-14 items-center justify-between">
         {step > 0 ? (
-          <button type="button" onClick={() => setStep(step - 1)} className="grid size-10 place-items-center rounded-full hover:bg-paper-2" aria-label="上一步">
+          <button type="button" onClick={() => setStep(step - 1)} className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink" aria-label="上一步">
             <ArrowLeft className="size-5" />
           </button>
         ) : (
-          <span />
+          <span className="w-11" />
         )}
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map((k) => (
-            <span key={k} className={cn("h-1.5 rounded-[2px] transition-[width,background-color] duration-300 ease-[var(--ease-spring)]", k === step ? "w-6 bg-ink" : k < step ? "w-3 bg-ink-3" : "w-3 bg-rule")} />
+        {/* 12.0 · 步骤：「1 欢迎 · 2 考试 · 3 节奏」，当前这步的名字划荧光笔 */}
+        <ol className="flex items-baseline gap-3 text-[0.75rem]" aria-label="步骤">
+          {["欢迎", "考试", "节奏"].map((name, k) => (
+            <li key={name} className={cn("flex items-baseline gap-1 transition-colors", k === step ? "font-semibold text-ink" : k < step ? "text-ink-2" : "text-ink-3")} aria-current={k === step ? "step" : undefined}>
+              <span className="tnum font-serif text-[0.9375rem] font-normal">{k + 1}</span>
+              <span className={cn(k === step && "hl")}>{name}</span>
+            </li>
           ))}
-        </div>
-        <span className="w-10" />
+        </ol>
+        <span className="w-11" />
       </div>
 
       {step === 0 && (
@@ -104,7 +108,7 @@ function Welcome() {
             <p className="mt-4 max-w-[24em] text-[0.9375rem] leading-relaxed text-ink-2">
               {sizes.all} 个四级词汇，按你的考试日期排好每天学多少。忘了的词明天再来，记住的词越隔越久。
             </p>
-            <ul className="mt-6 flex flex-wrap gap-x-1 gap-y-1.5 text-[0.8125rem] text-ink-3">
+            <ul className="mt-6 grid grid-cols-2 gap-x-5 border-t border-rule text-[0.8125rem] text-ink-2">
               <Feature icon={<ShieldCheck className="size-4" />} label="不用注册" first />
               <Feature icon={<WifiOff className="size-4" />} label="离线可用" />
               <Feature icon={<Zap className="size-4" />} label="秒开无广告" />
@@ -119,7 +123,7 @@ function Welcome() {
             type="button"
             data-testid="welcome-restore"
             onClick={() => file.current?.click()}
-            className="-mt-2 mb-3 flex h-11 items-center justify-center gap-2 text-sm font-semibold text-ink-3"
+            className="press -mt-2 mb-3 flex h-11 items-center justify-center gap-2 text-[0.875rem] font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink"
           >
             <FileUp className="size-4" /> 我有备份，恢复记录
           </button>
@@ -153,7 +157,8 @@ function Welcome() {
         <div className="card-in flex flex-1 flex-col">
           <h1 className="mt-4 text-[2rem] font-semibold leading-tight tracking-[-0.025em]">什么时候考四级？</h1>
           <p className="mt-1 text-[0.9375rem] text-ink-3">按考试日期安排每天的量，保证考前学完、留出复习时间。</p>
-          <div className="mt-5 grid grid-cols-3 gap-2" data-testid="onb-exam">
+          {/* 考试日期：三行目录条目，选中的一行左边墨线 + 日期划荧光笔 */}
+          <div className="mt-6 border-t border-ink" data-testid="onb-exam">
             {exams.map((e, k) => (
               <button
                 key={e.day}
@@ -161,25 +166,28 @@ function Welcome() {
                 data-testid={`onb-exam-${k}`}
                 aria-pressed={exam === e.day}
                 onClick={() => setExam(e.day)}
-                className={cn("rounded-2xl border px-1 py-2.5 text-center transition", exam === e.day ? "border-ink bg-mark-soft text-ink" : "border-rule bg-paper-3 text-ink-3")}
+                className={cn("press relative flex min-h-14 w-full items-baseline gap-3 border-b border-rule py-3 pl-4 pr-1 text-left", exam === e.day ? "text-ink" : "text-ink-3 hover:text-ink")}
               >
-                <span className="tnum block text-[0.9375rem] font-semibold">{fmtDate(e.day)}</span>
-                <span className="block text-[0.6875rem] opacity-80">
+                {exam === e.day && <span className="absolute inset-y-2.5 left-0 w-[3px] bg-ink" aria-hidden />}
+                <span className={cn("tnum font-serif text-[1.625rem] leading-none", exam === e.day && "hl")}>{fmtDate(e.day)}</span>
+                <span className="text-[0.75rem]">
                   {e.day.slice(0, 4)} · {e.official ? "官方" : "预估"}
                 </span>
+                {exam === e.day && <Check className="ml-auto size-4 self-center" strokeWidth={2.4} />}
               </button>
             ))}
             <label
               className={cn(
-                "relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border px-1 py-2.5 text-center transition",
-                !exams.some((e) => e.day === exam) ? "border-ink bg-mark-soft text-ink" : "border-rule bg-paper-3 text-ink-3",
+                "press relative flex min-h-14 w-full cursor-pointer items-baseline gap-3 border-b border-rule py-3 pl-4 pr-1",
+                !exams.some((e) => e.day === exam) ? "text-ink" : "text-ink-3 hover:text-ink",
               )}
             >
-              <span className="flex items-center gap-1 text-sm font-semibold">
-                <CalendarDays className="size-3.5" />
+              {!exams.some((e) => e.day === exam) && <span className="absolute inset-y-2.5 left-0 w-[3px] bg-ink" aria-hidden />}
+              <span className={cn("leading-none", !exams.some((e) => e.day === exam) ? "hl tnum font-serif text-[1.625rem]" : "text-[0.9375rem] font-medium")}>
                 {!exams.some((e) => e.day === exam) ? fmtDate(exam) : "其他日期"}
               </span>
-              <span className="block text-[0.6875rem] opacity-80">自己选</span>
+              <span className="text-[0.75rem]">自己选</span>
+              <CalendarDays className="ml-auto size-4 self-center" />
               <input
                 type="date"
                 data-testid="onb-exam-custom"
@@ -191,11 +199,11 @@ function Welcome() {
               />
             </label>
           </div>
-          <p className="mt-2 text-[0.8125rem] font-semibold text-ink" data-testid="onb-exam-left">
-            还有 {examLeft} 天
+          <p className="tnum mt-3 text-[0.875rem] text-ink-2" data-testid="onb-exam-left">
+            还有 <b className="font-serif text-[1.375rem] font-normal text-ink">{examLeft}</b> 天
           </p>
-          <div className="mb-2 mt-5 text-xs font-semibold text-ink-3">选择词书</div>
-          <div className="space-y-2.5">
+          <div className="mb-2 mt-8 text-[0.8125rem] font-medium text-ink-2">选择词书</div>
+          <div className="border-t border-ink">
             {(["core", "all"] as Book[]).map((b) => {
               const sz = b === "all" ? sizes.all : sizes.core;
               const p = sprintPlan(day, exam, sz);
@@ -241,7 +249,8 @@ function Welcome() {
             )}
           </p>
           {!soon && (
-          <div className="mt-5 grid grid-cols-3 gap-2.5" data-testid="daily-pick">
+          {/* 每天几个：三栏，像一张价目表；推荐那一栏顶上一道墨线写「推荐」 */}
+          <div className="mt-6 grid grid-cols-3 border-y border-rule" data-testid="daily-pick">
             {options.map((n) => {
               const sp = spareOf(size, n);
               return (
@@ -251,22 +260,26 @@ function Welcome() {
                   onClick={() => setDaily(n)}
                   data-testid={`daily-${n}`}
                   data-rec={n === bookPlan.daily ? 1 : 0}
-                  className={cn("relative rounded-2xl border py-4 transition", curDaily === n ? "border-ink bg-mark-soft" : "border-rule bg-paper-3")}
+                  aria-pressed={curDaily === n}
+                  className={cn("press relative border-l border-rule px-2 pb-3.5 pt-5 text-left first:border-l-0", curDaily === n ? "bg-paper-3" : "hover:bg-paper-2/60")}
                 >
-                  <div className={cn("tnum text-[2.375rem] font-serif leading-none", curDaily === n ? "text-ink" : "")}>{n}</div>
-                  <div className={cn("mt-1.5 text-[0.6875rem]", sp < 0 && !cap && !soon ? "font-semibold text-forget" : "text-ink-3")}>{cap || (soon && sp < 0) ? `考前学 ${reachOf(n)} 个` : sp < 0 ? "考后才学完" : `考前 ${sp} 天学完`}</div>
-                  {n === bookPlan.daily && <span className="absolute -top-2 right-2 rounded-[3px] bg-ink px-2 py-0.5 text-[0.625rem] font-semibold text-paper-3">推荐</span>}
+                  {n === bookPlan.daily && <span className="absolute left-2 top-1.5 text-[0.625rem] font-semibold text-ink">推荐</span>}
+                  {curDaily === n && <span className="absolute inset-x-0 -top-px h-[2px] bg-ink" aria-hidden />}
+                  <div className="tnum font-serif text-[2.5rem] leading-none">
+                    <span className={cn(curDaily === n && "hl")}>{n}</span>
+                  </div>
+                  <div className={cn("mt-2 text-[0.6875rem] leading-snug", sp < 0 && !cap && !soon ? "font-semibold text-forget" : "text-ink-3")}>{cap || (soon && sp < 0) ? `考前学 ${reachOf(n)} 个` : sp < 0 ? "考后才学完" : `考前 ${sp} 天学完`}</div>
                 </button>
               );
             })}
           </div>
           )}
           {!soon && (
-          <div className="mt-5 rounded-2xl bg-paper-2 p-5" data-testid="plan-preview" data-spare={spare}>
+          <div className="mt-6 border-l-2 border-mark py-1 pl-4" data-testid="plan-preview" data-spare={spare}>
             <div className="text-[0.8125rem] text-ink-3">按这个节奏</div>
             {cap || soon ? (
               <>
-                <div className="mt-1 text-xl font-semibold">
+                <div className="mt-1 text-[1.25rem] font-semibold tracking-[-0.01em]">
                   考前能学 <span className="text-ink">{reachOf(curDaily)}</span> / {size} 个{bookName}
                 </div>
                 <div className="mt-1 text-[0.8125rem] font-semibold text-ink-3" data-testid="plan-exam">
@@ -275,7 +288,7 @@ function Welcome() {
               </>
             ) : (
               <>
-                <div className="mt-1 text-xl font-semibold">
+                <div className="mt-1 text-[1.25rem] font-semibold tracking-[-0.01em]">
                   {days} 天，<span className="text-ink">{fmtDate(finish, true)}</span> 学完
                 </div>
                 <div className={cn("mt-1 text-[0.8125rem] font-semibold", spare < 0 ? "text-forget" : "text-know")} data-testid="plan-exam">
@@ -296,9 +309,9 @@ function Welcome() {
             type="button"
             onClick={() => finishSetup("/test")}
             data-testid="welcome-test"
-            className="mb-4 flex h-12 items-center justify-center gap-2 text-sm font-semibold text-ink-3"
+            className="press mb-4 flex h-12 items-center justify-center gap-2 text-[0.875rem] font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink"
           >
-            <Gauge className="size-4" /> 先测一下词汇量（3 分钟）
+            先测一下词汇量（3 分钟）
           </button>
         </div>
       )}
@@ -306,11 +319,11 @@ function Welcome() {
   );
 }
 
-/** 12.0 · 卖点不是 2×2 图标卡片：一行字，用斜线隔开 */
-function Feature({ label, first }: { icon?: React.ReactNode; label: string; first?: boolean }) {
+/** 12.0 · 卖点：两栏四条，细线分隔，前面一个小方块——不是 2×2 图标卡片 */
+function Feature({ label }: { icon?: React.ReactNode; label: string; first?: boolean }) {
   return (
-    <li className="flex items-center gap-1">
-      {!first && <span className="text-rule-strong" aria-hidden>/</span>}
+    <li className="flex min-h-9 items-center gap-2 border-b border-rule">
+      <span className="size-1.5 shrink-0 rounded-[1px] bg-ink-3" aria-hidden />
       {label}
     </li>
   );
@@ -331,23 +344,16 @@ function Primary({ children, onClick, testid }: { children: React.ReactNode; onC
 
 function Choice({ active, onClick, title, sub, testid, badge }: { active: boolean; onClick: () => void; title: string; sub: string; testid?: string; badge?: string }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-testid={testid}
-      className={cn(
-        "press flex w-full items-center gap-4 rounded-xl p-4 text-left ring-inset",
-        active ? "bg-paper-3 ring-2 ring-ink" : "bg-paper-3 ring-1 ring-rule hover:ring-rule-strong",
-      )}
-    >
+    <button type="button" onClick={onClick} data-testid={testid} aria-pressed={active} className={cn("press relative flex min-h-16 w-full items-center gap-4 border-b border-rule py-3.5 pl-4 pr-1 text-left", active ? "bg-paper-3" : "hover:bg-paper-2/60")}>
+      {active && <span className="absolute inset-y-2.5 left-0 w-[3px] bg-ink" aria-hidden />}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-[1.0625rem] font-semibold">
           {title}
-          {badge && <span className="rounded-[3px] bg-ink px-2 py-0.5 text-[0.625rem] font-semibold text-paper-3">{badge}</span>}
+          {badge && <span className="rounded-[2px] bg-mark px-1.5 py-0.5 text-[0.625rem] font-semibold text-mark-ink">{badge}</span>}
         </div>
-        <div className="mt-0.5 text-[0.8125rem] text-ink-3">{sub}</div>
+        <div className="mt-1 text-[0.8125rem] leading-snug text-ink-3">{sub}</div>
       </div>
-      <span className={cn("grid size-6 place-items-center rounded-full border-2", active ? "border-ink bg-ink text-paper-3" : "border-rule")}>
+      <span className={cn("grid size-5 shrink-0 place-items-center rounded-[3px]", active ? "bg-ink text-paper-3" : "border-[1.5px] border-rule-strong")}>
         {active && <Check className="size-3.5" strokeWidth={3} />}
       </span>
     </button>
