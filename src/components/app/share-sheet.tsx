@@ -53,7 +53,7 @@ export function ShareSheet({ open, onOpenChange, info }: { open: boolean; onOpen
             )}
           >
             <span className="relative grid size-8 shrink-0 place-items-center rounded-xl ring-1 ring-black/10" style={{ background: t.swatch }}>
-              {tpl === t.id && <Check className={cn("size-4", t.id === "paper" ? "text-[#c7362a]" : "text-white")} strokeWidth={3} />}
+              {tpl === t.id && <Check className={cn("size-4", t.id === "paper" ? "text-[#c7362a]" : "text-ink")} strokeWidth={3} />}
             </span>
             <span className="truncate">{t.name}</span>
           </button>
@@ -70,7 +70,7 @@ export function ShareSheet({ open, onOpenChange, info }: { open: boolean; onOpen
             type="button"
             onClick={share}
             data-testid="share-native"
-            className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-2xl bg-ink font-semibold text-paper-3"
+            className="press flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
           >
             <Share2 className="size-4" /> 分享到微信 / QQ
           </button>

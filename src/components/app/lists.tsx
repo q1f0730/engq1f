@@ -65,7 +65,7 @@ export function ListPicker({ open, onOpenChange, words, onDone }: { open: boolea
                       else addToList(l.id, words);
                     }}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition active:scale-[0.99]",
+                      "press flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left",
                       inIt ? "bg-mark-soft" : "bg-paper-2 hover:bg-paper-2",
                     )}
                   >
@@ -110,7 +110,7 @@ export function ListsOverview({ index }: { index: WordIndex }) {
           setWithStar(false);
           setCreating(true);
         }}
-        className="flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-ink bg-mark-soft px-4 py-3.5 text-left transition active:scale-[0.99] disabled:opacity-50"
+        className="press flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-ink bg-mark-soft px-4 py-3.5 text-left disabled:opacity-50"
       >
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-ink text-paper-3">
           <ListPlus className="size-5" />
@@ -186,7 +186,7 @@ export function ListsOverview({ index }: { index: WordIndex }) {
 function ProgressBar({ p, className }: { p: { total: number; learning: number; mastered: number }; className?: string }) {
   const t = Math.max(1, p.total);
   return (
-    <div className={cn("flex h-1.5 overflow-hidden rounded-full bg-paper-2", className)}>
+    <div className={cn("flex h-1.5 overflow-hidden rounded-[2px] bg-rule", className)}>
       <div className="h-full bg-know" style={{ width: `${(p.mastered / t) * 100}%` }} />
       <div className="h-full bg-vague" style={{ width: `${(p.learning / t) * 100}%` }} />
     </div>
@@ -246,13 +246,13 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
             search={{ mode: "list", list: list.id }}
             data-testid="list-study"
             data-step={g.step}
-            className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20"
+            className="press flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 hover:bg-ink-2"
           >
             <Play className="size-4 shrink-0 fill-current" />
             <span className="truncate">{listStepLabel(g)}</span>
           </Link>
         ) : (
-          <div className="flex h-12 flex-1 items-center justify-center rounded-2xl bg-paper-2 text-sm font-semibold text-ink-3" data-testid="list-study-done">
+          <div className="flex h-12 flex-1 items-center justify-center rounded-lg bg-paper-2 text-sm font-semibold text-ink-3" data-testid="list-study-done">
             {p.total ? "这个词单全部斩完了" : "词单还是空的"}
           </div>
         )}

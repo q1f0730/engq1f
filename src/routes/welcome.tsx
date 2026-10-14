@@ -311,7 +311,7 @@ function Primary({ children, onClick, testid }: { children: React.ReactNode; onC
       type="button"
       onClick={onClick}
       data-testid={testid}
-      className="my-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-[1.0625rem] font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
+      className="press my-4 flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-ink text-[1.0625rem] font-semibold text-paper-3 hover:bg-ink-2"
     >
       {children}
     </button>

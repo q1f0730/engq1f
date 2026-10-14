@@ -43,7 +43,7 @@ export default function WordExtra({ word, onOpen }: { word: Word; onOpen: (w: Wo
                           e.stopPropagation();
                           open(w);
                         }}
-                        className="font-display rounded-lg bg-paper-3 px-2.5 py-1 text-sm font-semibold ring-1 ring-rule transition hover:ring-ink active:scale-95"
+                        className="press font-display rounded-lg bg-paper-3 px-2.5 py-1 text-sm font-semibold ring-1 ring-rule hover:ring-ink"
                       >
                         {w}
                       </button>
@@ -70,7 +70,7 @@ export default function WordExtra({ word, onOpen }: { word: Word; onOpen: (w: Wo
                     e.stopPropagation();
                     open(w);
                   }}
-                  className="min-w-0 rounded-xl bg-paper-2 px-3 py-2 text-left transition hover:bg-paper-2 active:scale-[0.98]"
+                  className="press min-w-0 rounded-xl bg-paper-2 px-3 py-2 text-left hover:bg-paper-2"
                 >
                   <span className="font-display block truncate text-[0.9375rem] font-semibold">
                     <span className="text-ink-3">{w.slice(0, prefix)}</span>

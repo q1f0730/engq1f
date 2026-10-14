@@ -673,7 +673,7 @@ function AdviceCard({
                 {advice.gap} 天没见，积压了 {advice.backlog} 个复习。分 {advice.days} 天清完，每天 {advice.perDay} 个以内，这几天新词暂停。
               </div>
             </div>
-            <button type="button" aria-label="不用了" data-testid="recover-dismiss" onClick={() => dismissRecover(day)} className="-mr-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+            <button type="button" aria-label="不用了" data-testid="recover-dismiss" onClick={() => dismissRecover(day)} className="press -mr-1 -mt-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
               <X className="size-4" />
             </button>
           </div>
@@ -687,7 +687,7 @@ function AdviceCard({
               startRecover(r.cards, day, r.until, r.days, per);
               toast.success(`恢复计划开始：${r.days} 天清完积压`, { description: `今天先复习 ${Math.min(advice.perDay, advice.backlog)} 个` });
             }}
-            className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-sm font-semibold text-paper-3 shadow-primary/20 transition active:scale-[0.98]"
+            className="press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2"
           >
             一键恢复：{advice.days} 天清完积压
           </button>
@@ -706,7 +706,7 @@ function AdviceCard({
           title="昨天漏打卡了"
           sub={`用 1 张补卡补上 → 连续 ${patchedStreak} 天 · 还有 ${st.makeup} 张`}
           action={
-            <button type="button" data-testid="makeup-use" onClick={onPatch} className="shrink-0 rounded-lg bg-vague px-3.5 py-2 text-[0.8125rem] font-semibold text-white dark:text-[oklch(0.2_0.03_80)]">
+            <button type="button" data-testid="makeup-use" onClick={onPatch} className="shrink-0 rounded-lg bg-vague px-3.5 py-2 text-[0.8125rem] font-semibold text-paper-3">
               补卡
             </button>
           }
@@ -749,7 +749,7 @@ function AdviceCard({
                   setNewCut(day, advice.to);
                   toast.success(`今天新词减到 ${advice.to} 个`, { description: "只影响今天，明天恢复" });
                 }}
-                className="rounded-lg bg-vague px-3.5 py-2 text-[0.8125rem] font-semibold text-white dark:text-[oklch(0.2_0.03_80)]"
+                className="rounded-lg bg-vague px-3.5 py-2 text-[0.8125rem] font-semibold text-paper-3"
               >
                 减到 {advice.to}
               </button>
@@ -794,7 +794,7 @@ function AdviceCard({
           title="今日复习已清零"
           sub={`还有余力？提前复习明天到期的 ${advice.n} 词`}
           action={
-            <Link to="/study" search={{ mode: "ahead" }} data-testid="start-ahead" className="shrink-0 rounded-lg bg-know px-3.5 py-2 text-[0.8125rem] font-semibold text-white dark:text-[oklch(0.2_0.02_170)]">
+            <Link to="/study" search={{ mode: "ahead" }} data-testid="start-ahead" className="shrink-0 rounded-lg bg-know px-3.5 py-2 text-[0.8125rem] font-semibold text-paper-3">
               提前复习
             </Link>
           }
@@ -876,7 +876,7 @@ function RecoveringCard({ advice, day, st, index }: { advice: Extract<Advice, { 
                 chooseRecoverMix(mixTo);
                 toast.success(`边复习边学新词：每天 ${mixTo} 个`);
               }}
-              className="h-10 rounded-xl bg-vague px-1 text-[0.7812rem] font-semibold text-white dark:text-[oklch(0.2_0.03_80)]"
+              className="h-10 rounded-xl bg-vague px-1 text-[0.7812rem] font-semibold text-paper-3"
             >
               边复习边每天 {mixTo} 个新词
             </button>
@@ -958,7 +958,7 @@ function KeepNote({ daily, finish, late, testid }: { daily: number; finish: stri
 /** 11.5 · 计划这一步的「返回」：回到上一步（系统返回键同样只回上一步，不退出 app） */
 function StepBack({ onBack, testid }: { onBack: () => void; testid: string }) {
   return (
-    <button type="button" data-testid={testid} onClick={onBack} aria-label="返回上一步" className="-ml-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+    <button type="button" data-testid={testid} onClick={onBack} aria-label="返回上一步" className="press -ml-1 -mt-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
       <ChevronLeft className="size-5" />
     </button>
   );
@@ -1002,7 +1002,7 @@ function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advi
       </div>
       {step === "ask" ? (
         <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
-          <button type="button" data-testid="exam-next" onClick={() => setStep("plan")} className="h-11 rounded-2xl bg-ink text-sm font-semibold text-paper-3">
+          <button type="button" data-testid="exam-next" onClick={() => setStep("plan")} className="press h-11 rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2">
             备考下一场（{Number(advice.next.slice(5, 7))} 月）
           </button>
           <button
@@ -1012,7 +1012,7 @@ function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advi
               ackExam(advice.exam, "rest", day);
               toast("先休息一下", { description: `不排新词，每天最多 ${PAUSE_CAP} 个维持复习，休息期间不算断签` });
             }}
-            className="h-11 rounded-2xl bg-paper-2 text-sm font-semibold"
+            className="h-11 rounded-lg bg-paper-2 text-sm font-semibold"
           >
             先休息
           </button>
@@ -1026,7 +1026,7 @@ function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advi
               ackExam(advice.exam, "next", day, left === 0 ? undefined : { book: rec.book, daily: recDaily });
               toast.success(`改为备考 ${fmtDate(advice.next, true)}`, { description: left === 0 ? undefined : `${bookName}，每天 ${recDaily} 个` });
             }}
-            className="h-11 rounded-2xl bg-ink text-sm font-semibold text-paper-3"
+            className="press h-11 rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2"
           >
             应用这个计划
           </button>
@@ -1038,7 +1038,7 @@ function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advi
               ackExam(advice.exam, "next", day, undefined, keepLate);
               toast.success(`改为备考 ${fmtDate(advice.next, true)}`, { description: `保持每天 ${st.settings.daily} 个，可以在「我的」调整` });
             }}
-            className="h-11 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold"
+            className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold"
           >
             保持现在的
           </button>
@@ -1128,7 +1128,7 @@ function SprintCard({ adv, exam, st, day, curFinish }: { adv: ExamAdvice; exam: 
           aria-label="知道了"
           data-testid="sprint-dismiss"
           onClick={() => dismissSprint(day, adv.kind === "cap" && adv.canRaise === null ? exam : undefined, addDays(day, SPRINT_SNOOZE_DAYS))}
-          className="-mr-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2"
+          className="press -mr-1 -mt-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2"
         >
           <X className="size-4" />
         </button>
@@ -1139,7 +1139,7 @@ function SprintCard({ adv, exam, st, day, curFinish }: { adv: ExamAdvice; exam: 
           data-testid="sprint-apply"
           data-core={adv.kind === "switch" ? 1 : 0}
           onClick={apply}
-          className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-ink text-sm font-semibold text-paper-3 shadow-primary/20 transition active:scale-[0.98]"
+          className="press mt-3 flex h-11 w-full items-center justify-center rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2"
         >
           {label}
         </button>
@@ -1215,7 +1215,7 @@ function ExamCard({
             )}
           </div>
         </div>
-        <Link to="/me" aria-label="调整计划" className="grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <Link to="/me" aria-label="调整计划" className="press grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <ChevronRight className="size-5" />
         </Link>
       </div>
@@ -1227,8 +1227,8 @@ function ExamCard({
           </span>
           <span>每天 {daily} 词</span>
         </div>
-        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-paper-2">
-          <div className="h-full rounded-full bg-ink" style={{ width: `${(sum.started / Math.max(1, sum.bookTotal)) * 100}%` }} />
+        <div className="mt-1.5 h-2 overflow-hidden rounded-[2px] bg-rule">
+          <div className="h-full rounded-[2px] bg-ink" style={{ width: `${(sum.started / Math.max(1, sum.bookTotal)) * 100}%` }} />
         </div>
         <p className="mt-2 text-xs text-ink-3" data-testid="finish-date" data-spare={spare} data-mode={sum.examMode ? "exam" : capped ? "cap" : sum.finish > exam && quiet ? quiet : "plan"}>
           {sum.examMode
@@ -1282,7 +1282,7 @@ function PauseCard({ day, exam, index, st, resting }: { day: string; exam: strin
         </span>
       </div>
       {step === "ask" ? (
-        <button type="button" data-testid="pause-end" onClick={() => setStep("plan")} className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-paper-2 text-sm font-semibold">
+        <button type="button" data-testid="pause-end" onClick={() => setStep("plan")} className="mt-3 flex h-11 w-full items-center justify-center rounded-lg bg-paper-2 text-sm font-semibold">
           休息够了，开始备考下一场
         </button>
       ) : (
@@ -1291,11 +1291,11 @@ function PauseCard({ day, exam, index, st, resting }: { day: string; exam: strin
             type="button"
             data-testid="pause-plan-apply"
             onClick={() => resumeFromPause(day, left === 0 ? undefined : { book: rec.book, daily: recDaily }, bookName)}
-            className="h-11 rounded-2xl bg-ink text-sm font-semibold text-paper-3"
+            className="press h-11 rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2"
           >
             应用这个计划
           </button>
-          <button type="button" data-testid="pause-plan-keep" onClick={() => resumeFromPause(day, undefined, undefined, keepLate)} className="h-11 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold">
+          <button type="button" data-testid="pause-plan-keep" onClick={() => resumeFromPause(day, undefined, undefined, keepLate)} className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold">
             保持现在的
           </button>
         </div>
@@ -1343,7 +1343,7 @@ function WeekCard({ day, logs }: { day: string; logs: Record<string, import("@/l
             {md(w.last.start)}–{md(w.last.end)} · 学了 {w.last.days}/7 天{hasPrev ? " · 对比前一周" : ""}
           </div>
         </div>
-        <button type="button" aria-label="关闭周报" data-testid="week-close" onClick={() => dismissWeekReport(day)} className="-mr-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <button type="button" aria-label="关闭周报" data-testid="week-close" onClick={() => dismissWeekReport(day)} className="press -mr-1 -mt-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <X className="size-4" />
         </button>
       </div>

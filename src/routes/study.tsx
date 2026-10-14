@@ -45,7 +45,7 @@ function NewGate({ index, t }: { index: NonNullable<ReturnType<typeof useWords>[
     <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center px-6 text-center" data-testid="new-paused">
       <div className="text-xl font-semibold">恢复期 · 新词暂停</div>
       <p className="mt-2 text-sm leading-relaxed text-ink-3">这几天先把积压清掉，清完了新词自动恢复。</p>
-      <Link to="/study" search={{ mode: "review" }} replace data-testid="new-paused-review" className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-ink font-semibold text-paper-3">
+      <Link to="/study" search={{ mode: "review" }} replace data-testid="new-paused-review" className="press mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2">
         去复习
       </Link>
       {confirm ? (

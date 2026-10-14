@@ -35,7 +35,7 @@ export function GameIntro({
   return (
     <div className="flex flex-1 flex-col" data-testid={testid}>
       <div className="flex h-14 shrink-0 items-center">
-        <button type="button" onClick={onQuit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <button type="button" onClick={onQuit} aria-label="退出" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <X className="size-5" />
         </button>
         <div className="flex-1 text-center text-[0.9375rem] font-semibold">{title}</div>
@@ -61,7 +61,7 @@ export function GameIntro({
           type="button"
           onClick={onStart}
           data-testid="game-start"
-          className="mx-auto mt-8 flex h-14 w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-ink text-[1.0625rem] font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
+          className="press mx-auto mt-8 flex h-14 w-full max-w-xs items-center justify-center gap-2 rounded-lg bg-ink text-[1.0625rem] font-semibold text-paper-3 hover:bg-ink-2"
         >
           {startLabel}
         </button>
@@ -98,14 +98,14 @@ export function GameResult({
   return (
     <div className="flex-1 overflow-y-auto pb-8" data-testid="game-result">
       <div className="flex h-14 shrink-0 items-center">
-        <Link to="/" aria-label="关闭" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <Link to="/" aria-label="关闭" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <X className="size-5" />
         </Link>
         <div className="flex-1 text-center text-[0.9375rem] font-semibold">{title}</div>
         <span className="w-10" />
       </div>
       <div className="pop flex flex-col items-center pt-2 text-center">
-        <div className={cn("grid size-20 place-items-center rounded-2xl ", record ? "bg-vague text-white shadow-vague/30" : "bg-ink text-paper-3 shadow-primary/30")}>
+        <div className={cn("grid size-20 place-items-center rounded-2xl", record ? "bg-vague text-paper-3" : "bg-ink text-paper-3")}>
           <Trophy className="size-10" />
         </div>
         <div className="mt-4 flex items-baseline gap-1">
@@ -163,10 +163,10 @@ export function GameResult({
         </div>
       )}
       <div className="mt-6 flex gap-2.5">
-        <button type="button" onClick={onAgain} data-testid="game-again" className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-paper-2 py-3.5 font-semibold">
+        <button type="button" onClick={onAgain} data-testid="game-again" className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-paper-2 py-3.5 font-semibold">
           <RotateCcw className="size-4" /> 再来一局
         </button>
-        <Link to="/" data-testid="game-home" className="flex flex-1 items-center justify-center rounded-2xl bg-ink py-3.5 font-semibold text-paper-3">
+        <Link to="/" data-testid="game-home" className="press flex flex-1 items-center justify-center rounded-lg bg-ink py-3.5 font-semibold text-paper-3 hover:bg-ink-2">
           回到今日
         </Link>
       </div>

@@ -108,16 +108,16 @@ export function LeaveSheet({
             blocker.reset?.();
             extra.onClick();
           }}
-          className="mt-5 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3"
+          className="press mt-5 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
         >
           {extra.label}
         </button>
       )}
       <div className={extra ? "mt-2 grid grid-cols-2 gap-2" : "mt-5 grid grid-cols-2 gap-2"}>
-        <button type="button" data-testid="leave-stay" onClick={() => blocker.reset?.()} className={extra ? "h-12 rounded-2xl bg-paper-2 font-semibold" : "h-12 rounded-2xl bg-ink font-semibold text-paper-3"}>
+        <button type="button" data-testid="leave-stay" onClick={() => blocker.reset?.()} className={extra ? "h-12 rounded-lg bg-paper-2 font-semibold" : "press h-12 rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"}>
           {stay}
         </button>
-        <button type="button" data-testid="leave-go" onClick={() => blocker.proceed?.()} className="h-12 rounded-2xl bg-paper-2 font-semibold text-destructive">
+        <button type="button" data-testid="leave-go" onClick={() => blocker.proceed?.()} className="h-12 rounded-lg bg-paper-2 font-semibold text-destructive">
           {leave}
         </button>
       </div>

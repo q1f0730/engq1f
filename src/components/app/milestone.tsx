@@ -49,24 +49,24 @@ export function MilestoneOverlay() {
           />
         ))}
       </div>
-      <div className="relative flex flex-col items-center text-center text-white" onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex flex-col items-center text-center text-ink" onClick={(e) => e.stopPropagation()}>
         <div className="milestone-medal grid size-36 place-items-center rounded-full">
           <div className="flex flex-col items-center leading-none">
             <Flame className="size-7 fill-current text-[#ffe2a8]" />
             <span className="tnum mt-1 font-display text-[3.5rem] font-semibold tracking-[-0.015em]" data-testid="milestone-days">
               {n}
             </span>
-            <span className="text-[0.8125rem] font-semibold text-white/85">天</span>
+            <span className="text-[0.8125rem] font-semibold text-ink-2">天</span>
           </div>
         </div>
         <h2 className="mt-7 font-display text-[1.875rem] font-semibold tracking-[-0.015em]">{title}</h2>
-        <p className="mt-2 max-w-[280px] text-[0.9375rem] leading-relaxed text-white/85">{sub}</p>
+        <p className="mt-2 max-w-[280px] text-[0.9375rem] leading-relaxed text-ink-2">{sub}</p>
         <button
           type="button"
           autoFocus
           data-testid="milestone-close"
           onClick={dismissCelebration}
-          className="mt-8 h-12 rounded-2xl bg-white px-10 text-base font-semibold text-[oklch(0.5_0.19_30)] transition active:scale-[0.98]"
+          className="press mt-8 h-12 rounded-2xl bg-paper-3 px-10 text-base font-semibold text-[oklch(0.5_0.19_30)]"
         >
           继续加油
         </button>

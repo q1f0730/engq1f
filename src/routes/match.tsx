@@ -151,11 +151,11 @@ function MatchGame({ index }: { index: WordIndex }) {
       {phase === "run" && (
         <>
           <div className="flex shrink-0 items-center gap-2 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+            <button type="button" onClick={quit} aria-label="退出" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
               <X className="size-5" />
             </button>
             <div className="flex-1">
-              <div className="h-2 overflow-hidden rounded-full bg-paper-2">
+              <div className="h-2 overflow-hidden rounded-[2px] bg-rule">
                 <div className={cn("h-full rounded-full transition-[width] duration-200", left < 10000 ? "bg-forget" : "bg-ink")} style={{ width: `${(left / MATCH_MS) * 100}%` }} />
               </div>
             </div>
@@ -245,8 +245,8 @@ function Tile({ w, state, onClick, children, en, testid }: { w: string; state: T
       className={cn(
         "flex h-[68px] items-center justify-center rounded-2xl border-2 px-2 text-center transition-all duration-200",
         en ? "font-display text-[1.0625rem] font-semibold" : "text-[0.9375rem] font-semibold leading-tight",
-        state === "idle" && "border-rule bg-paper-3 hover:border-ink active:scale-[0.97]",
-        state === "sel" && "-translate-y-0.5 border-ink bg-mark-soft text-ink shadow-primary/15",
+        state === "idle" && "press border-rule bg-paper-3 hover:border-ink",
+        state === "sel" && "-translate-y-0.5 border-ink bg-mark-soft text-ink",
         state === "ok" && "scale-95 border-know bg-know-soft text-know",
         state === "bad" && "shake border-forget bg-forget-soft text-forget",
         state === "gone" && "pointer-events-none scale-90 border-transparent bg-transparent opacity-0",

@@ -386,7 +386,7 @@ function MePage() {
       <BottomSheet open={confirm} onOpenChange={setConfirm} title="清空所有学习记录？" testid="reset-confirm">
         <p className="text-sm text-ink-3">学习进度、打卡、生词本都会被删除，且无法恢复。建议先导出备份。</p>
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-2xl bg-paper-2 font-semibold">
+          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-lg bg-paper-2 font-semibold">
             取消
           </button>
           <button

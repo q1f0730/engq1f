@@ -336,7 +336,7 @@ function WordsPage() {
             to="/study"
             search={{ mode: nbMode }}
             data-testid="nb-review"
-            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20"
+            className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 hover:bg-ink-2"
           >
             <Play className="size-4 fill-current" />
             {nbMode === "star" ? "复习生词本" : nbMode === "wrong" ? "复习错词本" : nbMode === "hard" ? "顽固词专项" : "回顾已斩的词"}（{Math.min(20, results.length)} 词）
@@ -369,7 +369,7 @@ function WordsPage() {
               </div>
             </div>
           </div>
-          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-paper-2">
+          <div className="mt-3 flex h-2 overflow-hidden rounded-[2px] bg-rule">
             <div className="h-full bg-know" style={{ width: `${((index.coreCount - coreCount) / index.coreCount) * 100}%` }} />
             <div className="h-full bg-vague" style={{ width: `${(cu.learning.length / index.coreCount) * 100}%` }} />
           </div>
@@ -377,7 +377,7 @@ function WordsPage() {
             to="/study"
             search={{ mode: "core" }}
             data-testid="core-study"
-            className="mt-3 flex h-12 items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20"
+            className="press mt-3 flex h-12 items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 hover:bg-ink-2"
           >
             <Play className="size-4 fill-current" />
             {cu.unlearned.length ? "学 10 个未学核心词" : "复习 10 个学习中的核心词"}

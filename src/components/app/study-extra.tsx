@@ -48,7 +48,7 @@ export function PreviewList({
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe pt-safe" data-testid="preview">
       <div className="flex shrink-0 items-center gap-2 pt-3">
-        <button type="button" onClick={onQuit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <button type="button" onClick={onQuit} aria-label="退出" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <X className="size-5" />
         </button>
         <div className="flex-1 text-center text-[0.9375rem] font-semibold">预习这组新词</div>
@@ -71,7 +71,7 @@ export function PreviewList({
               data-killed={k ? 1 : 0}
               className={cn("flex items-center gap-2 rounded-2xl border px-3 py-2.5 transition", k ? "border-transparent bg-know-soft/60" : "border-rule bg-paper-3")}
             >
-              <button type="button" aria-label={`朗读 ${w}`} onClick={() => speak(w, accent)} className="grid size-8 shrink-0 place-items-center rounded-full bg-mark-soft text-ink active:scale-90">
+              <button type="button" aria-label={`朗读 ${w}`} onClick={() => speak(w, accent)} className="press grid size-8 shrink-0 place-items-center rounded-full bg-mark-soft text-ink">
                 <Volume2 className="size-4" />
               </button>
               <div className={cn("min-w-0 flex-1", k && "opacity-55")}>
@@ -87,8 +87,8 @@ export function PreviewList({
                 aria-pressed={k}
                 onClick={() => toggle(w)}
                 className={cn(
-                  "flex h-9 shrink-0 items-center gap-1 rounded-lg px-3 text-xs font-semibold transition active:scale-95",
-                  k ? "bg-know text-white dark:text-[oklch(0.2_0.02_170)]" : "bg-paper-2 text-ink-3 hover:text-know",
+                  "press flex h-9 shrink-0 items-center gap-1 rounded-lg px-3 text-xs font-semibold",
+                  k ? "bg-know text-paper-3" : "bg-paper-2 text-ink-3 hover:text-know",
                 )}
               >
                 {k ? <Undo2 className="size-3.5" /> : <Swords className="size-3.5" />}
@@ -103,10 +103,10 @@ export function PreviewList({
           type="button"
           onClick={start}
           data-testid="preview-start"
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-base font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
+          className="press flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-ink text-base font-semibold text-paper-3 hover:bg-ink-2"
         >
           {left > 0 ? `开始学习 ${left} 词` : "全部认识，换一组"}
-          {killed.size > 0 && <span className="rounded-md bg-white/20 px-1.5 text-xs font-semibold" data-testid="preview-killed-n">斩 {killed.size}</span>}
+          {killed.size > 0 && <span className="rounded-md bg-paper-2 px-1.5 text-xs font-semibold" data-testid="preview-killed-n">斩 {killed.size}</span>}
         </button>
       </div>
     </div>
@@ -180,12 +180,12 @@ export function PostQuiz({
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe pt-safe" data-testid="post-quiz">
       <div className="flex shrink-0 items-center gap-2 pt-3">
-        <button type="button" onClick={onSkip} aria-label="跳过速测" data-testid="post-skip" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <button type="button" onClick={onSkip} aria-label="跳过速测" data-testid="post-skip" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <X className="size-5" />
         </button>
         <div className="flex-1">
-          <div className="h-2 overflow-hidden rounded-full bg-paper-2">
-            <div className="h-full rounded-full bg-know transition-all duration-300" style={{ width: `${((pos + (done ? 1 : 0)) / order.length) * 100}%` }} />
+          <div className="h-2 overflow-hidden rounded-[2px] bg-rule">
+            <div className="h-full rounded-[2px] bg-know transition-all duration-300" style={{ width: `${((pos + (done ? 1 : 0)) / order.length) * 100}%` }} />
           </div>
         </div>
         <span className="tnum min-w-11 text-center text-[0.8125rem] font-semibold text-ink-3" data-testid="post-progress">
@@ -207,14 +207,14 @@ export function PostQuiz({
             onClick={next}
             data-testid="post-next"
             className={cn(
-              "flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.98]",
-              ok ? "bg-know text-white shadow-know/25" : "bg-ink text-paper-3 shadow-primary/25",
+              "press flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold",
+              ok ? "bg-know text-paper-3" : "bg-ink text-paper-3",
             )}
           >
             {pos + 1 >= order.length ? "看小结" : ok ? "答对了 · 下一个" : "记住它 · 下一个"}
           </button>
         ) : (
-          <button type="button" onClick={() => choose(-1)} data-testid="post-giveup" className="h-11 w-full rounded-2xl text-sm font-semibold text-ink-3 hover:bg-paper-2">
+          <button type="button" onClick={() => choose(-1)} data-testid="post-giveup" className="h-11 w-full rounded-lg text-sm font-semibold text-ink-3 hover:bg-paper-2">
             <CircleHelp className="mr-1.5 inline size-4" />
             忘了，看答案
           </button>

@@ -75,7 +75,7 @@ export function LoadFailed({ onRetry, message }: { onRetry: () => void; message?
             }
             onRetry();
           }}
-          className="mt-5 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3"
+          className="press mt-5 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
         >
           现在重试
         </button>
@@ -217,13 +217,13 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
               data-testid="rescue-rollback"
               disabled={busy || !newest}
               onClick={() => newest && go(newest.id)}
-              className="w-full rounded-2xl bg-ink px-4 py-3 text-left font-semibold text-paper-3 disabled:opacity-50"
+              className="press w-full rounded-lg bg-ink px-4 py-3 text-left font-semibold text-paper-3 disabled:opacity-50 hover:bg-ink-2"
             >
               回滚到最近快照
               <span className="block text-xs font-normal opacity-85">{snaps === null ? "查找快照…" : newest ? fmt(newest) : ""}</span>
             </button>
           )}
-          <button type="button" data-testid="rescue-export" onClick={exportRaw} className={snaps !== null && !newest ? "w-full rounded-2xl bg-ink px-4 py-3 font-semibold text-paper-3" : "w-full rounded-2xl bg-paper-2 px-4 py-3 font-semibold"}>
+          <button type="button" data-testid="rescue-export" onClick={exportRaw} className={snaps !== null && !newest ? "press w-full rounded-lg bg-ink px-4 py-3 font-semibold text-paper-3 hover:bg-ink-2" : "w-full rounded-lg bg-paper-2 px-4 py-3 font-semibold"}>
             导出原始数据
           </button>
           {boot && (
@@ -241,7 +241,7 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
                 }
                 setTimeout(() => location.reload(), 600);
               }}
-              className="w-full rounded-2xl bg-paper-2 px-4 py-3 font-semibold"
+              className="w-full rounded-lg bg-paper-2 px-4 py-3 font-semibold"
             >
               下载原始数据，然后从头开始
             </button>

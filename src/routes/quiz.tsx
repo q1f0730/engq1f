@@ -155,12 +155,12 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
       {phase === "run" && cur && word && (
         <>
           <div className="flex shrink-0 items-center gap-2 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+            <button type="button" onClick={quit} aria-label="退出" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
               <X className="size-5" />
             </button>
             <div className="flex-1">
-              <div className="h-2 overflow-hidden rounded-full bg-paper-2">
-                <div className="h-full rounded-full bg-ink transition-all duration-300" style={{ width: `${(pos / items.length) * 100}%` }} />
+              <div className="h-2 overflow-hidden rounded-[2px] bg-rule">
+                <div className="h-full rounded-[2px] bg-ink transition-all duration-300" style={{ width: `${(pos / items.length) * 100}%` }} />
               </div>
             </div>
             <span className="tnum min-w-12 text-center text-[0.8125rem] font-semibold text-ink-3" data-testid="mock-progress">
@@ -188,7 +188,7 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
             <ChoiceList choices={cur.choices} done={false} onPick={pick} />
           </div>
           <div className="shrink-0 pb-4 pt-3">
-            <button type="button" onClick={() => pick(-1)} data-testid="mock-skip" className="h-11 w-full rounded-2xl text-sm font-semibold text-ink-3 hover:bg-paper-2">
+            <button type="button" onClick={() => pick(-1)} data-testid="mock-skip" className="h-11 w-full rounded-lg text-sm font-semibold text-ink-3 hover:bg-paper-2">
               不会，跳过
             </button>
           </div>
@@ -223,7 +223,7 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
   return (
     <div className="flex flex-1 flex-col" data-testid="mock-intro">
       <div className="flex h-14 shrink-0 items-center">
-        <button type="button" onClick={onQuit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <button type="button" onClick={onQuit} aria-label="退出" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <X className="size-5" />
         </button>
         <div className="flex-1 text-center text-[0.9375rem] font-semibold">模拟小测</div>
@@ -255,7 +255,7 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
           type="button"
           onClick={onStart}
           data-testid="mock-start"
-          className="mx-auto mt-8 flex h-14 w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-ink text-[1.0625rem] font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
+          className="press mx-auto mt-8 flex h-14 w-full max-w-xs items-center justify-center gap-2 rounded-lg bg-ink text-[1.0625rem] font-semibold text-paper-3 hover:bg-ink-2"
         >
           <Timer className="size-5" /> 开始计时
         </button>
@@ -304,26 +304,26 @@ function Result({
   return (
     <div className="-mx-4 flex-1 overflow-y-auto px-4 pb-8" data-testid="mock-result">
       <div className="flex h-14 items-center">
-        <Link to="/" aria-label="关闭" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <Link to="/" aria-label="关闭" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <X className="size-5" />
         </Link>
         <div className="flex-1 text-center text-[0.9375rem] font-semibold">小测成绩</div>
         <span className="w-10" />
       </div>
-      <section className="hero-gradient card-in relative overflow-hidden rounded-2xl p-6 text-white">
-        <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-white/[0.08]" />
+      <section className="hero-gradient card-in relative overflow-hidden rounded-2xl p-6 text-ink">
+        <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full hidden" />
         <div className="relative flex items-end justify-between gap-4">
           <div>
-            <div className="text-[0.8125rem] font-semibold text-white/80">得分</div>
+            <div className="text-[0.8125rem] font-semibold text-ink-2">得分</div>
             <div className="mt-1 flex items-baseline gap-1.5">
               <span className="tnum font-display text-[4rem] font-semibold leading-none" data-testid="mock-score">
                 {score}
               </span>
-              <span className="text-lg font-semibold text-white/75">分</span>
+              <span className="text-lg font-semibold text-ink-3">分</span>
             </div>
-            <div className="mt-2 text-sm font-semibold text-white/90">{verdict}</div>
+            <div className="mt-2 text-sm font-semibold text-ink-2">{verdict}</div>
           </div>
-          <Trophy className="size-14 shrink-0 text-white/30" />
+          <Trophy className="size-14 shrink-0 text-ink-3" />
         </div>
         <div className="relative mt-5 grid grid-cols-3 gap-2 text-center">
           <HeroStat label="答对" value={`${ok}/${items.length}`} testid="mock-ok" />
@@ -337,7 +337,7 @@ function Result({
           type="button"
           onClick={onAgain}
           data-testid="mock-again"
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-paper-2 text-[0.9375rem] font-semibold"
+          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-paper-2 text-[0.9375rem] font-semibold"
         >
           <RotateCcw className="size-4" /> 再来一套
         </button>
@@ -350,7 +350,7 @@ function Result({
               toast.success(`${unstarred.length} 个错题词已加入生词本`);
             }}
             data-testid="mock-star-all"
-            className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20 disabled:bg-vague-soft disabled:text-vague"
+            className="press flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 disabled:bg-vague-soft disabled:text-vague hover:bg-ink-2"
           >
             <Star className={cn("size-4", !unstarred.length && "fill-current")} />
             {unstarred.length ? `错题加入生词本 ${unstarred.length}` : "错题已在生词本"}
@@ -373,7 +373,7 @@ function Result({
               role="radio"
               aria-checked={filter === v}
               onClick={() => setFilter(v)}
-              className={cn("rounded-lg px-3 py-1", filter === v ? "bg-paper-3 text-ink " : "text-ink-3")}
+              className={cn("rounded-lg px-3 py-1", filter === v ? "bg-paper-3 text-ink" : "text-ink-3")}
             >
               {label}
             </button>
@@ -397,7 +397,7 @@ function Result({
             return (
               <li key={k} className="overflow-hidden rounded-2xl border border-rule bg-paper-3" data-testid="mock-review-item" data-ok={good ? 1 : 0}>
                 <button type="button" onClick={() => setOpen(expanded ? null : k)} className="flex w-full items-start gap-3 px-4 py-3 text-left" data-testid="mock-review-toggle">
-                  <span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-lg text-white", good ? "bg-know" : "bg-forget")}>
+                  <span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-lg text-ink", good ? "bg-know" : "bg-forget")}>
                     {good ? <Check className="size-3.5" strokeWidth={3} /> : <X className="size-3.5" strokeWidth={3} />}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -453,7 +453,7 @@ function Result({
           })}
         </ul>
       )}
-      <Link to="/" data-testid="mock-home" className="mt-6 flex h-13 items-center justify-center rounded-2xl bg-ink py-3.5 text-base font-semibold text-paper-3">
+      <Link to="/" data-testid="mock-home" className="press mt-6 flex h-13 items-center justify-center rounded-lg bg-ink py-3.5 text-base font-semibold text-paper-3 hover:bg-ink-2">
         回到今日
       </Link>
     </div>
@@ -462,11 +462,11 @@ function Result({
 
 function HeroStat({ label, value, testid }: { label: string; value: string; testid?: string }) {
   return (
-    <div className="rounded-2xl bg-white/14 px-2 py-2.5 ring-1 ring-white/15">
+    <div className="rounded-2xl bg-paper-2 px-2 py-2.5 ring-1 ring-rule">
       <div className="tnum text-lg font-semibold" data-testid={testid}>
         {value}
       </div>
-      <div className="text-[0.6875rem] font-semibold text-white/75">{label}</div>
+      <div className="text-[0.6875rem] font-semibold text-ink-3">{label}</div>
     </div>
   );
 }

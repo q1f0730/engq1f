@@ -86,7 +86,7 @@ function ListLinkPage() {
             if (!st.onboarded) navigate({ to: "/welcome", replace: true });
             else navigate({ to: "/words", search: { tab: "list", list: id }, replace: true });
           }}
-          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20 disabled:opacity-50"
+          className="press mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 disabled:opacity-50 hover:bg-ink-2"
         >
           <ListPlus className="size-4" /> 导入为我的词单
         </button>

@@ -343,7 +343,7 @@ function ReviewTab({ index, st, onOpen }: { index: WordIndex; st: AppState; onOp
                 to="/study"
                 search={{ mode: "rank" }}
                 data-testid="hardest-study"
-                className="flex items-center gap-1 rounded-lg bg-forget px-3 py-1.5 text-xs font-semibold text-white dark:text-[oklch(0.2_0.02_5)]"
+                className="flex items-center gap-1 rounded-lg bg-forget px-3 py-1.5 text-xs font-semibold text-paper-3"
               >
                 <Skull className="size-3.5" /> 专项复习 {hard.length}
               </Link>
@@ -362,7 +362,7 @@ function ReviewTab({ index, st, onOpen }: { index: WordIndex; st: AppState; onOp
               return (
                 <li key={w}>
                   <button type="button" onClick={() => onOpen(w)} data-testid="hardest-row" data-word={w} data-lapses={c.l} className="flex w-full items-center gap-3 rounded-xl px-1 py-2 text-left hover:bg-paper-2">
-                    <span className={`tnum grid size-6 shrink-0 place-items-center rounded-lg text-xs font-semibold ${k < 3 ? "bg-forget text-white dark:text-[oklch(0.2_0.02_5)]" : "bg-paper-2 text-ink-3"}`}>{k + 1}</span>
+                    <span className={`tnum grid size-6 shrink-0 place-items-center rounded-lg text-xs font-semibold ${k < 3 ? "bg-forget text-paper-3" : "bg-paper-2 text-ink-3"}`}>{k + 1}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[0.9375rem] font-semibold">{w}</span>
                       {word && <span className="block truncate text-xs text-ink-3">{shortMeaning(word, 1)}</span>}
@@ -399,7 +399,7 @@ function ReviewTab({ index, st, onOpen }: { index: WordIndex; st: AppState; onOp
           <>
             <RevList entries={recent} onOpen={onOpen} />
             {log.length > more && (
-              <button type="button" data-testid="revlog-more" onClick={() => setMore((m) => m + 50)} className="mt-2 h-10 w-full rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold">
+              <button type="button" data-testid="revlog-more" onClick={() => setMore((m) => m + 50)} className="mt-2 h-10 w-full rounded-lg bg-paper-2 text-[0.8125rem] font-semibold">
                 再看 {Math.min(50, log.length - more)} 条
               </button>
             )}

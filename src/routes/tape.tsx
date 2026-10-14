@@ -174,7 +174,7 @@ function Tape({ index }: { index: WordIndex }) {
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe md:py-6" data-testid="tape" data-playing={playing ? 1 : 0}>
       {/* 顶栏 */}
       <div className="flex shrink-0 items-center gap-2 pt-3 pt-safe">
-        <Link to="/" aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <Link to="/" aria-label="退出" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <X className="size-5" />
         </Link>
         <div className="flex flex-1 items-center justify-center gap-1.5 text-[0.9375rem] font-semibold">
@@ -271,8 +271,8 @@ function Tape({ index }: { index: WordIndex }) {
       </div>
 
       {/* 进度 */}
-      <div className="mt-4 h-1.5 shrink-0 overflow-hidden rounded-full bg-paper-2">
-        <div className="h-full rounded-full bg-ink transition-all duration-300" style={{ width: `${list.length ? ((pos + 1) / list.length) * 100 : 0}%` }} />
+      <div className="mt-4 h-1.5 shrink-0 overflow-hidden rounded-[2px] bg-rule">
+        <div className="h-full rounded-[2px] bg-ink transition-all duration-300" style={{ width: `${list.length ? ((pos + 1) / list.length) * 100 : 0}%` }} />
       </div>
 
       {/* 播放控制 */}
@@ -286,7 +286,7 @@ function Tape({ index }: { index: WordIndex }) {
           disabled={!list.length}
           aria-label={playing ? "暂停" : "播放"}
           data-testid="tape-play"
-          className="grid size-[72px] place-items-center rounded-full bg-ink text-paper-3 shadow-primary/30 transition active:scale-95 disabled:opacity-40"
+          className="press grid size-[72px] place-items-center rounded-full bg-ink text-paper-3 disabled:opacity-40"
         >
           {playing ? <Pause className="size-8 fill-current" /> : <Play className="ml-1 size-8 fill-current" />}
         </button>
@@ -345,7 +345,7 @@ function CtlBtn({ children, label, onClick, testid, disabled }: { children: Reac
       onClick={onClick}
       data-testid={testid}
       disabled={disabled}
-      className="grid size-14 place-items-center rounded-full text-ink transition hover:bg-paper-2 active:scale-90 disabled:opacity-35"
+      className="press grid size-14 place-items-center rounded-full text-ink hover:bg-paper-2 disabled:opacity-35"
     >
       {children}
     </button>

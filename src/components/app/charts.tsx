@@ -222,7 +222,7 @@ export function Heatmap({
                         d === today && "ring-2 ring-foreground/70 ring-offset-1 ring-offset-card",
                       )}
                     >
-                      {checked && <span className="absolute inset-[4px] rounded-full bg-white/90 dark:bg-white/80" />}
+                      {checked && <span className="absolute inset-[4px] rounded-full bg-paper-3/90 dark:bg-paper-3/80" />}
                     </div>
                   );
                 })}
@@ -234,7 +234,7 @@ export function Heatmap({
       <div className="mt-3 flex items-center justify-between text-[0.6875rem] text-ink-3">
         <span className="flex items-center gap-1.5">
           <span className="relative inline-block size-3 rounded-[3px] bg-ink">
-            <span className="absolute inset-[3.5px] rounded-full bg-white/90" />
+            <span className="absolute inset-[3.5px] rounded-full bg-paper-3/90" />
           </span>
           已打卡
         </span>

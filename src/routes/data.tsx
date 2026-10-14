@@ -221,7 +221,7 @@ function BackupPanel() {
             setPasting(false);
             setPending(pasteText);
           }}
-          className="mt-3 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3 disabled:opacity-50"
+          className="press mt-3 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 disabled:opacity-50 hover:bg-ink-2"
         >
           恢复
         </button>
@@ -240,7 +240,7 @@ function Btn({ icon, label, onClick, testid, primary, disabled }: { icon: React.
       data-testid={testid}
       className={cn(
         "flex h-12 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 text-sm font-semibold transition disabled:opacity-50",
-        primary ? "bg-ink text-paper-3 shadow-primary/20" : "bg-paper-2 hover:bg-paper-2",
+        primary ? "bg-ink text-paper-3" : "bg-paper-2 hover:bg-paper-2",
       )}
     >
       {icon}
@@ -330,7 +330,7 @@ function SnapPanel() {
         </ul>
       )}
       {!failed && (
-        <button type="button" data-testid="snap-now" onClick={saveNow} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-ink-3 hover:bg-paper-2 hover:text-ink">
+        <button type="button" data-testid="snap-now" onClick={saveNow} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold text-ink-3 hover:bg-paper-2 hover:text-ink">
           <Plus className="size-4" /> 现在存一份
         </button>
       )}
@@ -341,7 +341,7 @@ function SnapPanel() {
               学习记录会回到 <b className="text-ink">{fmtDate(pick.day)} {hm(pick.at)}</b>（{pick.words} 词），之后的进度会丢失。不放心可以先「现在存一份」。
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setPick(null)} className="h-12 rounded-2xl bg-paper-2 font-semibold">
+              <button type="button" onClick={() => setPick(null)} className="h-12 rounded-lg bg-paper-2 font-semibold">
                 取消
               </button>
               <button type="button" data-testid="snap-confirm-yes" onClick={() => rollback(pick)} className="h-12 rounded-2xl bg-destructive font-semibold text-destructive-foreground">
@@ -395,7 +395,7 @@ function ReportPanel({ index, profileName }: { index: WordIndex; profileName: st
         type="button"
         data-testid="report-open"
         onClick={() => setOpen(true)}
-        className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2"
+        className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-paper-2 text-sm font-semibold hover:bg-paper-2"
       >
         <ImageDown className="size-4" /> 生成长图：总进度 · 掌握分布 · 连续天数
       </button>
@@ -417,7 +417,7 @@ function ReportPanel({ index, profileName }: { index: WordIndex; profileName: st
                 const r = await shareImage(blob!, name, save);
                 if (r === "downloaded") toast("已保存图片");
               }}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-ink font-semibold text-paper-3"
+              className="press flex h-12 items-center justify-center gap-2 rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
             >
               <Share2 className="size-4" /> 分享
             </button>
@@ -529,7 +529,7 @@ function WordFilePanel({ index }: { index: WordIndex }) {
                 toast.success(`已生成词单：${res.found.length} 词`);
                 navigate({ to: "/words", search: { tab: "list", list: id } });
               }}
-              className="flex h-11 shrink-0 items-center gap-1.5 rounded-2xl bg-ink px-4 text-sm font-semibold text-paper-3"
+              className="press flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-ink px-4 text-sm font-semibold text-paper-3 hover:bg-ink-2"
             >
               <ListPlus className="size-4" /> 生成词单
             </button>
@@ -604,11 +604,11 @@ function ProfilesPanel() {
                   {sums[p.id].words} 词 · 打卡 {sums[p.id].days} 天
                 </div>
               </div>
-              <button type="button" aria-label={`重命名 ${p.name}`} data-testid="profile-rename" onClick={() => setRenaming(p.id)} className="grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-ink">
+              <button type="button" aria-label={`重命名 ${p.name}`} data-testid="profile-rename" onClick={() => setRenaming(p.id)} className="press grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2 hover:text-ink">
                 <Pencil className="size-3.5" />
               </button>
               {!on && p.id !== "main" && (
-                <button type="button" aria-label={`删除 ${p.name}`} data-testid="profile-delete" onClick={() => setDeleting(p.id)} className="grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-forget">
+                <button type="button" aria-label={`删除 ${p.name}`} data-testid="profile-delete" onClick={() => setDeleting(p.id)} className="press grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2 hover:text-forget">
                   <Trash2 className="size-3.5" />
                 </button>
               )}
@@ -660,7 +660,7 @@ function ProfilesPanel() {
       <BottomSheet open={!!del} onOpenChange={(v) => !v && setDeleting(null)} title={`删除「${del?.name ?? ""}」？`} testid="profile-delete-sheet">
         <p className="text-sm text-ink-3">这个档案的学习记录、打卡和快照都会删掉，无法恢复。</p>
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setDeleting(null)} className="h-12 rounded-2xl bg-paper-2 font-semibold">
+          <button type="button" onClick={() => setDeleting(null)} className="h-12 rounded-lg bg-paper-2 font-semibold">
             取消
           </button>
           <button
@@ -729,11 +729,11 @@ function HealthPanel({ index }: { index: WordIndex }) {
           </ul>
         ))}
       {res && res.total > 0 ? (
-        <button type="button" data-testid="health-fix" onClick={fix} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20">
+        <button type="button" data-testid="health-fix" onClick={fix} className="press flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 hover:bg-ink-2">
           一键修复 {res.total} 处
         </button>
       ) : (
-        <button type="button" data-testid="health-run" onClick={run} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2">
+        <button type="button" data-testid="health-run" onClick={run} className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-paper-2 text-sm font-semibold hover:bg-paper-2">
           <Stethoscope className="size-4" /> {res ? "再查一次" : "开始体检"}
         </button>
       )}
@@ -863,7 +863,7 @@ function StoragePanel() {
               </span>
             )}
           </div>
-          <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-paper-2" aria-hidden>
+          <div className="mt-2 flex h-2.5 overflow-hidden rounded-[2px] bg-rule" aria-hidden>
             {rows.map((r) => (
               <div key={r.k} className={cn("h-full", r.tone)} style={{ width: `${total ? (r.bytes / total) * 100 : 0}%` }} />
             ))}
@@ -942,12 +942,12 @@ function RescueDumpPanel() {
           : "坏得太厉害，一个词都读不出来，只能导出成文件留底（求助时可以发给开发者）。"}
       </p>
       <div className={cn("grid gap-2", restorable ? "grid-cols-3" : "grid-cols-2")}>
-        <button type="button" data-testid="rescue-dump-export" onClick={() => download(`四级单词打卡-救援原始数据-${at || today()}.json`, raw)} className="h-11 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold">
+        <button type="button" data-testid="rescue-dump-export" onClick={() => download(`四级单词打卡-救援原始数据-${at || today()}.json`, raw)} className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold">
           导出
         </button>
         {/* 11.3 · 能恢复才显示「恢复」，不再放一个永远灰着的按钮 */}
         {restorable && (
-          <button type="button" data-testid="rescue-dump-restore" onClick={() => setPending(raw)} className="h-11 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold">
+          <button type="button" data-testid="rescue-dump-restore" onClick={() => setPending(raw)} className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold">
             恢复
           </button>
         )}
@@ -963,7 +963,7 @@ function RescueDumpPanel() {
             setRaw(null);
             toast("已删除救援时另存的数据");
           }}
-          className="h-11 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold text-destructive"
+          className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold text-destructive"
         >
           删除
         </button>
@@ -985,7 +985,7 @@ function ResetPanel() {
       <BottomSheet open={confirm} onOpenChange={setConfirm} title="清空所有学习记录？" testid="reset-confirm">
         <p className="text-sm text-ink-3">这台设备上这个档案的学习记录、打卡、词单都会删掉，无法恢复。建议先导出备份。</p>
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-2xl bg-paper-2 font-semibold">
+          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-lg bg-paper-2 font-semibold">
             取消
           </button>
           <button
@@ -998,7 +998,7 @@ function ResetPanel() {
               // 11.8 · 用路由压引导页（带序号）：重新引导完成后能退回第一条 app 记录，首页按返回不再白按一次（r8 R8-5）
               navigate({ to: "/welcome" });
             }}
-            className="h-12 rounded-2xl bg-destructive font-semibold text-white"
+            className="h-12 rounded-2xl bg-destructive font-semibold text-paper-3"
           >
             确认清空
           </button>

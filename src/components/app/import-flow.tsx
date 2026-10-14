@@ -179,7 +179,7 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
               {err}
             </p>
           )}
-          <button type="submit" disabled={!pass || busy} data-testid="import-pass-go" className="mt-4 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3 disabled:opacity-50">
+          <button type="submit" disabled={!pass || busy} data-testid="import-pass-go" className="press mt-4 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 disabled:opacity-50 hover:bg-ink-2">
             {busy ? "解密中…" : "解开备份"}
           </button>
         </form>
@@ -207,7 +207,7 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
                 await applyMerge(remote);
                 finish();
               }}
-              className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-ink p-4 text-left text-paper-3 shadow-primary/20"
+              className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-ink p-4 text-left text-paper-3"
             >
               <GitMerge className="size-6 shrink-0" />
               <span className="min-w-0">

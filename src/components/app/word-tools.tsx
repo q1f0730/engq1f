@@ -180,7 +180,7 @@ export function SelectBar({ selected, total, onAll, onClear, onExit, listId }: {
               data-testid={`bulk-${a.key}`}
               disabled={!n}
               onClick={a.on}
-              className={cn("flex flex-col items-center gap-1 rounded-2xl py-2 text-[0.7188rem] font-semibold transition hover:bg-paper-2 active:scale-95 disabled:opacity-35", a.cls)}
+              className={cn("press flex flex-col items-center gap-1 rounded-2xl py-2 text-[0.7188rem] font-semibold hover:bg-paper-2 disabled:opacity-35", a.cls)}
             >
               {a.icon}
               {a.label}
@@ -212,7 +212,7 @@ export function ExportSheet({ open, onOpenChange, words, title }: { open: boolea
     };
   }, [printing]);
 
-  const row = "flex w-full items-center gap-3 rounded-2xl bg-paper-2 px-3.5 py-3 text-left transition hover:bg-paper-2 active:scale-[0.99]";
+  const row = "press flex w-full items-center gap-3 rounded-2xl bg-paper-2 px-3.5 py-3 text-left hover:bg-paper-2";
   return (
     <>
       <BottomSheet open={open} onOpenChange={onOpenChange} title={`导出「${title}」· ${words.length} 词`} testid="export-sheet">

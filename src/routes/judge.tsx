@@ -143,12 +143,12 @@ function JudgeGame({ index }: { index: WordIndex }) {
       {phase === "run" && cur && word && (
         <>
           <div className="flex shrink-0 items-center gap-2 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+            <button type="button" onClick={quit} aria-label="退出" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
               <X className="size-5" />
             </button>
             <div className="flex-1">
-              <div className="h-2 overflow-hidden rounded-full bg-paper-2">
-                <div className="h-full rounded-full bg-ink transition-all duration-300" style={{ width: `${(pos / items.length) * 100}%` }} />
+              <div className="h-2 overflow-hidden rounded-[2px] bg-rule">
+                <div className="h-full rounded-[2px] bg-ink transition-all duration-300" style={{ width: `${(pos / items.length) * 100}%` }} />
               </div>
             </div>
             <span className="tnum min-w-12 text-center text-[0.8125rem] font-semibold text-ink-3" data-testid="judge-progress">
@@ -165,9 +165,9 @@ function JudgeGame({ index }: { index: WordIndex }) {
                 type="button"
                 onClick={advance}
                 data-testid="judge-next"
-                className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-base font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
+                className="press flex h-16 w-full items-center justify-center gap-2 rounded-lg bg-ink text-base font-semibold text-paper-3 hover:bg-ink-2"
               >
-                记住了 · 继续 <span className="hidden rounded-md bg-white/20 px-1.5 text-[0.6875rem] font-semibold fine:inline">空格</span>
+                记住了 · 继续 <span className="hidden rounded-md bg-paper-2 px-1.5 text-[0.6875rem] font-semibold fine:inline">空格</span>
               </button>
             ) : (
               <div className="grid grid-cols-2 gap-2.5" data-testid="judge-buttons" data-order={sides.map((b) => (b ? "yes" : "no")).join(",")}>
@@ -179,8 +179,8 @@ function JudgeGame({ index }: { index: WordIndex }) {
                     onClick={() => judge(yes)}
                     data-testid={yes ? "judge-yes" : "judge-no"}
                     className={cn(
-                      "flex h-16 items-center justify-center gap-2 rounded-2xl text-[1.0625rem] font-semibold transition active:scale-[0.97] disabled:opacity-60",
-                      yes ? "bg-know text-white shadow-know/25 dark:text-[oklch(0.2_0.02_170)]" : "bg-forget-soft text-forget",
+                      "press flex h-16 items-center justify-center gap-2 rounded-2xl text-[1.0625rem] font-semibold disabled:opacity-60",
+                      yes ? "bg-know text-paper-3" : "bg-forget-soft text-forget",
                     )}
                   >
                     {k === 0 && <ArrowLeft className="size-4" />}
@@ -293,7 +293,7 @@ function JudgeCard({
                 e.stopPropagation();
                 speak(word.w, accent);
               }}
-              className="grid size-9 place-items-center rounded-full bg-mark-soft text-ink active:scale-90"
+              className="press grid size-9 place-items-center rounded-full bg-mark-soft text-ink"
             >
               <Volume2 className="size-[18px]" />
             </button>

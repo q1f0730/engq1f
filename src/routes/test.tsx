@@ -98,7 +98,7 @@ function VocabTest({ index }: { index: WordIndex }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-5 pb-safe pt-safe" data-testid="vocab-test" data-phase={phase}>
       <div className="flex h-14 items-center gap-3">
-        <Link to="/" aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
+        <Link to="/" aria-label="退出" className="press grid size-11 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
           <X className="size-5" />
         </Link>
         <div className="flex-1 text-center text-[0.9375rem] font-semibold">词汇量测试</div>
@@ -121,7 +121,7 @@ function VocabTest({ index }: { index: WordIndex }) {
               setPhase("run");
             }}
             data-testid="test-start"
-            className="mx-auto mt-10 flex h-14 w-full max-w-xs items-center justify-center rounded-2xl bg-ink text-[1.0625rem] font-semibold text-paper-3 shadow-primary/25"
+            className="press mx-auto mt-10 flex h-14 w-full max-w-xs items-center justify-center rounded-lg bg-ink text-[1.0625rem] font-semibold text-paper-3 hover:bg-ink-2"
           >
             开始测试
           </button>
@@ -139,7 +139,7 @@ function VocabTest({ index }: { index: WordIndex }) {
               {mm}:{String(ss).padStart(2, "0")}
             </span>
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-paper-2">
+          <div className="mt-2 h-1.5 overflow-hidden rounded-[2px] bg-rule">
             <div className="h-full bg-ink transition-all" style={{ width: `${(pos / items.length) * 100}%` }} />
           </div>
           <div key={pos} className="card-in mt-6 flex flex-1 items-center justify-center rounded-2xl border border-rule bg-paper-3">
@@ -148,7 +148,7 @@ function VocabTest({ index }: { index: WordIndex }) {
             </h2>
           </div>
           <div className="grid grid-cols-2 gap-2.5 py-5">
-            <button type="button" onClick={() => mark(true)} data-testid="test-know" className="h-16 rounded-2xl bg-know text-[1.0625rem] font-semibold text-white">
+            <button type="button" onClick={() => mark(true)} data-testid="test-know" className="h-16 rounded-2xl bg-know text-[1.0625rem] font-semibold text-paper-3">
               认识
             </button>
             <button type="button" onClick={() => mark(false)} data-testid="test-unknown" className="h-16 rounded-2xl bg-forget-soft text-[1.0625rem] font-semibold text-forget">
@@ -160,15 +160,15 @@ function VocabTest({ index }: { index: WordIndex }) {
 
       {phase === "done" && (
         <div className="card-in flex flex-1 flex-col pb-6" data-testid="test-result">
-          <div className="mt-4 rounded-2xl hero-gradient p-6 text-white">
-            <div className="text-sm font-semibold text-white/80">你的四级词汇量约</div>
+          <div className="mt-4 rounded-2xl hero-gradient p-6 text-ink">
+            <div className="text-sm font-semibold text-ink-2">你的四级词汇量约</div>
             <div className="mt-1 flex items-baseline gap-2">
               <span className="tnum font-display text-[4rem] font-semibold leading-none" data-testid="test-est">
                 {result.est}
               </span>
-              <span className="text-lg font-semibold text-white/80">/ {index.list.length}</span>
+              <span className="text-lg font-semibold text-ink-2">/ {index.list.length}</span>
             </div>
-            <div className="mt-2 text-[0.8125rem] text-white/85">共测 {known.length} 词，认识 {result.knownWords.length} 个</div>
+            <div className="mt-2 text-[0.8125rem] text-ink-2">共测 {known.length} 词，认识 {result.knownWords.length} 个</div>
           </div>
           <div className="mt-4 space-y-2.5">
             {result.per.map((p, t) => (
@@ -179,8 +179,8 @@ function VocabTest({ index }: { index: WordIndex }) {
                   </span>
                   <span className="tnum font-semibold">{p.n ? `${Math.round(p.rate * 100)}%` : "未测"}</span>
                 </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-paper-2">
-                  <div className="h-full rounded-full bg-know" style={{ width: `${p.rate * 100}%` }} />
+                <div className="mt-2 h-2 overflow-hidden rounded-[2px] bg-rule">
+                  <div className="h-full rounded-[2px] bg-know" style={{ width: `${p.rate * 100}%` }} />
                 </div>
               </div>
             ))}
@@ -208,13 +208,13 @@ function VocabTest({ index }: { index: WordIndex }) {
                 toast.success(`已把 ${result.knownWords.length} 个词标为熟词`);
               }}
               data-testid="test-mark"
-              className="mt-5 flex h-14 items-center justify-center gap-2 rounded-2xl bg-paper-2 text-[0.9375rem] font-semibold disabled:opacity-60"
+              className="mt-5 flex h-14 items-center justify-center gap-2 rounded-lg bg-paper-2 text-[0.9375rem] font-semibold disabled:opacity-60"
             >
               <Check className="size-5" />
               {marked ? "已斩掉这些词" : `把 ${result.knownWords.length} 个认识的词斩掉（以后不再出现）`}
             </button>
           )}
-          <Link to="/" data-testid="test-home" className="mt-2.5 flex h-14 items-center justify-center rounded-2xl bg-ink text-base font-semibold text-paper-3">
+          <Link to="/" data-testid="test-home" className="press mt-2.5 flex h-14 items-center justify-center rounded-lg bg-ink text-base font-semibold text-paper-3 hover:bg-ink-2">
             开始背单词
           </Link>
         </div>

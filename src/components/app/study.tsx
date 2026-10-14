@@ -522,7 +522,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center px-6 text-center" data-testid="study-replaced">
         <div className="text-xl font-semibold">记录在另一个窗口被替换了</div>
         <p className="mt-2 text-sm text-ink-3">这一组已经结束，刚才这一题没有写进新的记录。</p>
-        <button type="button" onClick={() => void router.navigate({ to: "/", replace: true })} className="mt-6 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3">
+        <button type="button" onClick={() => void router.navigate({ to: "/", replace: true })} className="press mt-6 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2">
           回首页
         </button>
       </div>

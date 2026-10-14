@@ -44,7 +44,7 @@ export default function ListLinkSheet({ open, onOpenChange, list }: { open: bool
       </div>
       <div className="tnum mt-1 text-right text-[0.6875rem] text-ink-3">{url ? `${url.length} 字符` : ""}</div>
       <div className={cn("mt-3 grid gap-2", canShare ? "grid-cols-2" : "grid-cols-1")}>
-        <button type="button" disabled={!url} onClick={copy} data-testid="list-link-copy" className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-ink font-semibold text-paper-3 disabled:opacity-50">
+        <button type="button" disabled={!url} onClick={copy} data-testid="list-link-copy" className="press flex h-12 items-center justify-center gap-2 rounded-lg bg-ink font-semibold text-paper-3 disabled:opacity-50 hover:bg-ink-2">
           <Copy className="size-4" /> 复制链接
         </button>
         {canShare && (
@@ -53,7 +53,7 @@ export default function ListLinkSheet({ open, onOpenChange, list }: { open: bool
             disabled={!url}
             data-testid="list-link-share"
             onClick={() => navigator.share({ title: `四级词单：${list.name}`, text: `「${list.name}」${list.words.length} 个四级词，打开链接导入`, url }).catch(() => {})}
-            className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-paper-2 font-semibold disabled:opacity-50"
+            className="flex h-12 items-center justify-center gap-2 rounded-lg bg-paper-2 font-semibold disabled:opacity-50"
           >
             <Share2 className="size-4" /> 系统分享
           </button>

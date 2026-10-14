@@ -4,9 +4,9 @@ import { F_NEW, F_REPEAT, GRADE_LABEL, entryDay, type RevEntry } from "@/lib/sta
 import { cn } from "@/lib/utils";
 
 const GRADE_TONE: Record<number, string> = {
-  0: "bg-forget text-white",
-  1: "bg-vague text-white dark:text-[oklch(0.2_0.02_80)]",
-  2: "bg-know text-white dark:text-[oklch(0.2_0.02_170)]",
+  0: "bg-forget text-paper-3",
+  1: "bg-vague text-paper-3",
+  2: "bg-know text-paper-3",
   3: "bg-foreground text-background",
   4: "bg-ink text-paper-3",
 };

@@ -292,7 +292,7 @@ export function HabitPanel() {
             onClick={() => setSettings({ restDay: d })}
             className={cn(
               "rounded-xl py-2 text-[0.8125rem] font-semibold transition",
-              (s.restDay ?? -1) === d ? (d < 0 ? "bg-foreground text-background" : "bg-know text-white dark:text-[oklch(0.2_0.02_170)]") : "bg-paper-2 text-ink-3 hover:text-ink",
+              (s.restDay ?? -1) === d ? (d < 0 ? "bg-foreground text-background" : "bg-know text-paper-3") : "bg-paper-2 text-ink-3 hover:text-ink",
             )}
           >
             {d < 0 ? "无" : WEEKDAY_CN[d]}
@@ -500,7 +500,7 @@ export function AlgoPanel() {
           type="button"
           data-testid="balance-now"
           onClick={() => doBalance()}
-          className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2"
+          className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-paper-2 text-sm font-semibold hover:bg-paper-2"
         >
           <Scale className="size-4" /> 立即均衡未来 30 天
         </button>
@@ -561,7 +561,7 @@ export function A11yPanel() {
             const r = await promptInstall();
             if (r === "accepted") toast.success("已添加到桌面");
           }}
-          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2"
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-paper-2 text-sm font-semibold hover:bg-paper-2"
         >
           <MonitorDown className="size-4" /> 添加到桌面
         </button>
@@ -588,7 +588,7 @@ export function Row({ label, hint, children }: { label: string; hint?: string; c
 
 export function ActionBtn({ icon, label, onClick, testid }: { icon: React.ReactNode; label: string; onClick: () => void; testid?: string }) {
   return (
-    <button type="button" onClick={onClick} data-testid={testid} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2">
+    <button type="button" onClick={onClick} data-testid={testid} className="flex h-12 items-center justify-center gap-2 rounded-lg bg-paper-2 text-sm font-semibold hover:bg-paper-2">
       {icon}
       {label}
     </button>

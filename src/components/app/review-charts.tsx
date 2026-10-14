@@ -238,7 +238,7 @@ export function MonthCalendar({
                   onClick={() => onPick?.(d)}
                   aria-label={`${Number(d.slice(5, 7))}月${Number(d.slice(8))}日${checked ? (isPatch ? " 补卡" : " 已打卡") : ""}${v ? ` ${v} 词` : ""}`}
                   className={cn(
-                    "flex aspect-square min-w-0 flex-col items-center justify-center rounded-xl transition enabled:active:scale-95",
+                    "press flex aspect-square min-w-0 flex-col items-center justify-center rounded-xl enabled:",
                     isPatch ? "bg-ink text-paper-3" : checked ? "bg-ink text-paper-3" : v ? "bg-mark-soft text-ink" : "bg-paper-2",
                     isRest && "bg-know-soft",
                     future && "opacity-40",
@@ -320,7 +320,7 @@ export function BadgeGrid({ ctx, unlocked }: { ctx: BadgeCtx; unlocked: Record<s
             className={cn("flex min-w-0 flex-col items-center rounded-2xl border px-2 pb-3 pt-3.5 text-center", on ? "border-ink bg-mark-soft" : "border-rule bg-paper-3")}
           >
             {on ? (
-              <div className="badge-medal grid size-[60px] place-items-center rounded-full text-white">{BADGE_ICON[b.id]}</div>
+              <div className="badge-medal grid size-[60px] place-items-center rounded-full text-ink">{BADGE_ICON[b.id]}</div>
             ) : (
               <Ring value={p.pct} size={60} stroke={4} className="text-ink">
                 <span className="grid size-[44px] place-items-center rounded-full bg-paper-2 text-ink-3">{BADGE_ICON[b.id]}</span>

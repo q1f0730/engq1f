@@ -103,7 +103,7 @@ function SynPage() {
                       data-testid="syn-chip"
                       onClick={() => setOpen(index.map.get(w) ?? null)}
                       className={cn(
-                        "font-display rounded-lg px-3 py-1.5 text-sm font-semibold transition active:scale-95",
+                        "press font-display rounded-lg px-3 py-1.5 text-sm font-semibold",
                         c?.st === "mastered" ? "bg-know-soft text-know" : c ? "bg-vague-soft text-vague" : "bg-paper-2 text-ink",
                       )}
                     >
@@ -117,7 +117,7 @@ function SynPage() {
         </ul>
       )}
       {hits.length > limit && (
-        <button type="button" data-testid="syn-more" onClick={() => setLimit((l) => l + PAGE)} className="mt-3 h-12 w-full rounded-2xl bg-paper-2 text-sm font-semibold">
+        <button type="button" data-testid="syn-more" onClick={() => setLimit((l) => l + PAGE)} className="mt-3 h-12 w-full rounded-lg bg-paper-2 text-sm font-semibold">
           再显示 {Math.min(PAGE, hits.length - limit)} 组（共 {hits.length}）
         </button>
       )}
