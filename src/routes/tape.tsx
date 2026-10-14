@@ -215,18 +215,10 @@ function Tape({ index }: { index: WordIndex }) {
         ))}
       </div>
 
-      {/* 当前词：直接排在纸上，像磁带封面上的曲目 */}
+      {/* 12.0 · 当前词：像磁带盒里的曲目单——词头大字，读音一行，释义按词典排，英文 / 中文哪个正在念就划荧光笔 */}
       <div className="relative flex min-h-0 flex-1 flex-col pt-4" data-testid="tape-card">
         {word ? (
-          <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between text-[0.75rem] text-ink-3">
-              <span className="tnum" data-testid="tape-pos">
-                {pos + 1} / {list.length}
-              </span>
-              <span className="flex items-center gap-1">
-                <Repeat className="size-3.5" /> 循环播放
-              </span>
-            </div>
+          <article className="flex h-full flex-col">
             <div className="flex min-h-0 flex-1 flex-col justify-center">
               <h2
                 className={cn(
@@ -239,74 +231,77 @@ function Tape({ index }: { index: WordIndex }) {
                 <span className={cn(phase === "en" && "hl")}>{word.w}</span>
               </h2>
               <Phonetic word={word} accent={accent} className="mt-2.5 text-base text-ink-2" />
-              <ul className={cn("mt-6 space-y-1.5 border-t border-rule pt-3 text-[1rem] leading-relaxed transition-opacity duration-300", phase === "en" && "opacity-55")} data-testid="tape-meaning">
+              <dl className={cn("mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[1rem] leading-relaxed transition-opacity duration-300", phase === "en" && "opacity-55")} data-testid="tape-meaning">
                 {word.t.slice(0, 2).map(([p, m], k) => (
-                  <li key={k} className="line-clamp-2">
-                    {p && <i className="pos mr-2 text-[1.0625rem] text-ink-3">{posLabel(p)}</i>}
-                    {m}
-                  </li>
+                  <div key={k} className="contents">
+                    <dt className="pos text-[1.0625rem] text-ink-3">{p ? posLabel(p) : ""}</dt>
+                    <dd className={cn("line-clamp-2", phase === "cn" && "hl")}>{m}</dd>
+                  </div>
                 ))}
-              </ul>
+              </dl>
             </div>
-            <div className="flex items-center gap-2 py-2" data-testid="tape-phase" data-phase={phase ?? "idle"}>
-              <PhasePill active={phase === "en"} label="英文" />
-              <span className="h-px w-6 bg-rule-strong" />
-              <PhasePill active={phase === "cn"} label="中文" />
+            <footer className="flex items-center gap-3 py-2 text-[0.75rem] text-ink-3" data-testid="tape-phase" data-phase={phase ?? "idle"}>
+              <span className="tnum font-medium text-ink-2" data-testid="tape-pos">
+                {pos + 1} / {list.length}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <PhasePill active={phase === "en"} label="英" />
+                <span aria-hidden>→</span>
+                <PhasePill active={phase === "cn"} label="中" />
+              </span>
               {repeat > 1 && (
-                <span className="tnum ml-auto text-[0.75rem] text-ink-3" data-testid="tape-pass">
+                <span className="tnum" data-testid="tape-pass">
                   第 {pass}/{repeat} 遍
                 </span>
               )}
-            </div>
-          </div>
+              <span className="ml-auto flex items-center gap-1">
+                <Repeat className="size-3.5" /> 循环
+              </span>
+            </footer>
+          </article>
         ) : (
-          <div className="grid h-full place-items-center px-8 text-center" data-testid="tape-empty">
-            <div>
-              <div className="font-serif text-[3rem] italic leading-none text-rule-strong" aria-hidden>
-                ∅
-              </div>
-              <p className="mt-4 text-[0.9375rem] font-semibold">{SRC_LABEL[src]}是空的</p>
-              <p className="mt-1 text-[0.8125rem] text-ink-3">换一个播放范围试试</p>
+          <div className="flex h-full flex-col justify-center px-2" data-testid="tape-empty">
+            <p className="border-l-2 border-rule-strong pl-4 text-[1.125rem] font-semibold">{SRC_LABEL[src]}是空的</p>
+            <p className="mt-1 pl-[1.125rem] text-[0.8125rem] text-ink-3">换一个播放范围试试</p>
+          </div>
+        )}
+      </div>
+
+      {/* 走带区：一条磁带刻度（每个词一格，太多就只画线）+ 三个控制键 */}
+      <section aria-label="播放控制" className="shrink-0 border-t border-rule pt-3">
+        <div className="relative h-3" aria-hidden>
+          <div className="absolute inset-x-0 top-1/2 h-px bg-rule-strong" />
+          <div className="absolute left-0 top-1/2 h-[3px] -translate-y-1/2 bg-ink transition-all duration-300" style={{ width: `${list.length ? ((pos + 1) / list.length) * 100 : 0}%` }} />
+          {list.length > 0 && list.length <= 40 && (
+            <div className="absolute inset-0 flex justify-between">
+              {list.map((_, k) => (
+                <span key={k} className={cn("h-full w-px", k <= pos ? "bg-ink" : "bg-rule-strong")} />
+              ))}
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+        <div className="flex items-center justify-center gap-10 py-4">
+          <CtlBtn label="上一个" testid="tape-prev" onClick={() => go(-1)} disabled={!list.length}>
+            <SkipBack className="size-6 fill-current" />
+          </CtlBtn>
+          <button
+            type="button"
+            onClick={toggle}
+            disabled={!list.length}
+            aria-label={playing ? "暂停" : "播放"}
+            data-testid="tape-play"
+            className={cn("press grid size-[72px] place-items-center rounded-full disabled:opacity-40", playing ? "bg-mark text-mark-ink ring-[1.5px] ring-ink" : "bg-ink text-paper-3")}
+          >
+            {playing ? <Pause className="size-8 fill-current" /> : <Play className="ml-1 size-8 fill-current" />}
+          </button>
+          <CtlBtn label="下一个" testid="tape-next" onClick={() => go(1)} disabled={!list.length}>
+            <SkipForward className="size-6 fill-current" />
+          </CtlBtn>
+        </div>
+      </section>
 
-      {/* 进度：一条磁带，每个词一格刻度（太多就只画线） */}
-      <div className="relative mt-2 h-3 shrink-0" aria-hidden>
-        <div className="absolute inset-x-0 top-1/2 h-px bg-rule-strong" />
-        <div className="absolute left-0 top-1/2 h-[3px] -translate-y-1/2 bg-ink transition-all duration-300" style={{ width: `${list.length ? ((pos + 1) / list.length) * 100 : 0}%` }} />
-        {list.length > 0 && list.length <= 40 && (
-          <div className="absolute inset-0 flex justify-between">
-            {list.map((_, k) => (
-              <span key={k} className={cn("h-full w-px", k <= pos ? "bg-ink" : "bg-rule-strong")} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 播放控制 */}
-      <div className="flex shrink-0 items-center justify-center gap-10 py-4">
-        <CtlBtn label="上一个" testid="tape-prev" onClick={() => go(-1)} disabled={!list.length}>
-          <SkipBack className="size-6 fill-current" />
-        </CtlBtn>
-        <button
-          type="button"
-          onClick={toggle}
-          disabled={!list.length}
-          aria-label={playing ? "暂停" : "播放"}
-          data-testid="tape-play"
-          className={cn("press grid size-[72px] place-items-center rounded-full disabled:opacity-40", playing ? "bg-mark text-mark-ink ring-[1.5px] ring-ink" : "bg-ink text-paper-3")}
-        >
-          {playing ? <Pause className="size-8 fill-current" /> : <Play className="ml-1 size-8 fill-current" />}
-        </button>
-        <CtlBtn label="下一个" testid="tape-next" onClick={() => go(1)} disabled={!list.length}>
-          <SkipForward className="size-6 fill-current" />
-        </CtlBtn>
-      </div>
-
-      {/* 设置：三行，细线分开，不是灰色底的盒子 */}
-      <div className="mb-3 shrink-0 border-t border-ink" data-testid="tape-settings">
+      {/* 设置：一张三行的小表，名字在左、刻度在右 */}
+      <dl className="mb-3 shrink-0 divide-y divide-rule border-y border-rule" data-testid="tape-settings">
         <SetRow label="语速">
           <Segmented<number> className="w-full max-w-64" value={rate} onChange={(v) => setSettings({ rate: v })} testid="tape-rate" options={RATE_OPTIONS.map((v) => ({ value: v, label: `${v}×` }))} />
         </SetRow>
@@ -316,18 +311,18 @@ function Tape({ index }: { index: WordIndex }) {
         <SetRow label="定时">
           <Segmented<number> className="w-full max-w-64" value={sleepMin} onChange={chooseSleep} testid="tape-sleep" options={SLEEP_OPTIONS.map((v) => ({ value: v, label: v ? `${v} 分` : "关" }))} />
         </SetRow>
-      </div>
+      </dl>
     </div>
   );
 }
 
 function PhasePill({ active, label }: { active: boolean; label: string }) {
-  return <span className={cn("text-[0.75rem] font-medium transition-colors", active ? "hl font-semibold text-ink" : "text-ink-3")}>{label}</span>;
+  return <span className={cn("font-medium transition-colors", active ? "hl font-semibold text-ink" : "text-ink-3")}>{label}</span>;
 }
 
 function CtlBtn({ children, label, onClick, testid, disabled }: { children: React.ReactNode; label: string; onClick: () => void; testid: string; disabled?: boolean }) {
   return (
-    <button type="button" aria-label={label} onClick={onClick} data-testid={testid} disabled={disabled} className="press grid size-14 place-items-center rounded-lg text-ink hover:bg-paper-2 disabled:opacity-35">
+    <button type="button" aria-label={label} onClick={onClick} data-testid={testid} disabled={disabled} className="press grid size-14 place-items-center rounded-full text-ink ring-1 ring-inset ring-rule hover:bg-paper-2 disabled:opacity-35">
       {children}
     </button>
   );
@@ -335,9 +330,9 @@ function CtlBtn({ children, label, onClick, testid, disabled }: { children: Reac
 
 function SetRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-h-12 items-center gap-3 border-b border-rule py-1.5">
-      <span className="w-10 shrink-0 text-[0.8125rem] text-ink-2">{label}</span>
-      <div className="flex min-w-0 flex-1 justify-end">{children}</div>
+    <div className="flex min-h-12 items-center gap-3 py-1.5">
+      <dt className="w-10 shrink-0 text-[0.8125rem] text-ink-2">{label}</dt>
+      <dd className="flex min-w-0 flex-1 justify-end">{children}</dd>
     </div>
   );
 }
