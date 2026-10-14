@@ -30,6 +30,7 @@ import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "re
 import { toast } from "@/lib/toast";
 import { Meter, Ring, WeekStrip } from "@/components/app/charts";
 import { Logo, Panel, PanelTitle, Spinner } from "@/components/app/shell";
+import { Act, Note, Tag, actClass } from "@/components/app/kit";
 import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 import { INSTALL_SNOOZE_DAYS, installVisible } from "@/lib/ux";
 // 11.3 · 分享图 / 单词详情只在点开时才加载（首屏 JS 预算）
@@ -219,6 +220,7 @@ function Today() {
   const urgent = advice && (advice.kind === "recover-offer" || advice.kind === "recovering" || advice.kind === "exam-over" || advice.kind === "makeup");
   // 11.4 · 考完了、还没选：首屏只有「考完了」这一件事（不排新词目标，也不报复习量）
   const overFirst = advice?.kind === "exam-over" ? advice : null;
+  const snackSpeed = sum.due > 0 && !overFirst;
   // 「今日一词」单独占一行（前面的小卡是偶数个）时用宽版
   const wodWide = (3 + (sum.due > 0 && !overFirst ? 1 : 0) + (quizOpen && advice?.kind !== "quiz" ? 1 : 0)) % 2 === 0;
   // 11.4 · 连续 3 天以上才说「要断了」
@@ -604,14 +606,14 @@ function Today() {
             </button>
             <h2 className="section-rule mb-1 text-[1.0625rem] font-semibold tracking-[-0.01em]">更多练习</h2>
             <div className="flex flex-col" data-testid="snack">
-              <SnackTile to="/tape" testid="tape-entry" icon={<Headphones />} title="磁带模式" sub="通勤免手听" />
+              <SnackTile to="/tape" testid="tape-entry" no={1} title="磁带模式" sub="通勤免手听" />
               {/* 没有到期复习时不放一个点了没用的速刷入口 */}
-              {sum.due > 0 && !overFirst && (
-                <SnackTile to="/study" search={{ mode: "speed" }} testid="speed-entry" icon={<Zap />} title="速刷" sub={<span data-testid="speed-sub">{`左右滑清 ${sum.due} 词`}</span>} />
+              {snackSpeed && (
+                <SnackTile to="/study" search={{ mode: "speed" }} testid="speed-entry" no={2} title="速刷" sub={<span data-testid="speed-sub">{`左右滑清 ${sum.due} 词`}</span>} />
               )}
-              <SnackTile to="/match" testid="match-entry" icon={<Puzzle />} title="配对消消乐" sub={st.gameBest?.match ? `最高 ${st.gameBest.match} 分` : "60 秒连连看"} />
-              <SnackTile to="/judge" testid="judge-entry" icon={<Scale />} title="判断对错" sub={st.gameBest?.judge ? `最高 ${st.gameBest.judge} 分` : "滑一下判对错"} />
-              {quizOpen && advice?.kind !== "quiz" && <SnackTile to="/quiz" testid="quiz-entry" icon={<ClipboardCheck />} title="今日小测" sub="20 题 · 限时 5 分钟" />}
+              <SnackTile to="/match" testid="match-entry" no={snackSpeed ? 3 : 2} title="配对消消乐" sub={st.gameBest?.match ? `最高 ${st.gameBest.match} 分` : "60 秒连连看"} />
+              <SnackTile to="/judge" testid="judge-entry" no={snackSpeed ? 4 : 3} title="判断对错" sub={st.gameBest?.judge ? `最高 ${st.gameBest.judge} 分` : "滑一下判对错"} />
+              {quizOpen && advice?.kind !== "quiz" && <SnackTile to="/quiz" testid="quiz-entry" no={snackSpeed ? 5 : 4} title="今日小测" sub="20 题 · 限时 5 分钟" />}
             </div>
           </section>
         </div>
@@ -640,7 +642,10 @@ function TodaySkeleton() {
   );
 }
 
-/** 唯一的建议卡：内容由 homeAdvice 决定 */
+/**
+ * 唯一的建议卡：内容由 homeAdvice 决定。
+ * 12.0 · 每一种都排成一条「边注」：墨线 + 语气色块 + 标题 + 一段话 + 一排动作，不再是图标卡片。
+ */
 function AdviceCard({
   advice,
   day,
@@ -662,36 +667,36 @@ function AdviceCard({
   switch (advice.kind) {
     case "recover-offer":
       return (
-        <section className="rounded-2xl border border-ink bg-paper-3 p-4" data-testid="welcome-back" data-backlog={advice.backlog} data-days={advice.days}>
-          <div className="flex items-start gap-3">
-            <span className="grid size-8 shrink-0 place-items-center text-ink-2">
-              <Sparkles className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="text-base font-semibold leading-tight">欢迎回来！</div>
-              <div className="mt-1 text-[0.8125rem] leading-snug text-ink-3" data-testid="welcome-back-sub">
-                {advice.gap} 天没见，积压了 {advice.backlog} 个复习。分 {advice.days} 天清完，每天 {advice.perDay} 个以内，这几天新词暂停。
-              </div>
-            </div>
-            <button type="button" aria-label="不用了" data-testid="recover-dismiss" onClick={() => dismissRecover(day)} className="press -mr-1 -mt-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
-              <X className="size-4" />
-            </button>
-          </div>
-          <button
-            type="button"
-            data-testid="recover-apply"
-            onClick={() => {
-              const s0 = getState();
-              const per = recoverPerDay(s0.settings.reviewCap ?? 0);
-              const r = recoveryPlan(s0.cards, day, per);
-              startRecover(r.cards, day, r.until, r.days, per);
-              toast.success(`恢复计划开始：${r.days} 天清完积压`, { description: `今天先复习 ${Math.min(advice.perDay, advice.backlog)} 个` });
-            }}
-            className="press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2"
-          >
-            一键恢复：{advice.days} 天清完积压
-          </button>
-        </section>
+        <Note
+          strong
+          kicker="欢迎回来"
+          tone="know"
+          testid="welcome-back"
+          data-backlog={advice.backlog}
+          data-days={advice.days}
+          title="欢迎回来！"
+          onClose={() => dismissRecover(day)}
+          closeTestid="recover-dismiss"
+          actions={
+            <Act
+              grow
+              data-testid="recover-apply"
+              onClick={() => {
+                const s0 = getState();
+                const per = recoverPerDay(s0.settings.reviewCap ?? 0);
+                const r = recoveryPlan(s0.cards, day, per);
+                startRecover(r.cards, day, r.until, r.days, per);
+                toast.success(`恢复计划开始：${r.days} 天清完积压`, { description: `今天先复习 ${Math.min(advice.perDay, advice.backlog)} 个` });
+              }}
+            >
+              一键恢复：{advice.days} 天清完积压
+            </Act>
+          }
+        >
+          <p data-testid="welcome-back-sub">
+            {advice.gap} 天没见，积压了 {advice.backlog} 个复习。分 {advice.days} 天清完，每天 {advice.perDay} 个以内，这几天新词暂停。
+          </p>
+        </Note>
       );
     case "recovering":
       return <RecoveringCard advice={advice} day={day} st={st} index={index} />;
@@ -699,121 +704,134 @@ function AdviceCard({
       return <ExamOverCard advice={advice} index={index} st={st} day={day} streak={curStreak(st, day)} />;
     case "makeup":
       return (
-        <Notice
+        <Note
           testid="makeup-notice"
-          icon={<Ticket className="size-5" />}
-          tone="bg-vague-soft text-vague"
+          tone="vague"
+          kicker="补卡"
           title="昨天漏打卡了"
-          sub={`用 1 张补卡补上 → 连续 ${patchedStreak} 天 · 还有 ${st.makeup} 张`}
-          action={
-            <button type="button" data-testid="makeup-use" onClick={onPatch} className="shrink-0 rounded-lg bg-vague px-3.5 py-2 text-[0.8125rem] font-semibold text-paper-3">
+          actions={
+            <Act kind="primary" data-testid="makeup-use" onClick={onPatch}>
               补卡
-            </button>
+            </Act>
           }
-        />
+        >
+          用 1 张补卡补上 → 连续 {patchedStreak} 天 · 还有 {st.makeup} 张
+        </Note>
       );
     case "sprint":
       return <SprintCard adv={advice.advice} exam={advice.exam} st={st} day={day} curFinish={summarize(index, st, day).finish} />;
     case "adaptive-cut":
       return (
-        <Notice
+        <Note
           testid="adaptive-cut"
-          icon={<Scale className="size-5" />}
-          tone="bg-know-soft text-know"
+          tone="know"
+          kicker="今天减量"
           title={`今天新词已减到 ${advice.cut} 个`}
-          sub={`先清复习 · 明天恢复每天 ${daily} 个`}
-          action={
-            <button type="button" data-testid="adaptive-restore" onClick={() => setNewCut(day, null)} className="shrink-0 rounded-lg bg-paper-2 px-3.5 py-2 text-[0.8125rem] font-semibold">
+          actions={
+            <Act kind="secondary" data-testid="adaptive-restore" onClick={() => setNewCut(day, null)}>
               恢复 {daily}
-            </button>
+            </Act>
           }
-        />
+        >
+          先清复习 · 明天恢复每天 {daily} 个
+        </Note>
       );
     case "adaptive":
       return (
-        <Notice
+        <Note
           testid="adaptive-new"
-          icon={<Scale className="size-5" />}
-          tone="bg-vague-soft text-vague"
+          tone="vague"
+          kicker="建议减量"
           title={`今天要复习 ${summarizeDue(st, day)} 个`}
-          sub={`复习压力大，建议今天新词 ${daily} → ${advice.to}，先把旧词巩固住`}
-          action={
-            <div className="flex shrink-0 items-center gap-1">
-              <button type="button" aria-label="不用了" data-testid="adaptive-dismiss" onClick={() => dismissNewCut(day)} className="grid size-8 place-items-center rounded-full text-ink-3">
-                <X className="size-4" />
-              </button>
-              <button
-                type="button"
-                data-testid="adaptive-apply"
-                onClick={() => {
-                  setNewCut(day, advice.to);
-                  toast.success(`今天新词减到 ${advice.to} 个`, { description: "只影响今天，明天恢复" });
-                }}
-                className="rounded-lg bg-vague px-3.5 py-2 text-[0.8125rem] font-semibold text-paper-3"
-              >
-                减到 {advice.to}
-              </button>
-            </div>
+          onClose={() => dismissNewCut(day)}
+          closeTestid="adaptive-dismiss"
+          actions={
+            <Act
+              data-testid="adaptive-apply"
+              onClick={() => {
+                setNewCut(day, advice.to);
+                toast.success(`今天新词减到 ${advice.to} 个`, { description: "只影响今天，明天恢复" });
+              }}
+            >
+              减到 {advice.to}
+            </Act>
           }
-        />
+        >
+          复习压力大，建议今天新词 {daily} → {advice.to}，先把旧词巩固住
+        </Note>
       );
     case "backup":
       return (
-        <Notice
+        <Note
           testid="backup-nag"
-          icon={<HardDriveDownload className="size-5" />}
-          tone="bg-vague-soft text-vague"
+          tone="vague"
+          kicker="备份"
           title={st.lastBackup ? `${advice.days} 天没备份了` : "还没备份过学习记录"}
-          sub="记录只存在这台手机上：删掉图标、卸载或清理浏览器，记录就全没了"
-          action={
-            <div className="flex shrink-0 items-center gap-1">
-              <button type="button" data-testid="backup-snooze" onClick={() => snoozeBackup(addDays(day, 3))} className="rounded-lg px-2.5 py-2 text-[0.8125rem] font-semibold text-ink-3">
-                稍后
-              </button>
-              <Link to="/me" className="rounded-lg bg-foreground px-3.5 py-2 text-[0.8125rem] font-semibold text-background">
+          actions={
+            <>
+              <Link to="/me" className={actClass("primary")}>
                 去备份
               </Link>
-            </div>
+              <Act kind="quiet" data-testid="backup-snooze" onClick={() => snoozeBackup(addDays(day, 3))}>
+                稍后
+              </Act>
+            </>
           }
-        />
+        >
+          记录只存在这台手机上：删掉图标、卸载或清理浏览器，记录就全没了
+        </Note>
       );
     case "install":
       return <InstallCard day={day} installed={st.installed} snooze={st.installSnooze} />;
     case "hard":
       return (
-        <Link to="/words" search={{ tab: "hard" }} className="block" data-testid="hard-entry">
-          <Notice icon={<Skull className="size-5" />} tone="bg-forget-soft text-forget" title={`${advice.n} 个顽固词`} sub="忘了 3 次以上，单独拎出来攻克" action={<ChevronRight className="size-5 shrink-0 text-ink-3" />} />
+        <Link to="/words" search={{ tab: "hard" }} className="press group block border-t border-ink pt-3.5" data-testid="hard-entry">
+          <span className="mb-1.5 flex items-center gap-2 text-[0.75rem] font-medium text-ink-3">
+            <span className="size-2 rounded-[2px] bg-forget" aria-hidden />
+            顽固词
+          </span>
+          <span className="flex items-baseline gap-3">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[1rem] font-semibold leading-snug">{`${advice.n} 个顽固词`}</span>
+              <span className="mt-1 block text-[0.8125rem] text-ink-2">忘了 3 次以上，单独拎出来攻克</span>
+            </span>
+            <span aria-hidden className="font-serif text-[1.5rem] leading-none text-ink-3 transition-transform group-hover:translate-x-0.5">
+              ›
+            </span>
+          </span>
         </Link>
       );
     case "ahead":
       return (
-        <Notice
+        <Note
           testid="ahead"
-          icon={<FastForward className="size-5" />}
-          tone="bg-know-soft text-know"
+          tone="know"
+          kicker="有余力"
           title="今日复习已清零"
-          sub={`还有余力？提前复习明天到期的 ${advice.n} 词`}
-          action={
-            <Link to="/study" search={{ mode: "ahead" }} data-testid="start-ahead" className="shrink-0 rounded-lg bg-know px-3.5 py-2 text-[0.8125rem] font-semibold text-paper-3">
+          actions={
+            <Link to="/study" search={{ mode: "ahead" }} data-testid="start-ahead" className={actClass("primary")}>
               提前复习
             </Link>
           }
-        />
+        >
+          还有余力？提前复习明天到期的 {advice.n} 词
+        </Note>
       );
     case "quiz":
       return (
-        <Notice
+        <Note
           testid="quiz-reminder"
-          icon={<ClipboardCheck className="size-5" />}
-          tone="bg-mark-soft text-ink"
+          tone="mark"
+          kicker="检验一下"
           title="今日小测"
-          sub="任务完成了，用 20 题检验一下 · 限时 5 分钟"
-          action={
-            <Link to="/quiz" data-testid="quiz-entry" className="shrink-0 rounded-lg bg-ink px-3.5 py-2 text-[0.8125rem] font-semibold text-paper-3">
+          actions={
+            <Link to="/quiz" data-testid="quiz-entry" className={actClass("primary")}>
               开始
             </Link>
           }
-        />
+        >
+          任务完成了，用 20 题检验一下 · 限时 5 分钟
+        </Note>
       );
     case "week":
       return <WeekCard day={day} logs={logs} />;
@@ -843,75 +861,74 @@ function RecoveringCard({ advice, day, st, index }: { advice: Extract<Advice, { 
     : advice.due
       ? `今天清 ${advice.due} 个积压，${mix ? `新词每天 ${mix} 个` : "新词暂停"}`
       : `今天的积压清完了，${mix ? `新词每天 ${mix} 个` : "新词暂停"}`;
+  const step = Math.min(advice.day, advice.days);
   return (
-    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-3.5 pr-4" data-testid="recovering" data-shifted={shiftedToday ? advice.shifted : 0} data-until={advice.until}>
-      <div className="flex items-center gap-3">
-        <span className="grid size-8 shrink-0 place-items-center text-ink-2">
-          <Sparkles className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="text-[0.9375rem] font-semibold leading-tight">
-            恢复计划 · 第 {Math.min(advice.day, advice.days)}/{advice.days} 天
-          </div>
-          <div className="mt-0.5 text-xs leading-snug text-ink-3" data-testid="recovering-sub">
-            {sub}
-          </div>
-        </div>
+    <section className="min-w-0 border-t border-ink pt-3.5" data-testid="recovering" data-shifted={shiftedToday ? advice.shifted : 0} data-until={advice.until}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="text-[1rem] font-semibold leading-snug">
+          恢复计划 · 第 {step}/{advice.days} 天
+        </h3>
         {!confirm && !clash && !mix && (
-          <button type="button" data-testid="recover-end" onClick={() => setConfirm(true)} className="shrink-0 rounded-lg bg-paper-2 px-3 py-2 text-[0.7812rem] font-semibold">
+          <Act kind="quiet" data-testid="recover-end" onClick={() => setConfirm(true)} className="h-9 shrink-0 text-[0.8125rem]">
             提前恢复新词
-          </button>
+          </Act>
         )}
       </div>
+      {/* 第几天：一排小方格，走过的划上荧光笔 */}
+      <div className="mt-2.5 flex gap-1" aria-hidden>
+        {Array.from({ length: Math.min(advice.days, 14) }, (_, i) => (
+          <span key={i} className={cn("h-1.5 flex-1 rounded-[1px]", i < step ? "bg-mark" : "bg-rule")} />
+        ))}
+      </div>
+      <p className="mt-2.5 text-[0.8125rem] leading-snug text-ink-2" data-testid="recovering-sub">
+        {sub}
+      </p>
       {clash && (
-        <div className="mt-3 rounded-2xl bg-vague-soft p-3 text-[0.7812rem]" data-testid="recover-clash">
-          <p className="font-semibold text-vague">
+        <div className="mt-3.5 border-l-2 border-vague pl-3 text-[0.8125rem]" data-testid="recover-clash">
+          <p className="font-medium text-ink">
             新词要停到 {md(advice.until)}，那时离考试只剩 {Math.max(0, diffDays(advice.until, examDay))} 天。怎么安排？
           </p>
-          <div className="mt-2.5 grid grid-cols-2 gap-2">
-            <button
-              type="button"
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Act
+              grow
               data-testid="recover-mix"
               onClick={() => {
                 chooseRecoverMix(mixTo);
                 toast.success(`边复习边学新词：每天 ${mixTo} 个`);
               }}
-              className="h-10 rounded-xl bg-vague px-1 text-[0.7812rem] font-semibold text-paper-3"
             >
               边复习边每天 {mixTo} 个新词
-            </button>
-            <button
-              type="button"
+            </Act>
+            <Act
+              kind="secondary"
               data-testid="recover-clear"
               onClick={() => {
                 chooseRecoverMix(0);
                 toast("先清积压，清完新词自动恢复");
               }}
-              className="h-10 rounded-xl bg-paper-3 text-[0.7812rem] font-semibold"
             >
               先清积压
-            </button>
+            </Act>
           </div>
         </div>
       )}
       {confirm && (
-        <div className="mt-3 rounded-2xl bg-paper-2 p-3 text-[0.7812rem]" data-testid="recover-end-sheet">
-          <p className="text-ink-3">结束恢复计划？没清完的积压会按正常复习安排，可能一天比较多。</p>
-          <div className="mt-2.5 grid grid-cols-2 gap-2">
-            <button type="button" data-testid="recover-end-cancel" onClick={() => setConfirm(false)} className="h-10 rounded-xl bg-paper-3 font-semibold">
+        <div className="mt-3.5 border-l-2 border-ink pl-3 text-[0.8125rem]" data-testid="recover-end-sheet">
+          <p className="text-ink-2">结束恢复计划？没清完的积压会按正常复习安排，可能一天比较多。</p>
+          <div className="mt-3 flex gap-2">
+            <Act kind="secondary" grow data-testid="recover-end-cancel" onClick={() => setConfirm(false)}>
               继续恢复
-            </button>
-            <button
-              type="button"
+            </Act>
+            <Act
+              grow
               data-testid="recover-end-confirm"
               onClick={() => {
                 endRecover();
                 toast.success("恢复计划结束，新词恢复");
               }}
-              className="h-10 rounded-xl bg-ink font-semibold text-paper-3"
             >
               结束，学新词
-            </button>
+            </Act>
           </div>
         </div>
       )}
@@ -949,18 +966,48 @@ function nextPlanOf(index: WordIndex, st: AppState, day: string, next: string) {
 function KeepNote({ daily, finish, late, testid }: { daily: number; finish: string | null; late: boolean; testid: string }) {
   if (!late || !finish) return null;
   return (
-    <span className="mt-1 block text-xs" data-testid={testid}>
+    <span className="mt-2 block border-l-2 border-vague pl-2.5 text-[0.75rem] text-ink-2" data-testid={testid}>
       保持每天 {daily} 个：<span className="whitespace-nowrap">{fmtDate(finish, true)}</span> 学完，在考试之后
     </span>
   );
 }
 
 /** 11.5 · 计划这一步的「返回」：回到上一步（系统返回键同样只回上一步，不退出 app） */
-function StepBack({ onBack, testid }: { onBack: () => void; testid: string }) {
+function StepBack({ onBack, testid, label }: { onBack: () => void; testid: string; label: string }) {
   return (
-    <button type="button" data-testid={testid} onClick={onBack} aria-label="返回上一步" className="press -ml-1 -mt-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
-      <ChevronLeft className="size-5" />
+    <button
+      type="button"
+      data-testid={testid}
+      onClick={onBack}
+      aria-label="返回上一步"
+      className="press -ml-1.5 mb-1.5 flex h-8 items-center gap-1 rounded-md px-1.5 text-[0.75rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-ink"
+    >
+      <ChevronLeft className="size-4" /> {label}
     </button>
+  );
+}
+
+/** 计划推荐：一句加粗的推荐 + 两个选择（应用 / 保持现在的） */
+function PlanPick({
+  applyId,
+  keepId,
+  onApply,
+  onKeep,
+}: {
+  applyId: string;
+  keepId: string;
+  onApply: () => void;
+  onKeep: () => void;
+}) {
+  return (
+    <>
+      <Act grow data-testid={applyId} onClick={onApply}>
+        应用这个计划
+      </Act>
+      <Act kind="secondary" data-testid={keepId} onClick={onKeep}>
+        保持现在的
+      </Act>
+    </>
   );
 }
 
@@ -970,80 +1017,67 @@ function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advi
   // 11.5 · 系统返回：先回到「考完了」这一步，不退出 app
   useBackClose(step === "plan", () => setStep("ask"));
   return (
-    <section className="rounded-2xl border border-ink bg-paper-3 p-5" data-testid="exam-over" data-exam={advice.exam} data-step={step}>
-      <div className="flex items-start gap-3">
-        {step === "plan" ? (
-          <StepBack onBack={() => setStep("ask")} testid="exam-plan-back" />
-        ) : (
-          <span className="grid size-8 shrink-0 place-items-center text-ink-2">
-            <GraduationCap className="size-5" />
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="text-base font-semibold leading-tight">{step === "ask" ? "四级考完了，辛苦了" : `备考 ${fmtDate(advice.next, true)}`}</div>
-          <div className="mt-1 text-[0.8125rem] leading-snug text-ink-3" data-testid="exam-over-sub">
-            {step === "ask" ? (
-              <>
-                {streak >= STREAK_WARN_MIN && (
-                  <b className="mb-1 block text-sm text-ink" data-testid="exam-over-streak" data-n={streak}>
-                    连续 {streak} 天备考，一天没落下
-                  </b>
-                )}
-                {advice.custom ? `你设的考试日 ${fmtDate(advice.exam)} 已经过了。` : `${fmtDate(advice.exam)} 那场已经考完。`}考试那天不算断签。接下来怎么安排？
-              </>
-            ) : (
-              <>
-                还有 {daysUntil(day, advice.next)} 天。按新日期重新算了一下：<b className="text-ink" data-testid="exam-next-plan" data-book={rec.book} data-daily={recDaily}>{recLine}</b>
-                <KeepNote daily={st.settings.daily} finish={keepFinish} late={keepLate} testid="exam-keep-note" />
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-      {step === "ask" ? (
-        <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
-          <button type="button" data-testid="exam-next" onClick={() => setStep("plan")} className="press h-11 rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2">
-            备考下一场（{Number(advice.next.slice(5, 7))} 月）
-          </button>
-          <button
-            type="button"
-            data-testid="exam-rest"
-            onClick={() => {
-              ackExam(advice.exam, "rest", day);
-              toast("先休息一下", { description: `不排新词，每天最多 ${PAUSE_CAP} 个维持复习，休息期间不算断签` });
-            }}
-            className="h-11 rounded-lg bg-paper-2 text-sm font-semibold"
-          >
-            先休息
-          </button>
-        </div>
+    <section className="min-w-0 border-t-2 border-ink pt-4" data-testid="exam-over" data-exam={advice.exam} data-step={step}>
+      {step === "plan" ? (
+        <StepBack onBack={() => setStep("ask")} testid="exam-plan-back" label="考完了" />
       ) : (
-        <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
-          <button
-            type="button"
-            data-testid="exam-next-apply"
-            onClick={() => {
+        <div className="mb-1.5 text-[0.75rem] font-medium text-ink-3">{fmtDate(advice.exam)} · 四级</div>
+      )}
+      <h2 className="text-[1.375rem] font-semibold leading-tight tracking-[-0.02em]">{step === "ask" ? "四级考完了，辛苦了" : `备考 ${fmtDate(advice.next, true)}`}</h2>
+      <div className="mt-2 text-[0.875rem] leading-relaxed text-ink-2" data-testid="exam-over-sub">
+        {step === "ask" ? (
+          <>
+            {streak >= STREAK_WARN_MIN && (
+              <b className="mb-1.5 block text-[0.9375rem] font-semibold text-ink" data-testid="exam-over-streak" data-n={streak}>
+                <span className="hl">连续 {streak} 天备考</span>，一天没落下
+              </b>
+            )}
+            {advice.custom ? `你设的考试日 ${fmtDate(advice.exam)} 已经过了。` : `${fmtDate(advice.exam)} 那场已经考完。`}考试那天不算断签。接下来怎么安排？
+          </>
+        ) : (
+          <>
+            还有 {daysUntil(day, advice.next)} 天。按新日期重新算了一下：
+            <b className="mt-1.5 block text-[0.9375rem] font-semibold text-ink" data-testid="exam-next-plan" data-book={rec.book} data-daily={recDaily}>
+              {recLine}
+            </b>
+            <KeepNote daily={st.settings.daily} finish={keepFinish} late={keepLate} testid="exam-keep-note" />
+          </>
+        )}
+      </div>
+      <div className="mt-4 flex gap-2">
+        {step === "ask" ? (
+          <>
+            <Act grow data-testid="exam-next" onClick={() => setStep("plan")} className="h-11">
+              备考下一场（{Number(advice.next.slice(5, 7))} 月）
+            </Act>
+            <Act
+              kind="secondary"
+              data-testid="exam-rest"
+              className="h-11"
+              onClick={() => {
+                ackExam(advice.exam, "rest", day);
+                toast("先休息一下", { description: `不排新词，每天最多 ${PAUSE_CAP} 个维持复习，休息期间不算断签` });
+              }}
+            >
+              先休息
+            </Act>
+          </>
+        ) : (
+          <PlanPick
+            applyId="exam-next-apply"
+            keepId="exam-next-keep"
+            onApply={() => {
               ackExam(advice.exam, "next", day, left === 0 ? undefined : { book: rec.book, daily: recDaily });
               toast.success(`改为备考 ${fmtDate(advice.next, true)}`, { description: left === 0 ? undefined : `${bookName}，每天 ${recDaily} 个` });
             }}
-            className="press h-11 rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2"
-          >
-            应用这个计划
-          </button>
-          <button
-            type="button"
-            data-testid="exam-next-keep"
-            onClick={() => {
+            onKeep={() => {
               // 11.5 · 知情选了考后才学完的节奏：记 paceOk，7 天内不说「赶不上」
               ackExam(advice.exam, "next", day, undefined, keepLate);
               toast.success(`改为备考 ${fmtDate(advice.next, true)}`, { description: `保持每天 ${st.settings.daily} 个，可以在「我的」调整` });
             }}
-            className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold"
-          >
-            保持现在的
-          </button>
-        </div>
-      )}
+          />
+        )}
+      </div>
     </section>
   );
 }
@@ -1109,46 +1143,45 @@ function SprintCard({ adv, exam, st, day, curFinish }: { adv: ExamAdvice; exam: 
     title = `每天 ${daily} 个，考前能学完 ${adv.reach} 个${bookName}`;
     sub = `剩下的 ${adv.left - adv.reach} 个考前来不及，先把能学的记牢。`;
   }
+  const info = adv.kind === "cap" && adv.canRaise === null;
   return (
-    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="sprint" data-kind={adv.kind === "cap" && adv.canRaise === null ? "cap-info" : adv.kind} data-too={adv.kind === "cap" ? 1 : 0}>
+    <section className="min-w-0 border-t border-ink pt-3.5" data-testid="sprint" data-kind={info ? "cap-info" : adv.kind} data-too={adv.kind === "cap" ? 1 : 0}>
       <div className="flex items-start gap-3">
-        <span className="grid size-8 shrink-0 place-items-center text-ink-2">
-          <Target className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1 leading-snug">
-          <div className="text-[0.9375rem] font-semibold" data-testid="sprint-daily" data-daily={target}>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex items-center gap-2 text-[0.75rem] font-medium text-ink-3">
+            <span className="size-2 rounded-[2px] bg-vague" aria-hidden />
+            {info ? "考前能学多少" : "计划建议"}
+          </div>
+          <h3 className="text-[1rem] font-semibold leading-snug" data-testid="sprint-daily" data-daily={target}>
             {title}
-          </div>
-          <div className="mt-0.5 text-xs text-ink-3" data-testid="sprint-sub">
+          </h3>
+          <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-ink-2" data-testid="sprint-sub">
             {sub}
-          </div>
+          </p>
         </div>
         <button
           type="button"
           aria-label="知道了"
           data-testid="sprint-dismiss"
-          onClick={() => dismissSprint(day, adv.kind === "cap" && adv.canRaise === null ? exam : undefined, addDays(day, SPRINT_SNOOZE_DAYS))}
-          className="press -mr-1 -mt-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2"
+          onClick={() => dismissSprint(day, info ? exam : undefined, addDays(day, SPRINT_SNOOZE_DAYS))}
+          className="press -mr-2 -mt-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink"
         >
           <X className="size-4" />
         </button>
       </div>
       {label && (
-        <button
-          type="button"
-          data-testid="sprint-apply"
-          data-core={adv.kind === "switch" ? 1 : 0}
-          onClick={apply}
-          className="press mt-3 flex h-11 w-full items-center justify-center rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2"
-        >
+        <Act grow data-testid="sprint-apply" data-core={adv.kind === "switch" ? 1 : 0} onClick={apply} className="mt-3.5 h-11 w-full">
           {label}
-        </button>
+        </Act>
       )}
     </section>
   );
 }
 
-/** 考试倒计时 + 词书进度（11.1 · 和原来的词书卡合并）；落后时的建议在上面的建议卡里 */
+/**
+ * 考试倒计时 + 词书进度（11.1 · 和原来的词书卡合并）；落后时的建议在上面的建议卡里。
+ * 12.0 · 排成词典的一个词条：左边一个衬线大数字（还有几天），右边日期和状态，下面一条细进度线和一句话。
+ */
 function ExamCard({
   day,
   exam,
@@ -1190,65 +1223,70 @@ function ExamCard({
   void adv;
   const wd = WEEK[new Date(exam + "T12:00:00").getDay()];
   const spare = sum.newLeft ? Math.max(0, diffDays(sum.finish, exam)) : plan.daysLeft;
+  const share = sum.started / Math.max(1, sum.bookTotal);
   return (
-    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="exam-card" data-days={plan.daysLeft}>
-      <div className="flex items-center gap-3.5">
-        <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-foreground px-3 py-2 text-background" data-testid="exam-days">
-          <span className="tnum font-display text-[1.625rem] font-semibold leading-none">{plan.daysLeft}</span>
-          <span className="mt-0.5 text-[0.6875rem] font-semibold opacity-75">天</span>
+    <section className="min-w-0" data-testid="exam-card" data-days={plan.daysLeft}>
+      <div className="flex items-baseline gap-3">
+        <h2 className="section-rule min-w-0 flex-1 text-[1.0625rem] font-semibold tracking-[-0.01em]">
+          {plan.daysLeft === 0 ? "今天就是四级考试，加油！" : plan.daysLeft === 1 ? "明天就考四级了" : "距四级考试"}
+        </h2>
+        <Link to="/me" aria-label="调整计划" className="press -my-2 -mr-1 flex h-11 shrink-0 items-center rounded-lg px-1 text-[0.8125rem] text-ink-3 hover:text-ink">
+          调整 <span className="ml-0.5 font-serif text-[1.25rem] leading-none">›</span>
+        </Link>
+      </div>
+      <div className="mt-1 flex items-end gap-4">
+        <div className="flex shrink-0 items-baseline gap-1" data-testid="exam-days">
+          <span className="tnum font-serif text-[3.5rem] leading-[0.9] tracking-[-0.03em]">{plan.daysLeft}</span>
+          <span className="text-[0.9375rem] text-ink-2">天</span>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-[0.9375rem] font-semibold">
-            <GraduationCap className="size-4 text-ink" />
-            {plan.daysLeft === 0 ? "今天就是四级考试，加油！" : plan.daysLeft === 1 ? "明天就考四级了" : "距四级考试"}
-          </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-3" data-testid="exam-date">
+        <div className="min-w-0 flex-1 pb-1">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.8125rem] text-ink-2" data-testid="exam-date">
             {/* 11.5 · 窄屏只在日期和「周X」之间换行，「周六」两个字不拆开 */}
             <span className="whitespace-nowrap" data-testid="exam-date-day">{fmtDate(exam, true)}</span>
             <span className="whitespace-nowrap" data-testid="exam-date-wd">{wd}</span>
-            <span className={cn("rounded px-1 text-[0.625rem] font-semibold", official ? "bg-know-soft text-know" : "bg-paper-2")}>{custom ? "自定" : official ? "官方" : "预估"}</span>
+            <Tag tone={official && !custom ? "know" : undefined}>{custom ? "自定" : official ? "官方" : "预估"}</Tag>
             {/* 11.5 · 「来得及」放进日期这一行（窄屏 / 大字号时整体换行，不再把标题和日期挤断） */}
             {onTrack && plan.newLeft > 0 && (
-              <span className="flex shrink-0 items-center gap-0.5 whitespace-nowrap text-xs font-semibold text-know" data-testid="sprint-ok">
+              <span className="flex shrink-0 items-center gap-0.5 whitespace-nowrap text-[0.8125rem] font-semibold text-know" data-testid="sprint-ok">
                 <Check className="size-3.5" strokeWidth={3} /> 来得及
               </span>
             )}
           </div>
         </div>
-        <Link to="/me" aria-label="调整计划" className="press grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
-          <ChevronRight className="size-5" />
-        </Link>
       </div>
-      <div className="mt-3" data-testid="plan-card">
-        <div className="flex items-baseline justify-between text-xs text-ink-3">
-          <span className="flex items-center gap-1">
-            <BookMarked className="size-3.5 text-ink" />
-            {book === "all" ? "全部词汇" : "核心词汇"} · 已学 <b className="tnum text-sm text-ink">{sum.started}</b> / {sum.bookTotal}
+      <div className="mt-4" data-testid="plan-card">
+        <div className="flex items-baseline justify-between gap-3 text-[0.8125rem] text-ink-3">
+          <span className="min-w-0 truncate">
+            {book === "all" ? "全部词汇" : "核心词汇"} · 已学 <b className="tnum font-serif text-[1.125rem] font-normal text-ink">{sum.started}</b> / {sum.bookTotal}
           </span>
-          <span>每天 {daily} 词</span>
+          <span className="shrink-0">每天 {daily} 词</span>
         </div>
-        <div className="mt-1.5 h-2 overflow-hidden rounded-[2px] bg-rule">
-          <div className="h-full rounded-[2px] bg-ink" style={{ width: `${(sum.started / Math.max(1, sum.bookTotal)) * 100}%` }} />
+        {/* 一条细线：学过的部分是墨色 */}
+        <div className="relative mt-2 h-[3px] bg-rule" aria-hidden>
+          <div className="absolute inset-y-0 left-0 bg-ink" style={{ width: `${share * 100}%` }} />
         </div>
-        <p className="mt-2 text-xs text-ink-3" data-testid="finish-date" data-spare={spare} data-mode={sum.examMode ? "exam" : capped ? "cap" : sum.finish > exam && quiet ? quiet : "plan"}>
+        <p className="mt-2.5 text-[0.8125rem] leading-snug text-ink-2" data-testid="finish-date" data-spare={spare} data-mode={sum.examMode ? "exam" : capped ? "cap" : sum.finish > exam && quiet ? quiet : "plan"}>
           {sum.examMode
             ? "考前模式：只复习学过的词，不再排新词"
             : sum.newLeft === 0
-            ? "整本词书已经学完 🎉 考前专心复习"
-            : capped
-              ? `冲刺：考前还能学 ${reach} 个，剩 ${plan.newLeft - reach} 个来不及`
-              : sum.finish > exam
-              ? quiet
-                ? `${quiet === "pace" ? "按你选的节奏，" : ""}每天 ${daily} 个，${fmtDate(sum.finish, true)} 学完`
-                : `按现在的节奏 ${fmtDate(sum.finish, true)} 学完，赶不上考试`
-              : `按计划 ${fmtDate(sum.finish, true)} 学完 · 考前 ${spare} 天`}
+              ? "整本词书已经学完 🎉 考前专心复习"
+              : capped
+                ? `冲刺：考前还能学 ${reach} 个，剩 ${plan.newLeft - reach} 个来不及`
+                : sum.finish > exam
+                  ? quiet
+                    ? `${quiet === "pace" ? "按你选的节奏，" : ""}每天 ${daily} 个，${fmtDate(sum.finish, true)} 学完`
+                    : `按现在的节奏 ${fmtDate(sum.finish, true)} 学完，赶不上考试`
+                  : `按计划 ${fmtDate(sum.finish, true)} 学完 · 考前 ${spare} 天`}
         </p>
       </div>
       {coreLeft > 0 && (
-        <Link to="/words" search={{ tab: "core" }} data-testid="core-entry" className="mt-1 flex items-center gap-2 rounded-2xl px-1 pt-1 text-xs text-ink-3 hover:text-ink">
-          <span className="size-1.5 rounded-full bg-ink" />
-          核心词还有 <b className="tnum text-ink">{coreLeft}</b> 个没掌握
-          <ChevronRight className="ml-auto size-4" />
+        <Link to="/words" search={{ tab: "core" }} data-testid="core-entry" className="press group mt-3 flex min-h-11 items-center gap-2 border-t border-rule pt-2 text-[0.8125rem] text-ink-2 hover:text-ink">
+          <span className="min-w-0 flex-1">
+            核心词还有 <b className="tnum font-semibold text-ink">{coreLeft}</b> 个没掌握
+          </span>
+          <span aria-hidden className="font-serif text-[1.25rem] leading-none text-ink-3 transition-transform group-hover:translate-x-0.5">
+            ›
+          </span>
         </Link>
       )}
     </section>
@@ -1265,41 +1303,44 @@ function PauseCard({ day, exam, index, st, resting }: { day: string; exam: strin
   // 11.5 · 系统返回：先回到休息这一步
   useBackClose(step === "plan", () => setStep("ask"));
   return (
-    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="exam-card" data-paused="1" data-step={step}>
-      <div className="flex items-start gap-3">
-        {step === "plan" ? <StepBack onBack={() => setStep("ask")} testid="pause-plan-back" /> : <Coffee className="mt-0.5 size-5 shrink-0 text-ink-3" />}
-        <span className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-ink-3" data-testid="pause-sub">
-          {step === "plan" ? (
-            <>
-              备考 {fmtDate(exam, true)}，还有 {daysUntil(day, exam)} 天。按新日期重新算了一下：<b className="text-ink" data-testid="pause-next-plan" data-book={rec.book} data-daily={recDaily}>{recLine}</b>
-              <KeepNote daily={st.settings.daily} finish={keepFinish} late={keepLate} testid="pause-keep-note" />
-            </>
-          ) : resting ? (
-            `休息中：不排新词，每天最多 ${PAUSE_CAP} 个维持复习，不算断签`
-          ) : (
-            "考试计划已暂停 · 想备考时选一场考试"
-          )}
-        </span>
-      </div>
-      {step === "ask" ? (
-        <button type="button" data-testid="pause-end" onClick={() => setStep("plan")} className="mt-3 flex h-11 w-full items-center justify-center rounded-lg bg-paper-2 text-sm font-semibold">
-          休息够了，开始备考下一场
-        </button>
+    <section className="min-w-0 border-t border-ink pt-3.5" data-testid="exam-card" data-paused="1" data-step={step}>
+      {step === "plan" ? (
+        <StepBack onBack={() => setStep("ask")} testid="pause-plan-back" label="休息中" />
       ) : (
-        <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
-          <button
-            type="button"
-            data-testid="pause-plan-apply"
-            onClick={() => resumeFromPause(day, left === 0 ? undefined : { book: rec.book, daily: recDaily }, bookName)}
-            className="press h-11 rounded-lg bg-ink text-sm font-semibold text-paper-3 hover:bg-ink-2"
-          >
-            应用这个计划
-          </button>
-          <button type="button" data-testid="pause-plan-keep" onClick={() => resumeFromPause(day, undefined, undefined, keepLate)} className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold">
-            保持现在的
-          </button>
+        <div className="mb-1.5 flex items-center gap-2 text-[0.75rem] font-medium text-ink-3">
+          <span className="size-2 rounded-[2px] bg-know" aria-hidden />
+          {resting ? "休息中" : "计划暂停"}
         </div>
       )}
+      <p className="text-[0.875rem] leading-relaxed text-ink-2" data-testid="pause-sub">
+        {step === "plan" ? (
+          <>
+            备考 {fmtDate(exam, true)}，还有 {daysUntil(day, exam)} 天。按新日期重新算了一下：
+            <b className="mt-1.5 block text-[0.9375rem] font-semibold text-ink" data-testid="pause-next-plan" data-book={rec.book} data-daily={recDaily}>
+              {recLine}
+            </b>
+            <KeepNote daily={st.settings.daily} finish={keepFinish} late={keepLate} testid="pause-keep-note" />
+          </>
+        ) : resting ? (
+          `休息中：不排新词，每天最多 ${PAUSE_CAP} 个维持复习，不算断签`
+        ) : (
+          "考试计划已暂停 · 想备考时选一场考试"
+        )}
+      </p>
+      <div className="mt-3.5 flex gap-2">
+        {step === "ask" ? (
+          <Act kind="secondary" grow data-testid="pause-end" onClick={() => setStep("plan")} className="h-11">
+            休息够了，开始备考下一场
+          </Act>
+        ) : (
+          <PlanPick
+            applyId="pause-plan-apply"
+            keepId="pause-plan-keep"
+            onApply={() => resumeFromPause(day, left === 0 ? undefined : { book: rec.book, daily: recDaily }, bookName)}
+            onKeep={() => resumeFromPause(day, undefined, undefined, keepLate)}
+          />
+        )}
+      </div>
     </section>
   );
 }
@@ -1322,10 +1363,9 @@ function resumeFromPause(day: string, plan?: { book: AppState["settings"]["book"
   }
 }
 
-/** 周一的上周周报：与前一周对比 */
+/** 周一的上周周报：与前一周对比。12.0 · 四个数字排成一行，竖细线隔开，涨跌用箭头小字 */
 function WeekCard({ day, logs }: { day: string; logs: Record<string, import("@/lib/srs").DayLog> }) {
   const w = weekReport(logs, day);
-  const md = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`;
   const min = (ms: number) => Math.round(ms / 60000);
   const items: { label: string; value: string; delta: number | null; unit: string; testid: string }[] = [
     { label: "新学", value: String(w.last.n), delta: w.delta.n, unit: "", testid: "wk-new" },
@@ -1335,34 +1375,40 @@ function WeekCard({ day, logs }: { day: string; logs: Record<string, import("@/l
   ];
   const hasPrev = w.prev.n + w.prev.r > 0;
   return (
-    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="week-report">
+    <section className="min-w-0 border-t border-ink pt-3.5" data-testid="week-report">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[0.9375rem] font-semibold">上周周报</div>
-          <div className="mt-0.5 text-xs text-ink-3" data-testid="wk-range">
+          <h3 className="text-[1rem] font-semibold leading-snug">上周周报</h3>
+          <div className="mt-0.5 text-[0.75rem] text-ink-3" data-testid="wk-range">
             {md(w.last.start)}–{md(w.last.end)} · 学了 {w.last.days}/7 天{hasPrev ? " · 对比前一周" : ""}
           </div>
         </div>
-        <button type="button" aria-label="关闭周报" data-testid="week-close" onClick={() => dismissWeekReport(day)} className="press -mr-1 -mt-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2">
+        <button
+          type="button"
+          aria-label="关闭周报"
+          data-testid="week-close"
+          onClick={() => dismissWeekReport(day)}
+          className="press -mr-2 -mt-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink"
+        >
           <X className="size-4" />
         </button>
       </div>
-      <div className="mt-3 grid grid-cols-4 gap-1.5">
+      <dl className="mt-3.5 grid grid-cols-4 divide-x divide-rule">
         {items.map((it) => (
-          <div key={it.label} className="min-w-0 rounded-2xl bg-paper-2 px-1 py-2.5 text-center" data-testid={it.testid} data-value={it.value} data-delta={it.delta ?? ""}>
-            <div className="tnum truncate text-[1.0625rem] font-semibold leading-tight">{it.value}</div>
-            <div className="mt-0.5 text-[0.6875rem] text-ink-3">{it.label}</div>
+          <div key={it.label} className="min-w-0 px-2 first:pl-0 last:pr-0" data-testid={it.testid} data-value={it.value} data-delta={it.delta ?? ""}>
+            <dt className="text-[0.6875rem] text-ink-3">{it.label}</dt>
+            <dd className="tnum mt-1 truncate font-serif text-[1.375rem] leading-none">{it.value}</dd>
             {hasPrev && it.delta !== null && (
-              <div className={cn("tnum mt-1 text-[0.6875rem] font-semibold", it.delta > 0 ? "text-know" : it.delta < 0 ? "text-forget" : "text-ink-3")}>
+              <dd className={cn("tnum mt-1.5 text-[0.6875rem] font-medium", it.delta > 0 ? "text-know" : it.delta < 0 ? "text-forget" : "text-ink-3")}>
                 {it.delta > 0 ? "↑" : it.delta < 0 ? "↓" : "持平"}
                 {it.delta !== 0 ? `${Math.abs(it.delta)}${it.unit}` : ""}
-              </div>
+              </dd>
             )}
           </div>
         ))}
-      </div>
-      <Link to="/stats" search={{ tab: "review" }} className="mt-3 flex items-center justify-center gap-0.5 text-xs font-semibold text-ink" data-testid="week-more">
-        看复盘 <ChevronRight className="size-3.5" />
+      </dl>
+      <Link to="/stats" search={{ tab: "review" }} className="press mt-3 inline-flex h-10 items-center gap-1 text-[0.8125rem] font-semibold text-ink underline decoration-rule-strong underline-offset-4" data-testid="week-more">
+        看复盘 <span aria-hidden className="font-serif text-[1.125rem] leading-none no-underline">›</span>
       </Link>
     </section>
   );
@@ -1386,8 +1432,8 @@ function LateStrip({ sum, streak }: { sum: ReturnType<typeof summarize>; streak:
     if (sum.due > 0) todo.push(`复习还差 ${sum.due}`);
   }
   return (
-    <div className="late-pulse late-banner -mx-5 -mt-4 mb-4 flex items-center gap-3 px-5 py-3" data-testid="late-warning" role="alert">
-      <AlarmClock className="size-5 shrink-0" />
+    <div className="late-pulse late-banner -mx-5 -mt-4 mb-4 flex items-baseline gap-3 px-5 py-3" data-testid="late-warning" role="alert">
+      <span className="tnum shrink-0 font-serif text-[1.75rem] leading-none">{h > 0 ? `${h}:${String(m).padStart(2, "0")}` : `${m}′`}</span>
       <div className="min-w-0 flex-1 leading-snug">
         <div className="text-[0.9375rem] font-semibold">连续 {streak} 天要断了</div>
         <div className="text-[0.75rem] opacity-90" data-testid="late-sub">
@@ -1404,71 +1450,55 @@ function InstallCard({ day, installed, snooze }: { day: string; installed?: bool
   const canPrompt = useInstallPrompt();
   if (!installVisible({ canPrompt, standalone: isStandalone(), installed, snoozeUntil: snooze, today: day })) return null;
   return (
-    <section className="border-t border-rule pt-5" data-testid="install-card">
-      <div className="flex items-start gap-3.5">
-        <Logo className="size-11 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <div className="text-[0.9375rem] font-semibold leading-tight">添加到桌面</div>
-          <div className="mt-1 text-[0.8125rem] leading-relaxed text-ink-3" data-testid="install-warn">从桌面图标全屏打开，没网也能背。记录只存在这台手机上，删掉图标会连记录一起删，记得定期导出备份</div>
-        </div>
-        <button
-          type="button"
-          aria-label="暂不添加"
-          data-testid="install-dismiss"
-          onClick={() => snoozeInstall(addDays(day, INSTALL_SNOOZE_DAYS))}
-          className="press -mr-2 -mt-2 grid size-10 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink"
+    <Note
+      testid="install-card"
+      tone="ink"
+      kicker="安装"
+      title="添加到桌面"
+      onClose={() => snoozeInstall(addDays(day, INSTALL_SNOOZE_DAYS))}
+      closeLabel="暂不添加"
+      closeTestid="install-dismiss"
+      lead={<Logo className="mb-2.5 size-9" />}
+      actions={
+        <Act
+          grow
+          data-testid="install-go"
+          className="h-11"
+          onClick={async () => {
+            const r = await promptInstall();
+            if (r === "accepted") toast.success("已添加到桌面", { description: "删掉图标会连记录一起删，记得在「我的 → 数据与备份」定期导出", duration: 4000 });
+            else if (r === "dismissed") snoozeInstall(addDays(day, INSTALL_SNOOZE_DAYS));
+          }}
         >
-          <X className="size-4" />
-        </button>
-      </div>
-      <button
-        type="button"
-        data-testid="install-go"
-        onClick={async () => {
-          const r = await promptInstall();
-          if (r === "accepted") toast.success("已添加到桌面", { description: "删掉图标会连记录一起删，记得在「我的 → 数据与备份」定期导出", duration: 4000 });
-          else if (r === "dismissed") snoozeInstall(addDays(day, INSTALL_SNOOZE_DAYS));
-        }}
-        className="press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3"
-      >
-        安装到手机桌面
-      </button>
-    </section>
+          安装到手机桌面
+        </Act>
+      }
+    >
+      <p data-testid="install-warn">从桌面图标全屏打开，没网也能背。记录只存在这台手机上，删掉图标会连记录一起删，记得定期导出备份</p>
+    </Note>
   );
 }
 
-/** 12.0 · 练习入口：一行字，像目录里的一条——不再是彩色图标方块 */
-function SnackTile({ to, search, testid, icon, title, sub, dim }: { to: "/tape" | "/study" | "/match" | "/judge" | "/quiz"; search?: { mode: "speed" }; testid: string; icon: React.ReactNode; tone?: string; title: string; sub: React.ReactNode; dim?: boolean }) {
+/** 12.0 · 练习入口：目录里的一条，左边一个序号（衬线），不再是彩色图标方块 */
+function SnackTile({ to, search, testid, no, title, sub, dim }: { to: "/tape" | "/study" | "/match" | "/judge" | "/quiz"; search?: { mode: "speed" }; testid: string; no: number; title: string; sub: React.ReactNode; dim?: boolean }) {
   return (
     <Link
       to={to}
       search={search as never}
       data-testid={testid}
-      className={cn("press group flex min-h-14 min-w-0 items-center gap-3 border-b border-rule py-3 last:border-b-0 hover:bg-paper-2/60", dim && "opacity-60")}
+      className={cn("press group grid min-h-14 min-w-0 grid-cols-[1.75rem_minmax(0,1fr)_auto] items-baseline gap-x-2 border-b border-rule py-3 last:border-b-0 hover:bg-paper-2/60", dim && "opacity-60")}
     >
-      <span className="grid size-8 shrink-0 place-items-center text-ink-2 [&_svg]:size-[20px]">{icon}</span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.9375rem] font-medium leading-tight">{title}</span>
-        <span className="mt-0.5 block truncate text-[0.8125rem] text-ink-3">{sub}</span>
+      <span className="tnum font-serif text-[1.125rem] leading-none text-ink-3" aria-hidden>
+        {String(no).padStart(2, "0")}
       </span>
-      <ChevronRight className="size-4 shrink-0 text-ink-3 transition-transform duration-300 ease-[var(--ease-spring)] group-hover:translate-x-0.5" />
+      <span className="min-w-0">
+        <span className="block truncate text-[0.9375rem] font-medium leading-tight">{title}</span>
+        <span className="mt-1 block truncate text-[0.8125rem] text-ink-3">{sub}</span>
+      </span>
+      <span aria-hidden className="self-center font-serif text-[1.375rem] leading-none text-ink-3 transition-transform duration-300 ease-[var(--ease-spring)] group-hover:translate-x-0.5">
+        ›
+      </span>
     </Link>
-  );
-}
-
-/** 12.0 · 提醒：左边一条 3px 的竖线标出语气，不用彩色图标底 */
-function Notice({ icon, tone, title, sub, action, testid }: { icon: React.ReactNode; tone: string; title: string; sub: string; action: React.ReactNode; testid?: string }) {
-  const bar = /forget/.test(tone) ? "bg-forget" : /know/.test(tone) ? "bg-know" : /vague/.test(tone) ? "bg-vague" : "bg-mark";
-  return (
-    <div className="relative flex items-center gap-3 rounded-xl bg-paper-3 py-3.5 pl-4 pr-3.5 ring-1 ring-rule ring-inset" data-testid={testid}>
-      <span className={cn("absolute inset-y-3 left-0 w-[3px] rounded-r-[2px]", bar)} aria-hidden />
-      <span className="grid size-8 shrink-0 place-items-center text-ink-2 [&_svg]:size-5">{icon}</span>
-      <div className="min-w-0 flex-1">
-        <div className="text-[0.9375rem] font-semibold leading-tight">{title}</div>
-        <div className="mt-1 text-[0.8125rem] leading-snug text-ink-3">{sub}</div>
-      </div>
-      {action}
-    </div>
   );
 }
 
@@ -1478,7 +1508,7 @@ function Todo({ done, label, muted }: { done: boolean; label: string; muted?: bo
     <div className={cn("flex items-center gap-2.5 py-1.5 text-[0.875rem]", done ? "text-ink" : muted ? "text-ink-3" : "text-ink-2")} data-done={done ? 1 : 0}>
       <span
         className={cn(
-          "grid size-[18px] shrink-0 place-items-center rounded-[4px]",
+          "grid size-[18px] shrink-0 place-items-center rounded-[3px]",
           done ? "bg-ink text-paper-3" : muted ? "border border-dashed border-rule-strong" : "border-[1.5px] border-ink-3",
         )}
       >
