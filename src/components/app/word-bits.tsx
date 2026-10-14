@@ -207,22 +207,28 @@ function DiffWord({ a, b }: { a: string; b: string }) {
 }
 
 export function StateBadge({ card }: { card: Card | undefined }) {
+  // 12.0 · 状态不是彩色胶囊：一个小方块（语气色）+ 一个词；只有「顽固」是实心的砖红字块
   if (isLeech(card))
     return (
-      <span className="rounded-[3px] bg-forget px-1.5 py-px text-[0.6875rem] font-semibold text-paper-3" data-testid="leech-badge">
+      <span className="inline-flex h-5 items-center rounded-[2px] bg-forget-soft px-1.5 text-[0.6875rem] font-semibold text-forget" data-testid="leech-badge">
         顽固
       </span>
     );
   const s = !card ? "new" : card.k ? "killed" : card.st;
   const map = {
-    new: ["未学", "text-ink-3 ring-1 ring-rule-strong ring-inset"],
-    learning: ["学习中", "bg-forget-soft text-forget"],
-    review: ["复习中", "bg-vague-soft text-vague"],
-    mastered: ["已掌握", "bg-know-soft text-know"],
-    killed: ["已斩", "bg-know-soft text-know"],
+    new: ["未学", "border border-rule-strong"],
+    learning: ["学习中", "bg-forget"],
+    review: ["复习中", "bg-vague"],
+    mastered: ["已掌握", "bg-know"],
+    killed: ["已斩", "bg-ink"],
   } as const;
-  const [label, cls] = map[s];
-  return <span className={cn("rounded-[3px] px-1.5 py-px text-[0.6875rem] font-medium", cls)}>{label}</span>;
+  const [label, dot] = map[s];
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[0.6875rem] text-ink-2">
+      <span className={cn("size-1.5 rounded-[1px]", dot)} aria-hidden />
+      {label}
+    </span>
+  );
 }
 
 function fmtDay(d: string) {
@@ -245,6 +251,7 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
   const card = st.cards[word.w];
   const starred = !!st.star[word.w];
   const accent = st.settings.accent;
+  const inLists = (st.lists ?? []).filter((l) => l.words.includes(word.w)).length;
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="单词详情" testid="word-sheet" hideTitle>
       <div className="pt-1">
@@ -253,68 +260,69 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
             type="button"
             data-testid="sheet-back"
             onClick={() => setTrail((t) => t.slice(0, -1))}
-            className="press -ml-1 mb-2 flex h-9 items-center gap-0.5 rounded-md pr-2 text-[0.8125rem] font-medium text-ink-3 hover:text-ink"
+            className="press -ml-1.5 mb-2 flex h-9 items-center gap-1 rounded-md px-1.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-ink"
           >
             <ChevronLeft className="size-4" /> 返回 {trail.length > 1 ? trail[trail.length - 2].w : base?.w}
           </button>
         )}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className={cn("word-head whitespace-nowrap leading-[1.02]", titleSize(word.w))} data-testid="sheet-word">
+        {/* 12.0 · 一个完整的词典词条：词头 · 读音 · 释义 · 短语 · 形近词 · 例句，最后是「我和这个词」 */}
+        <header className="border-b-2 border-ink pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <h2 className={cn("word-head min-w-0 whitespace-nowrap leading-[1.02]", titleSize(word.w))} data-testid="sheet-word">
               {word.w}
             </h2>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-2">
-              {word.p && ipaOf(word, "us") === ipaOf(word, "uk") && (
-                // 11.2 · 美音、英音音标一样（或美音退回英音）：音标只写一次，两种发音照样能点
-                <span className="flex items-center gap-2" data-testid="sheet-ipa-one">
-                  <span className="font-ipa">/{ipaOf(word, "us")}/</span>
-                  <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "us")} aria-label="美音">
-                    美 <Volume2 className="size-3.5" />
-                  </button>
-                  <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label="英音">
-                    英 <Volume2 className="size-3.5" />
-                  </button>
-                </span>
-              )}
-              {word.p && ipaOf(word, "us") !== ipaOf(word, "uk") && (
-                <>
-                  <button className="press flex h-9 items-center gap-1.5 rounded-md hover:text-ink" onClick={() => speak(word.w, "us")}>
-                    美 <span className="font-ipa">/{ipaOf(word, "us")}/</span> <Volume2 className="size-3.5" />
-                  </button>
-                  <button className="press flex h-9 items-center gap-1.5 rounded-md hover:text-ink" onClick={() => speak(word.w, "uk")}>
-                    英 <span className="font-ipa">/{ipaOf(word, "uk")}/</span> <Volume2 className="size-3.5" />
-                  </button>
-                </>
-              )}
-              {!word.p && <SpeakButton word={word.w} accent={accent} className="size-8" />}
-            </div>
+            <span className="shrink-0 pt-2">
+              <StateBadge card={card} />
+            </span>
           </div>
-          <span className="shrink-0 whitespace-nowrap pt-2">
-            <StateBadge card={card} />
-          </span>
-        </div>
-        <div className="fs-card mt-5 border-t border-rule pt-4">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.875rem] text-ink-2">
+            {word.p && ipaOf(word, "us") === ipaOf(word, "uk") && (
+              // 11.2 · 美音、英音音标一样（或美音退回英音）：音标只写一次，两种发音照样能点
+              <span className="flex items-center gap-1.5" data-testid="sheet-ipa-one">
+                <span className="font-ipa">/{ipaOf(word, "us")}/</span>
+                <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "us")} aria-label="美音">
+                  美 <Volume2 className="size-3.5" />
+                </button>
+                <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label="英音">
+                  英 <Volume2 className="size-3.5" />
+                </button>
+              </span>
+            )}
+            {word.p && ipaOf(word, "us") !== ipaOf(word, "uk") && (
+              <>
+                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "us")}>
+                  <span className="text-[0.75rem] text-ink-3">美</span> <span className="font-ipa">/{ipaOf(word, "us")}/</span> <Volume2 className="size-3.5" />
+                </button>
+                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "uk")}>
+                  <span className="text-[0.75rem] text-ink-3">英</span> <span className="font-ipa">/{ipaOf(word, "uk")}/</span> <Volume2 className="size-3.5" />
+                </button>
+              </>
+            )}
+            {!word.p && <SpeakButton word={word.w} accent={accent} className="size-9" />}
+          </div>
+        </header>
+        <div className="fs-card mt-4">
           <Meanings word={word} />
         </div>
-        <div className="mt-5">
+        <div className="mt-6">
           <Phrases word={word} />
         </div>
-        <div className="mt-5 empty:hidden">
+        <div className="mt-6 empty:hidden">
           <Confusables index={getWordsSync()} word={word} accent={accent} onOpen={(c) => setTrail((t) => [...t, c])} />
         </div>
-        <div className="mt-5 empty:hidden">
+        <div className="mt-6 empty:hidden">
           <Suspense fallback={null}>
             <WordExtra word={word} onOpen={(c) => setTrail((t) => [...t, c])} />
           </Suspense>
         </div>
-        <div className="mt-5 empty:hidden">
+        <div className="mt-6 empty:hidden">
           <Examples word={word} enabled={open} />
         </div>
 
-        <div className="mt-7">
-          <div className="section-rule mb-3 text-[0.8125rem] text-ink-3">学习记录</div>
+        <section className="mt-8 border-t border-ink pt-3">
+          <h3 className="mb-3 text-[0.8125rem] font-medium text-ink-2">学习记录</h3>
           {card ? (
-            <dl className="grid grid-cols-3 gap-y-4">
+            <dl className="grid grid-cols-3 border-t border-rule">
               <Stat label="首次学习" value={card.f.slice(5).replace("-", "/")} />
               <Stat label="复习次数" value={String(card.r)} />
               <Stat label="遗忘次数" value={String(card.l)} />
@@ -323,13 +331,14 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
               <Stat label="下次复习" value={card.k ? "不再复习" : fmtDay(card.d)} />
             </dl>
           ) : (
-            <p className="text-sm text-ink-3">还没学过这个词。</p>
+            <p className="text-[0.875rem] text-ink-3">还没学过这个词。</p>
           )}
-        </div>
+        </section>
 
         <TrackBlock w={word.w} log={st.revlog ?? []} learned={!!card} />
 
-        <div className="mt-6 grid grid-cols-3 gap-2">
+        {/* 动作：一排四个，细线框；收藏后是荧光笔底 */}
+        <div className="mt-7 grid grid-cols-4 gap-1.5">
           <button
             onClick={() => {
               toggleStar(word.w);
@@ -337,48 +346,47 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
               toast.success(starred ? "已移出生词本" : "已加入生词本", { id: "sheet-star" });
             }}
             data-testid="sheet-star"
-            className={cn(
-              "press flex h-11 items-center justify-center gap-1.5 rounded-lg text-[0.8125rem] font-medium",
-              starred ? "bg-mark text-mark-ink" : "bg-paper-2 hover:bg-rule",
-            )}
+            aria-pressed={starred}
+            className={cn("press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium", starred ? "bg-mark text-mark-ink" : "ring-1 ring-rule-strong ring-inset hover:bg-paper-2")}
           >
             <Star className={cn("size-4", starred && "fill-current")} />
             {starred ? "已收藏" : "生词本"}
           </button>
           {card?.k ? (
-            <button onClick={() => unkillWord(word.w)} className="press flex h-11 items-center justify-center gap-1.5 rounded-lg bg-paper-2 text-[0.8125rem] font-medium hover:bg-rule">
+            <button onClick={() => unkillWord(word.w)} className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2">
               <Undo2 className="size-4" /> 取消斩
             </button>
           ) : (
-            <button
-              onClick={() => killWord(word.w)}
-              data-testid="sheet-kill"
-              className="press flex h-11 items-center justify-center gap-1.5 rounded-lg bg-know-soft text-[0.8125rem] font-medium text-know"
-            >
+            <button onClick={() => killWord(word.w)} data-testid="sheet-kill" className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium text-know ring-1 ring-rule-strong ring-inset hover:bg-know-soft">
               <Swords className="size-4" /> 斩
             </button>
           )}
           <button
             onClick={() => resetWord(word.w)}
             disabled={!card}
-            className="press flex h-11 items-center justify-center gap-1.5 rounded-lg bg-paper-2 text-[0.8125rem] font-medium hover:bg-rule disabled:opacity-40"
+            className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2 disabled:opacity-40"
           >
+            <span className="font-serif text-[1rem] leading-4" aria-hidden>
+              ↺
+            </span>
             重新学
           </button>
+          <button
+            type="button"
+            data-testid="sheet-list"
+            onClick={() => setPicker(true)}
+            className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2"
+          >
+            {inLists ? (
+              <span className="tnum text-[0.6875rem] leading-4 text-ink-3" data-testid="sheet-list-n">
+                已在 {inLists} 个
+              </span>
+            ) : (
+              <ListPlus className="size-4" />
+            )}
+            加入词单
+          </button>
         </div>
-        <button
-          type="button"
-          data-testid="sheet-list"
-          onClick={() => setPicker(true)}
-          className="press mt-2 flex h-11 w-full items-center justify-center gap-1.5 rounded-lg text-[0.8125rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2"
-        >
-          <ListPlus className="size-4" />
-          加入词单
-          {(() => {
-            const n = (st.lists ?? []).filter((l) => l.words.includes(word.w)).length;
-            return n ? <span className="text-ink-3" data-testid="sheet-list-n">· 已在 {n} 个</span> : null;
-          })()}
-        </button>
         <ListPicker open={picker} onOpenChange={setPicker} words={[word.w]} />
       </div>
     </BottomSheet>
@@ -392,17 +400,19 @@ function TrackBlock({ w, log, learned }: { w: string; log: RevEntry[]; learned: 
   if (!learned && !entries.length) return null;
   const ok = entries.filter((e) => e[2] >= 2).length;
   return (
-    <div className="mt-7" data-testid="word-track">
+    <section className="mt-8 border-t border-ink pt-3" data-testid="word-track">
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <span className="text-[0.8125rem] text-ink-3">记忆轨迹</span>
+        <h3 className="text-[0.8125rem] font-medium text-ink-2">记忆轨迹</h3>
         {entries.length > 0 && (
-          <span className="tnum text-xs text-ink-3" data-testid="track-sum">
+          <span className="tnum text-[0.75rem] text-ink-3" data-testid="track-sum">
             {entries.length} 次作答 · 记得 {ok} 次
           </span>
         )}
       </div>
       {entries.length === 0 ? (
-        <p className="text-[0.8125rem] text-ink-3" data-testid="track-empty">这个词还没有作答记录（v6 起开始记录）。</p>
+        <p className="text-[0.8125rem] text-ink-3" data-testid="track-empty">
+          这个词还没有作答记录（v6 起开始记录）。
+        </p>
       ) : (
         <>
           <WordTrack entries={entries} max={all ? entries.length : 6} testid="track-list" />
@@ -413,15 +423,15 @@ function TrackBlock({ w, log, learned }: { w: string; log: RevEntry[]; learned: 
           )}
         </>
       )}
-    </div>
+    </section>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <dt className="text-[0.75rem] text-ink-3">{label}</dt>
-      <dd className="tnum mt-1 text-[1rem] font-medium">{value}</dd>
+    <div className="border-b border-rule py-2.5 pr-2">
+      <dt className="text-[0.6875rem] text-ink-3">{label}</dt>
+      <dd className="tnum mt-1 font-serif text-[1.25rem] leading-none">{value}</dd>
     </div>
   );
 }
