@@ -5,7 +5,6 @@ import {
   CalendarCheck,
   Check,
   ChevronLeft,
-  ChevronRight,
   ClipboardCheck,
   Coffee,
   FastForward,
@@ -29,7 +28,7 @@ import {
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { Meter, Ring, WeekStrip } from "@/components/app/charts";
-import { Logo, Panel, PanelTitle, Spinner } from "@/components/app/shell";
+import { Logo, Spinner } from "@/components/app/shell";
 import { Act, Note, Tag, actClass } from "@/components/app/kit";
 import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 import { INSTALL_SNOOZE_DAYS, installVisible } from "@/lib/ux";
@@ -463,32 +462,33 @@ function Today() {
 
           {advice && urgent && !overFirst && <AdviceCard advice={advice} day={day} st={st} index={index} onPatch={doPatch} patchedStreak={patchable ? patchedStreak(st, day) : 0} logs={st.log} />}
 
-          {/* 打卡（11.2 · 打卡按钮只在主卡上，这里只显示进度和日历） */}
-          <Panel data-testid="checkin-panel">
-            <PanelTitle
-              right={
-                <Link to="/stats" className="press -my-2 flex items-center gap-0.5 rounded-md py-2 text-[0.8125rem] text-ink-3 hover:text-ink">
-                  打卡日历 <ChevronRight className="size-3.5" />
-                </Link>
-              }
-            >
-              每日打卡
-            </PanelTitle>
+          {/* 打卡（11.2 · 打卡按钮只在主卡上，这里只显示进度和日历）。12.0 · 一节「本周」：标题 + 七天方格 + 今天还差什么 */}
+          <section data-testid="checkin-panel">
+            <div className="mb-4 flex items-end justify-between gap-3 border-b border-ink pb-2">
+              <h2 className="text-[1.0625rem] font-semibold tracking-[-0.01em]">每日打卡</h2>
+              <Link to="/stats" className="press -my-2 flex h-10 items-center gap-0.5 text-[0.8125rem] text-ink-3 underline decoration-rule-strong underline-offset-4 hover:text-ink">
+                打卡日历
+              </Link>
+            </div>
             <WeekStrip checkins={st.checkins} logs={st.log} today={day} rest={rest} patched={st.patched} pause={st.pause} skip={(d) => skipKind(st, d)} />
             {restToday && !sum.checked && (
-              <div className="mt-4 flex items-center gap-2 text-[0.8125rem] text-know" data-testid="rest-today">
-                <Coffee className="size-4 shrink-0" /> 今天是休息日，不打卡也不断连续；学了照样可以打卡
+              <div className="mt-4 flex items-center gap-2 border-l-2 border-know pl-3 text-[0.8125rem] text-ink-2" data-testid="rest-today">
+                <Coffee className="size-4 shrink-0 text-know" /> 今天是休息日，不打卡也不断连续；学了照样可以打卡
               </div>
             )}
             <div className={cn("mt-4", overFirst && !sum.checked && "hidden")}>
               {sum.checked ? (
-                <div className={cn("flex items-center gap-3 rounded-xl bg-paper-3 p-3.5 ring-1 ring-rule ring-inset", justChecked && "checkin-burst")} data-testid="checked-in">
-                  <div className={cn("grid size-10 shrink-0 place-items-center rounded-lg bg-mark text-mark-ink", justChecked && "pop")}>
+                <div className={cn("flex items-center gap-3 border-y border-rule py-3", justChecked && "checkin-burst")} data-testid="checked-in">
+                  <div className={cn("grid size-10 shrink-0 place-items-center rounded-lg bg-mark text-mark-ink ring-[1.5px] ring-ink ring-inset", justChecked && "pop")}>
                     <Check className="size-5" strokeWidth={2.4} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[0.9375rem] font-semibold"><span className={cn(justChecked && "hl-swipe")}>{justChecked ? "打卡成功" : "今日已打卡"}</span></div>
-                    <div className="tnum text-[0.8125rem] text-ink-3">连续 {s} 天 · 累计 {st.checkins.length} 天</div>
+                    <div className="text-[0.9375rem] font-semibold">
+                      <span className={cn(justChecked && "hl-swipe")}>{justChecked ? "打卡成功" : "今日已打卡"}</span>
+                    </div>
+                    <div className="tnum text-[0.8125rem] text-ink-3">
+                      连续 {s} 天 · 累计 {st.checkins.length} 天
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -500,11 +500,11 @@ function Today() {
                   </button>
                 </div>
               ) : idleEve || movedExam ? (
-                <div className="flex items-center gap-2.5 rounded-xl bg-know-soft px-3.5 py-3 text-[0.8125rem] font-medium leading-snug text-know" data-testid="checkin-idle-eve" data-kind={idleEve ? "eve" : "exam"}>
-                  <GraduationCap className="size-5 shrink-0" /> {idleEve ? "考前一天，今天没有要做的" : "今天是原定的考试日"}：不打卡也不断签，连续 {s} 天保留
+                <div className="flex items-center gap-2.5 border-l-2 border-know py-1 pl-3 text-[0.8125rem] font-medium leading-snug text-ink-2" data-testid="checkin-idle-eve" data-kind={idleEve ? "eve" : "exam"}>
+                  <GraduationCap className="size-5 shrink-0 text-know" /> {idleEve ? "考前一天，今天没有要做的" : "今天是原定的考试日"}：不打卡也不断签，连续 {s} 天保留
                 </div>
               ) : sum.ready ? (
-                <div className="flex items-center gap-2.5 rounded-xl bg-know-soft px-3.5 py-3 text-[0.8125rem] font-medium text-know" data-testid="checkin-ready">
+                <div className="flex items-center gap-2.5 border-l-2 border-mark py-1 pl-3 text-[0.8125rem] font-medium text-ink" data-testid="checkin-ready">
                   <CalendarCheck className="size-5 shrink-0" /> 今天的任务完成了，在上面打卡
                 </div>
               ) : sum.timeMode ? (
@@ -514,7 +514,7 @@ function Today() {
                     <div className="min-w-0 flex-1">
                       <div className="flex justify-between font-medium">
                         <span>学满 {sum.goalMin} 分钟就能打卡</span>
-                        <span className="tnum text-ink-3">
+                        <span className="tnum font-serif text-[1rem] text-ink-2">
                           {minutes}/{sum.goalMin}
                         </span>
                       </div>
@@ -540,7 +540,7 @@ function Today() {
               </p>
             )}
             {showHabit && (
-              <div className="mt-4 flex items-center gap-3 text-[0.8125rem] text-ink-3" data-testid="habit-row">
+              <div className="mt-4 flex items-center gap-3 border-t border-rule pt-3 text-[0.8125rem] text-ink-3" data-testid="habit-row">
                 <span className="tnum flex shrink-0 items-center gap-1.5 font-medium text-ink-2" data-testid="makeup-count" data-n={st.makeup ?? 0}>
                   <Ticket className="size-4" /> 补卡 {st.makeup ?? 0}/{MAKEUP_MAX}
                 </span>
@@ -549,7 +549,7 @@ function Today() {
                 </span>
               </div>
             )}
-          </Panel>
+          </section>
         </div>
 
         <div className="min-w-0 space-y-8">
@@ -629,18 +629,27 @@ function Today() {
 
 /** 11.3 · 词库还在下载：先给首页的骨架（不是空白 + 转圈） */
 function TodaySkeleton() {
+  // 12.0 · 骨架也是版面的样子：问候两行、一个主卡的轮廓、一节「每日打卡」的七个方格
   return (
     <div data-testid="today-skeleton" aria-busy="true" aria-label="正在加载词库">
-      <div className="pb-4 pt-6 md:pt-8">
-        <div className="h-3.5 w-24 animate-pulse rounded bg-paper-2" />
-        <div className="mt-2 h-8 w-32 animate-pulse rounded-lg bg-paper-2" />
+      <div className="pb-5 pt-6 md:pt-8">
+        <div className="h-3 w-24 animate-pulse rounded-[2px] bg-paper-2" />
+        <div className="mt-2.5 h-8 w-32 animate-pulse rounded-[3px] bg-paper-2" />
       </div>
-      <div className="hero-gradient h-[236px] animate-pulse rounded-2xl opacity-60" />
-      <div className="mt-4 h-[150px] animate-pulse rounded-2xl bg-paper-2" />
-      <p className="mt-3 text-center text-xs text-ink-3">正在准备词库…</p>
+      <div className="h-[236px] animate-pulse rounded-2xl bg-paper-3 ring-1 ring-rule ring-inset" />
+      <div className="mt-8 border-b border-ink pb-2">
+        <div className="h-4 w-20 animate-pulse rounded-[2px] bg-paper-2" />
+      </div>
+      <div className="mt-4 grid grid-cols-7 gap-1">
+        {Array.from({ length: 7 }, (_, k) => (
+          <div key={k} className="aspect-square animate-pulse rounded-lg bg-paper-2" />
+        ))}
+      </div>
+      <p className="mt-4 text-[0.75rem] text-ink-3">正在准备词库…</p>
     </div>
   );
 }
+
 
 /**
  * 唯一的建议卡：内容由 homeAdvice 决定。
