@@ -153,8 +153,8 @@ export function GameResult({
       <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule py-3.5">
         {stats.map((s) => (
           <div key={s.label} className="min-w-0 px-3 first:pl-0" data-testid={s.testid}>
-            <dt className="text-[0.75rem] text-ink-3">{s.label}</dt>
-            <dd className="tnum mt-1 truncate font-serif text-[1.625rem] leading-none">{s.value}</dd>
+            <dd className="tnum truncate font-serif text-[1.625rem] leading-none">{s.value}</dd>
+            <dt className="mt-1.5 text-[0.75rem] text-ink-3">{s.label}</dt>
           </div>
         ))}
       </dl>

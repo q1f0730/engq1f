@@ -288,10 +288,10 @@ function MePage() {
                   onChange={(v) => setSettings({ theme: v })}
                   testid="theme"
                   options={[
-                    { value: "light", label: <Sun className="mx-auto size-4" aria-label="浅色" /> },
-                    { value: "dark", label: <Moon className="mx-auto size-4" aria-label="深色" /> },
-                    { value: "contrast", label: <Contrast className="mx-auto size-4" aria-label="高对比度" /> },
-                    { value: "system", label: <SunMoon className="mx-auto size-4" aria-label="跟随系统" /> },
+                    { value: "light", label: <><Sun className="mx-auto size-4" /><span className="sr-only">浅色</span></> },
+                    { value: "dark", label: <><Moon className="mx-auto size-4" /><span className="sr-only">深色</span></> },
+                    { value: "contrast", label: <><Contrast className="mx-auto size-4" /><span className="sr-only">高对比度</span></> },
+                    { value: "system", label: <><SunMoon className="mx-auto size-4" /><span className="sr-only">跟随系统</span></> },
                   ]}
                 />
               </Field>
