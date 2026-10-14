@@ -1219,9 +1219,7 @@ function FlipCard({
             )}
             aria-hidden={flipped}
           >
-            {/* 12.0 · 索引卡：顶部一条淡红线（卡片纸上印好的那条） */}
-            <div className="pointer-events-none absolute inset-x-0 top-12 h-px bg-forget/25" aria-hidden />
-            <div className="relative h-full">{front}</div>
+                        <div className="relative h-full">{front}</div>
             {canKill && <button
               type="button"
               onClick={(e) => {
