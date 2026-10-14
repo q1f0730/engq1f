@@ -1124,9 +1124,9 @@ function FlipCard({
           <p className="mt-8 border-t border-rule pt-3 text-[0.8125rem] text-ink-3">想一想对应的英文单词</p>
         </div>
       ) : (
-        <div className="fs-card flex w-full max-w-full flex-col items-start">
+        <div className="front-stack fs-card flex w-full max-w-full flex-col items-start">
           <FitWord w={word.w} className={cn("word-head break-all leading-[1] text-ink", wordSize(word.w))} testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
-          <span className="mt-5 h-[2px] w-10 bg-ink" aria-hidden />
+          <span className="front-rule mt-5 h-[2px] w-10 bg-ink" aria-hidden />
           <div className="mt-4 flex items-center gap-3 text-[1.0625rem] text-ink-2" data-testid="front-ipa" data-shown={frontIpa ? 1 : 0}>
             {frontIpa && <Phonetic word={word} accent={accent} />}
             <button
@@ -1166,7 +1166,8 @@ function FlipCard({
   // 12.0 · 背面是词典的一个条目：词头 + 读音，下面一道粗墨线，再下面释义、短语、形近词、例句
   const back = (
     <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-5 text-left" data-testid="card-back">
-      <div className="fs-card back-grid">
+      {/* 12.0 · 内容少时在卡片里上下居中（my-auto），多到要滚动时自然顶格 */}
+      <div className="fs-card back-grid my-auto">
         <div className="back-head flex items-start justify-between gap-3" data-testid="back-head">
           {/* 11.8 · 单词这一栏占满剩下的宽度（不按内容收缩）：按实际宽度缩字号时量到的是真正可用的宽度 */}
           <div className="min-w-0 flex-1">

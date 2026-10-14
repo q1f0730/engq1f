@@ -106,6 +106,7 @@ function MePage() {
           >
             {/* 考试日期：三行，像目录里的条目；选中的那一行左边一道墨线 */}
             <div data-testid="exam-settings">
+              <h3 className="mb-1.5 text-[0.8125rem] font-medium text-ink-2">考试日期</h3>
               <div className="border-t border-rule" data-testid="exam-options" role="radiogroup" aria-label="考试日期">
                 {exams.map((e, k) => (
                   <button
