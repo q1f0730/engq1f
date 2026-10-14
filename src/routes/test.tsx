@@ -142,7 +142,7 @@ function VocabTest({ index }: { index: WordIndex }) {
           <div className="mt-2 h-1.5 overflow-hidden rounded-[2px] bg-rule">
             <div className="h-full bg-ink transition-all" style={{ width: `${(pos / items.length) * 100}%` }} />
           </div>
-          <div key={pos} className="card-in mt-6 flex flex-1 items-center justify-center rounded-2xl border border-rule bg-paper-3">
+          <div key={pos} className="card-in mt-6 flex flex-1 items-center justify-center rounded-xl ring-1 ring-rule ring-inset bg-paper-3">
             <h2 className="font-display break-all px-6 text-center text-[3rem] font-semibold tracking-[-0.03em]" data-testid="test-word">
               {cur.w.w}
             </h2>

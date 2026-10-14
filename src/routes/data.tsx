@@ -162,7 +162,7 @@ function BackupPanel() {
   return (
     <Panel data-testid="backup-panel">
       <PanelTitle>备份与恢复</PanelTitle>
-      <label className="mb-1.5 block text-xs font-semibold tracking-wider text-ink-3" htmlFor="enc-pass">
+      <label className="mb-1.5 block text-xs font-semibold text-ink-3" htmlFor="enc-pass">
         备份口令（可选）
       </label>
       <div className={cn("flex items-center gap-2 rounded-2xl bg-paper-2 px-3 ring-ink transition focus-within:ring-2", tooShort && "ring-2 ring-forget/50")}>
@@ -499,7 +499,7 @@ function WordFilePanel({ index }: { index: WordIndex }) {
           </div>
           <div className="mt-2 flex max-h-24 flex-wrap gap-1 overflow-hidden" data-testid="wordfile-found">
             {res.found.slice(0, 30).map((w) => (
-              <span key={w} className="rounded-lg bg-paper-3 px-2 py-0.5 text-xs font-semibold">
+              <span key={w} className="rounded-[3px] bg-paper-3 px-2 py-0.5 text-xs font-semibold">
                 {w}
               </span>
             ))}

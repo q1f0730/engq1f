@@ -19,7 +19,7 @@ export default function WordExtra({ word, onOpen }: { word: Word; onOpen: (w: Wo
       {syn.length > 0 && (
         <div data-testid="synonyms">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-semibold tracking-wider text-ink-3">同义词 · 意思相同</span>
+            <span className="text-xs font-semibold text-ink-3">同义词 · 意思相同</span>
             <Link to="/syn" search={{ q: syn[0].sense }} data-testid="syn-all" className="flex items-center text-xs font-semibold text-ink">
               全部同义词组 <ChevronRight className="size-3.5" />
             </Link>
@@ -56,7 +56,7 @@ export default function WordExtra({ word, onOpen }: { word: Word; onOpen: (w: Wo
       )}
       {fam.length > 0 && (
         <div data-testid="family">
-          <div className="mb-2 text-xs font-semibold tracking-wider text-ink-3">拼写相近 · 多为同根派生</div>
+          <div className="mb-2 text-xs font-semibold text-ink-3">拼写相近 · 多为同根派生</div>
           <div className="grid grid-cols-2 gap-1.5">
             {fam.map(({ w, prefix }) => {
               const x = index.map.get(w);

@@ -182,7 +182,7 @@ function Tape({ index }: { index: WordIndex }) {
         </div>
         <div className="flex min-w-10 justify-end">
           {left !== null && (
-            <span className="tnum flex items-center gap-1 rounded-lg bg-mark-soft px-2.5 py-1 text-xs font-semibold text-ink" data-testid="tape-sleep-left">
+            <span className="tnum flex items-center gap-1 rounded-[3px] bg-mark-soft px-2.5 py-1 text-xs font-semibold text-ink" data-testid="tape-sleep-left">
               <Timer className="size-3.5" />
               {fmtRemain(left)}
             </span>
@@ -213,7 +213,7 @@ function Tape({ index }: { index: WordIndex }) {
       </div>
 
       {/* 当前词 */}
-      <div className="relative mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-rule bg-paper-3" data-testid="tape-card">
+      <div className="relative mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-rule ring-inset bg-paper-3" data-testid="tape-card">
         <div className="paper-grain absolute inset-0 opacity-60" />
         {word ? (
           <div className="relative flex h-full flex-col px-6 py-5">
@@ -331,7 +331,7 @@ function Tape({ index }: { index: WordIndex }) {
 
 function PhasePill({ active, label }: { active: boolean; label: string }) {
   return (
-    <span className={cn("rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors", active ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3")}>
+    <span className={cn("rounded-[3px] px-2.5 py-1 text-xs font-semibold transition-colors", active ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3")}>
       {label}
     </span>
   );

@@ -296,7 +296,7 @@ function MePage() {
             <PanelTitle
               right={
                 reg.list.length > 1 && profile ? (
-                  <span className="max-w-[45%] truncate rounded-lg bg-mark-soft px-2.5 py-1 text-xs font-semibold text-ink" data-testid="me-profile">
+                  <span className="max-w-[45%] truncate rounded-[3px] bg-mark-soft px-2.5 py-1 text-xs font-semibold text-ink" data-testid="me-profile">
                     {profile.name}
                   </span>
                 ) : undefined

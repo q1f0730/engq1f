@@ -271,7 +271,7 @@ export function RevList({ entries, onOpen }: { entries: RevEntry[]; onOpen: (w: 
         lastDay = d;
         return (
           <div key={`${e[1]}-${k}`}>
-            {head && <div className="pb-1 pt-3 text-[0.6875rem] font-semibold tracking-wider text-ink-3 first:pt-0">{d.replace(/-/g, "/")}</div>}
+            {head && <div className="pb-1 pt-3 text-[0.6875rem] font-semibold text-ink-3 first:pt-0">{d.replace(/-/g, "/")}</div>}
             <button
               type="button"
               onClick={() => onOpen(e[0])}

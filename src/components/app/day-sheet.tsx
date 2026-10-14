@@ -43,7 +43,7 @@ export function DaySheet({
             data-testid="day-status"
             data-state={patched ? "patched" : checked ? "checked" : rest ? "rest" : "none"}
             className={cn(
-              "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold",
+              "flex items-center gap-1 rounded-[3px] px-2.5 py-1 text-xs font-semibold",
               patched ? "bg-vague-soft text-vague" : checked ? "bg-mark-soft text-ink" : rest ? "bg-know-soft text-know" : "bg-paper-2 text-ink-3",
             )}
           >

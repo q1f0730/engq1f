@@ -367,7 +367,7 @@ function ReviewTab({ index, st, onOpen }: { index: WordIndex; st: AppState; onOp
                       <span className="block truncate text-[0.9375rem] font-semibold">{w}</span>
                       {word && <span className="block truncate text-xs text-ink-3">{shortMeaning(word, 1)}</span>}
                     </span>
-                    <span className="tnum shrink-0 rounded-lg bg-forget-soft px-2 py-0.5 text-xs font-semibold text-forget">忘 {c.l} 次</span>
+                    <span className="tnum shrink-0 rounded-[3px] bg-forget-soft px-2 py-0.5 text-xs font-semibold text-forget">忘 {c.l} 次</span>
                   </button>
                 </li>
               );
@@ -510,7 +510,7 @@ function Tile({ icon, label, value, sub, tone, testid, small }: { icon: React.Re
   // 11.8 · 主数字只占一行：≥7 位先用小字号，再按磁贴实际宽度缩（360 宽新用户「900/4544」不再断成两行，r8 R8-3）
   const vref = useFitLine<HTMLDivElement>(value, 15);
   return (
-    <div className="rounded-2xl border border-rule bg-paper-3 p-4" data-testid={testid}>
+    <div className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid={testid}>
       {/* 11.7 · 标签不折行（360 宽下「近 7 天记得住」不再把「住」挤到第二行） */}
       <div className="flex items-center gap-2 whitespace-nowrap text-[0.8125rem] text-ink-3" data-part="label">
         <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${tone}`}>{icon}</span>

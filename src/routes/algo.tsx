@@ -119,9 +119,9 @@ function HowTab() {
     <div className="grid gap-4 md:grid-cols-2 md:gap-5">
       <Panel data-testid="algo-effects">
         <PanelTitle>一次评分，间隔怎么变</PanelTitle>
-        <div className="mb-1.5 text-xs font-semibold tracking-wider text-ink-3">这张卡现在的间隔</div>
+        <div className="mb-1.5 text-xs font-semibold text-ink-3">这张卡现在的间隔</div>
         <Segmented<number> value={ivl} onChange={setIvl} testid="eff-ivl" options={IVL_OPTIONS.map((v) => ({ value: v, label: v < 0 ? "新词" : `${v}天` }))} />
-        <div className="mb-1.5 mt-3 text-xs font-semibold tracking-wider text-ink-3">这个词难不难</div>
+        <div className="mb-1.5 mt-3 text-xs font-semibold text-ink-3">这个词难不难</div>
         <Segmented<number> value={ease} onChange={setEase} testid="eff-ease" options={EASE_OPTIONS.map((v) => ({ value: v, label: `${EASE_CN[v]} ${v.toFixed(1)}` }))} />
         <div className="mt-4 space-y-2.5" data-testid="eff-bars">
           {order.map((g) => {

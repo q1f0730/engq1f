@@ -237,7 +237,7 @@ function WordsPage() {
             placeholder="搜索英文或中文释义"
             data-testid="search"
             inputMode="search"
-            className="h-12 w-full rounded-2xl border border-rule bg-paper-3 pl-11 pr-11 text-[0.9375rem] outline-none transition placeholder:text-ink-3 focus:border-ink focus:ring-4 focus:ring-ink"
+            className="h-12 w-full rounded-xl ring-1 ring-rule ring-inset bg-paper-3 pl-11 pr-11 text-[0.9375rem] outline-none transition placeholder:text-ink-3 focus:border-ink focus:ring-4 focus:ring-ink"
           />
           {q && (
             <button type="button" aria-label="清空" onClick={() => setQ("")} className="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-paper-2 text-ink-3">
@@ -357,7 +357,7 @@ function WordsPage() {
       )}
 
       {tab === "core" && coreCount > 0 && (
-        <div className="mb-3 rounded-2xl border border-rule bg-paper-3 p-4" data-testid="core-panel">
+        <div className="mb-3 rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="core-panel">
           <div className="flex items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
               <GraduationCap className="size-5" />
@@ -413,14 +413,14 @@ function WordsPage() {
                               : "没有词"}
             </div>
           ) : (
-            <ul className={cn("mt-2 divide-y divide-rule overflow-hidden rounded-2xl border border-rule bg-paper-3", showRail && "mr-5 md:mr-0")} data-testid="word-list" data-sort={sort}>
+            <ul className={cn("mt-2 divide-y divide-rule overflow-hidden rounded-xl ring-1 ring-rule ring-inset bg-paper-3", showRail && "mr-5 md:mr-0")} data-testid="word-list" data-sort={sort}>
               {results.slice(0, limit).map((w, k) => {
                 const L = alpha ? letterOf(w.w) : "";
                 const head = alpha && (k === 0 || letterOf(results[k - 1].w) !== L);
                 const on = selected.has(w.w);
                 return [
                   head ? (
-                    <li key={`h-${L}`} data-letter={L} className="bg-paper-2 px-4 py-1 font-display text-xs font-semibold tracking-wider text-ink-3">
+                    <li key={`h-${L}`} data-letter={L} className="bg-paper-2 px-4 py-1 font-display text-xs font-semibold text-ink-3">
                       {L}
                     </li>
                   ) : null,

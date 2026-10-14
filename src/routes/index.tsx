@@ -844,7 +844,7 @@ function RecoveringCard({ advice, day, st, index }: { advice: Extract<Advice, { 
       ? `今天清 ${advice.due} 个积压，${mix ? `新词每天 ${mix} 个` : "新词暂停"}`
       : `今天的积压清完了，${mix ? `新词每天 ${mix} 个` : "新词暂停"}`;
   return (
-    <section className="rounded-2xl border border-rule bg-paper-3 p-3.5 pr-4" data-testid="recovering" data-shifted={shiftedToday ? advice.shifted : 0} data-until={advice.until}>
+    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-3.5 pr-4" data-testid="recovering" data-shifted={shiftedToday ? advice.shifted : 0} data-until={advice.until}>
       <div className="flex items-center gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
           <Sparkles className="size-5" />
@@ -1110,7 +1110,7 @@ function SprintCard({ adv, exam, st, day, curFinish }: { adv: ExamAdvice; exam: 
     sub = `剩下的 ${adv.left - adv.reach} 个考前来不及，先把能学的记牢。`;
   }
   return (
-    <section className="rounded-2xl border border-rule bg-paper-3 p-4" data-testid="sprint" data-kind={adv.kind === "cap" && adv.canRaise === null ? "cap-info" : adv.kind} data-too={adv.kind === "cap" ? 1 : 0}>
+    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="sprint" data-kind={adv.kind === "cap" && adv.canRaise === null ? "cap-info" : adv.kind} data-too={adv.kind === "cap" ? 1 : 0}>
       <div className="flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
           <Target className="size-5" />
@@ -1191,7 +1191,7 @@ function ExamCard({
   const wd = WEEK[new Date(exam + "T12:00:00").getDay()];
   const spare = sum.newLeft ? Math.max(0, diffDays(sum.finish, exam)) : plan.daysLeft;
   return (
-    <section className="rounded-2xl border border-rule bg-paper-3 p-4" data-testid="exam-card" data-days={plan.daysLeft}>
+    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="exam-card" data-days={plan.daysLeft}>
       <div className="flex items-center gap-3.5">
         <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-foreground px-3 py-2 text-background" data-testid="exam-days">
           <span className="tnum font-display text-[1.625rem] font-semibold leading-none">{plan.daysLeft}</span>
@@ -1265,7 +1265,7 @@ function PauseCard({ day, exam, index, st, resting }: { day: string; exam: strin
   // 11.5 · 系统返回：先回到休息这一步
   useBackClose(step === "plan", () => setStep("ask"));
   return (
-    <section className="rounded-2xl border border-rule bg-paper-3 p-4" data-testid="exam-card" data-paused="1" data-step={step}>
+    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="exam-card" data-paused="1" data-step={step}>
       <div className="flex items-start gap-3">
         {step === "plan" ? <StepBack onBack={() => setStep("ask")} testid="pause-plan-back" /> : <Coffee className="mt-0.5 size-5 shrink-0 text-ink-3" />}
         <span className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-ink-3" data-testid="pause-sub">
@@ -1335,7 +1335,7 @@ function WeekCard({ day, logs }: { day: string; logs: Record<string, import("@/l
   ];
   const hasPrev = w.prev.n + w.prev.r > 0;
   return (
-    <section className="rounded-2xl border border-rule bg-paper-3 p-4" data-testid="week-report">
+    <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="week-report">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[0.9375rem] font-semibold">上周周报</div>

@@ -272,7 +272,7 @@ function JudgeCard({
   return (
     <div className="relative mt-3 min-h-0 flex-1 card-in" data-testid="judge-card" data-truth={item.truth ? 1 : 0} data-w={item.w}>
       <div
-        className="relative flex h-full touch-pan-y select-none flex-col overflow-hidden rounded-2xl border border-rule bg-paper-3"
+        className="relative flex h-full touch-pan-y select-none flex-col overflow-hidden rounded-xl ring-1 ring-rule ring-inset bg-paper-3"
         style={dx !== null ? { transform: `translateX(${dx}px) rotate(${dx / 24}deg)` } : { transition: "transform 160ms ease-out" }}
         onPointerDown={onDown}
         onPointerMove={onMove}
@@ -298,7 +298,7 @@ function JudgeCard({
               <Volume2 className="size-[18px]" />
             </button>
           </div>
-          <div className="my-6 flex w-full max-w-xs items-center gap-3 text-xs font-semibold tracking-wider text-ink-3">
+          <div className="my-6 flex w-full max-w-xs items-center gap-3 text-xs font-semibold text-ink-3">
             <span className="h-px flex-1 bg-rule" /> 是这个意思吗？ <span className="h-px flex-1 bg-rule" />
           </div>
           <div

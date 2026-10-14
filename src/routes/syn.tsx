@@ -59,7 +59,7 @@ function SynPage() {
             placeholder="搜中文意思，如「放弃」，或英文单词"
             data-testid="syn-search"
             inputMode="search"
-            className="h-12 w-full rounded-2xl border border-rule bg-paper-3 pl-11 pr-11 text-[0.9375rem] outline-none transition placeholder:text-ink-3 focus:border-ink focus:ring-4 focus:ring-ink"
+            className="h-12 w-full rounded-xl ring-1 ring-rule ring-inset bg-paper-3 pl-11 pr-11 text-[0.9375rem] outline-none transition placeholder:text-ink-3 focus:border-ink focus:ring-4 focus:ring-ink"
           />
           {q && (
             <button
@@ -85,7 +85,7 @@ function SynPage() {
       ) : (
         <ul className="space-y-2.5" data-testid="syn-list">
           {hits.slice(0, limit).map((g) => (
-            <li key={g.key} className="rounded-2xl border border-rule bg-paper-3 p-4" data-testid="syn-card" data-sense={g.sense}>
+            <li key={g.key} className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="syn-card" data-sense={g.sense}>
               <div className="flex items-baseline justify-between gap-3">
                 <div className="min-w-0 text-base font-semibold">
                   {POS_CN[g.pos] && <span className="mr-1.5 rounded-md bg-paper-2 px-1.5 py-px text-xs font-semibold italic text-ink-3">{POS_CN[g.pos]}</span>}

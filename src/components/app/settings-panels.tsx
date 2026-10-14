@@ -242,7 +242,7 @@ export function HabitPanel() {
     <Panel data-testid="habit-settings" id="habit">
       <PanelTitle
         right={
-          <span className="flex items-center gap-1 rounded-lg bg-vague-soft px-2.5 py-1 text-xs font-semibold text-vague" data-testid="me-makeup" data-n={st.makeup ?? 0}>
+          <span className="flex items-center gap-1 rounded-[3px] bg-vague-soft px-2.5 py-1 text-xs font-semibold text-vague" data-testid="me-makeup" data-n={st.makeup ?? 0}>
             <Ticket className="size-3.5" /> 补卡 {st.makeup ?? 0}/{MAKEUP_MAX}
           </span>
         }
@@ -370,7 +370,7 @@ export function ModesPanel({ compact }: { compact?: boolean }) {
         </details>
       ) : (
         <>
-      <div className="mb-2 mt-4 text-xs font-semibold tracking-wider text-ink-3">自选题型</div>
+      <div className="mb-2 mt-4 text-xs font-semibold text-ink-3">自选题型</div>
       <div className="grid grid-cols-3 gap-1.5" data-testid="mode-chips">
         {REVIEW_MODES.map((m) => {
           const on = !off.includes(m);
@@ -571,7 +571,7 @@ export function A11yPanel() {
 }
 
 export function Label({ children }: { children: React.ReactNode }) {
-  return <div className="mb-2 mt-4 text-xs font-semibold tracking-wider text-ink-3 first:mt-0">{children}</div>;
+  return <div className="mb-2 mt-4 text-xs font-semibold text-ink-3 first:mt-0">{children}</div>;
 }
 
 export function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -602,7 +602,7 @@ export function Fold({ title, hint, testid, children }: { title: string; hint: s
   const [open, setOpen] = useState(false);
   return (
     <div data-testid={testid}>
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-3 rounded-2xl border border-rule bg-paper-3 px-5 py-4 text-left" data-testid={`${testid}-toggle`}>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-3 rounded-xl ring-1 ring-rule ring-inset bg-paper-3 px-5 py-4 text-left" data-testid={`${testid}-toggle`}>
         <span className="min-w-0 flex-1">
           <b className="block text-[0.9375rem]">{title}</b>
           <span className="block truncate text-xs text-ink-3">{hint}</span>

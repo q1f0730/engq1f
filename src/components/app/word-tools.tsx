@@ -160,12 +160,12 @@ export function SelectBar({ selected, total, onAll, onClear, onExit, listId }: {
   if (listId) actions.push({ key: "unlist", label: "移出词单", icon: <ListMinus className="size-[18px]" />, cls: "text-forget", on: () => run("已移出词单", () => removeFromList(listId, selected)) });
   return (
     <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 px-3 pb-2 md:bottom-4" data-testid="select-bar">
-      <div className="mx-auto max-w-xl rounded-2xl border border-rule bg-paper-3 p-2">
+      <div className="mx-auto max-w-xl rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-2">
         <div className="flex items-center gap-2 px-2 pb-1.5 pt-0.5">
           <span className="tnum text-sm font-semibold" data-testid="select-count">
             已选 {n} / {total}
           </span>
-          <button type="button" data-testid="select-all" onClick={n === total ? onClear : onAll} className="rounded-lg bg-paper-2 px-2.5 py-1 text-xs font-semibold text-ink-3 hover:text-ink">
+          <button type="button" data-testid="select-all" onClick={n === total ? onClear : onAll} className="rounded-[3px] bg-paper-2 px-2.5 py-1 text-xs font-semibold text-ink-3 hover:text-ink">
             {n === total ? "全不选" : "全选"}
           </button>
           <button type="button" aria-label="退出多选" data-testid="select-exit" onClick={onExit} className="ml-auto grid size-8 place-items-center rounded-full bg-paper-2 text-ink-3">

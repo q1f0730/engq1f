@@ -138,7 +138,7 @@ export function ListsOverview({ index }: { index: WordIndex }) {
                   search={{ tab: "list", list: l.id }}
                   replace
                   data-testid="list-card"
-                  className="block rounded-2xl border border-rule bg-paper-3 px-4 py-3.5 transition hover:bg-paper-2 active:scale-[0.995]"
+                  className="block rounded-xl ring-1 ring-rule ring-inset bg-paper-3 px-4 py-3.5 transition hover:bg-paper-2 active:scale-[0.995]"
                 >
                   <div className="flex items-center gap-2">
                     <span className="min-w-0 flex-1 truncate text-base font-semibold" data-testid="list-card-name">
@@ -204,7 +204,7 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
   const [sharing, setSharing] = useState(false);
   const starWords = Object.keys(st.star).filter((w) => !list.words.includes(w) && index.map.has(w));
   return (
-    <div className="mb-3 rounded-2xl border border-rule bg-paper-3 p-4" data-testid="list-panel">
+    <div className="mb-3 rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="list-panel">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-lg font-semibold tracking-[-0.015em]" data-testid="list-name">

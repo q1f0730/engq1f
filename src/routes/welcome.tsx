@@ -184,7 +184,7 @@ function Welcome() {
           <p className="mt-2 text-[0.8125rem] font-semibold text-ink" data-testid="onb-exam-left">
             还有 {examLeft} 天
           </p>
-          <div className="mb-2 mt-5 text-xs font-semibold tracking-wider text-ink-3">选择词书</div>
+          <div className="mb-2 mt-5 text-xs font-semibold text-ink-3">选择词书</div>
           <div className="space-y-2.5">
             {(["core", "all"] as Book[]).map((b) => {
               const sz = b === "all" ? sizes.all : sizes.core;
