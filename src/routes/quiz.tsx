@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { Spinner } from "@/components/app/shell";
 import { TopBar } from "@/components/app/game-bits";
+import { actClass } from "@/components/app/kit";
 import { ChoiceList, QuizPrompt } from "@/components/app/study";
 import { Meanings } from "@/components/app/word-bits";
 import { speak } from "@/lib/audio";
@@ -159,28 +160,34 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
             <button type="button" onClick={quit} aria-label="退出" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
               <X className="size-[22px]" />
             </button>
-            <div className="flex flex-1 gap-[3px]" aria-hidden>
-              {items.map((_, k) => (
-                <span key={k} className={cn("h-2 flex-1 rounded-[2px] transition-colors duration-300", k < pos ? "bg-ink" : k === pos ? "bg-mark" : "bg-rule")} />
-              ))}
+            {/* 12.0 · 卷面：题号「第 N 题 / 20」在左，倒计时在右（最后一分钟变砖红、下面一道砖红线） */}
+            <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
+              <span className="text-[0.75rem] text-ink-3">第</span>
+              <span className="tnum font-serif text-[1.375rem] leading-none" data-testid="mock-progress">
+                {pos + 1}/{items.length}
+              </span>
+              <span className="text-[0.75rem] text-ink-3">题</span>
             </div>
-            <span className="tnum min-w-12 text-right font-serif text-[1.125rem] leading-none" data-testid="mock-progress">
-              {pos + 1}/{items.length}
-            </span>
             <span
               className={cn(
-                "tnum flex h-8 items-center gap-1 rounded-md px-2 text-[0.8125rem] font-medium",
-                left < 60000 ? "text-forget ring-[1.5px] ring-forget ring-inset" : "text-ink ring-1 ring-rule-strong ring-inset",
+                "tnum flex h-9 items-center gap-1.5 border-b-2 px-0.5 font-serif text-[1.375rem] leading-none",
+                left < 60000 ? "border-forget text-forget" : "border-ink text-ink",
               )}
               data-testid="mock-timer"
             >
-              <Timer className="size-3.5" />
+              <Timer className="size-4" />
               {fmtClock(left)}
             </span>
           </div>
-          <div className="mt-1.5 flex h-6 shrink-0 items-center gap-2 text-[0.75rem] text-ink-3">
+          <div className="mt-2 flex h-1.5 shrink-0 gap-[2px]" aria-hidden>
+            {items.map((_, k) => (
+              <span key={k} className={cn("h-full flex-1 transition-colors duration-300", k < pos ? "bg-ink" : k === pos ? "bg-mark" : "bg-rule")} />
+            ))}
+          </div>
+          <div className="mt-2 flex h-6 shrink-0 items-center gap-2 text-[0.75rem] text-ink-3">
             <span>模拟小测</span>
-            <span className="rounded-[3px] px-1.5 text-ink-2 ring-1 ring-rule-strong ring-inset" data-testid="mock-mode" data-mode={cur.mode}>
+            <span className="text-rule-strong">·</span>
+            <span className="font-medium text-ink-2" data-testid="mock-mode" data-mode={cur.mode}>
               {MODE_LABEL[cur.mode]}
             </span>
           </div>
@@ -189,7 +196,7 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
             <ChoiceList choices={cur.choices} done={false} onPick={pick} />
           </div>
           <div className="shrink-0 pb-4 pt-3">
-            <button type="button" onClick={() => pick(-1)} data-testid="mock-skip" className="press h-11 w-full rounded-lg text-sm font-medium text-ink-3 underline decoration-rule-strong underline-offset-4 hover:text-ink">
+            <button type="button" onClick={() => pick(-1)} data-testid="mock-skip" className={actClass("quiet") + " h-11 w-full text-[0.875rem]"}>
               不会，跳过
             </button>
           </div>
@@ -221,44 +228,63 @@ function makeItems(index: WordIndex): Item[] {
 
 function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => void; stats: ReturnType<typeof quizStats> }) {
   const types = ["英选中", "中选英", "听音选义", "听音辨词", "短语选义", "一词多义", "词性判断", "短语挖空"];
+  const cn_no = ["一", "二", "三", "四", "五", "六", "七", "八"];
   return (
-    <div className="flex flex-1 flex-col" data-testid="mock-intro">
+    <div className="flex flex-1 flex-col overflow-y-auto" data-testid="mock-intro">
       <TopBar title="模拟小测">
         <button type="button" onClick={onQuit} aria-label="退出" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
           <X className="size-[22px]" />
         </button>
       </TopBar>
-      <div className="flex flex-1 flex-col justify-end pb-6">
-        <h1 className="rise text-[2.5rem] font-semibold leading-[1.08] tracking-[-0.03em]">
-          {MOCK_SIZE} 题 · 5 分钟
-        </h1>
-        <p className="rise mt-4 max-w-[26em] text-[0.9375rem] leading-relaxed text-ink-2" style={{ "--i": 1 } as React.CSSProperties}>
-          混合 8 种题型，学过的词优先出题。中途不显示对错，交卷后逐题回顾，错题一键进生词本。小测不影响复习计划。
-        </p>
-        <ul className="rise mt-6 flex flex-wrap gap-x-1 gap-y-1.5 border-t border-rule pt-4 text-[0.8125rem] text-ink-3" data-testid="mock-types" style={{ "--i": 2 } as React.CSSProperties}>
-          {types.map((t, k) => (
-            <li key={t} className="flex items-center gap-1">
-              {k > 0 && <span className="text-rule-strong" aria-hidden>/</span>}
-              {t}
-            </li>
-          ))}
-        </ul>
-        {stats.count > 0 && (
-          <div className="rise mt-6 grid grid-cols-3 divide-x divide-rule border-y border-rule py-3.5" data-testid="mock-prev" style={{ "--i": 3 } as React.CSSProperties}>
-            <Mini label="上次" value={`${stats.last}`} />
-            <Mini label="最高" value={`${stats.best}`} />
-            <Mini label="已做" value={`${stats.count} 次`} />
+      {/* 12.0 · 开始页排成一张卷子的卷首：标题、三格「题量 / 时间 / 满分」、八种题型的「题型说明」，最后是开始键 */}
+      <div className="rise mt-4 border-y-2 border-ink py-4">
+        <div className="text-[0.75rem] tracking-[0.2em] text-ink-3">CET-4 · 词汇</div>
+        <h1 className="mt-1 text-[1.75rem] font-semibold leading-tight tracking-[-0.02em]">四级词汇模拟小测</h1>
+        <dl className="mt-4 grid grid-cols-3 divide-x divide-rule">
+          <div className="pr-3">
+            <dt className="text-[0.75rem] text-ink-3">题量</dt>
+            <dd className="tnum mt-1 font-serif text-[2rem] leading-none">
+              {MOCK_SIZE}
+              <span className="ml-0.5 font-sans text-[0.8125rem] text-ink-3">题</span>
+            </dd>
           </div>
-        )}
-        <button
-          type="button"
-          onClick={onStart}
-          data-testid="mock-start"
-          className="press mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-[1.0625rem] font-semibold text-paper-3 hover:bg-ink-2"
-        >
-          <Timer className="size-5" /> 开始计时
-        </button>
+          <div className="px-3">
+            <dt className="text-[0.75rem] text-ink-3">限时</dt>
+            <dd className="tnum mt-1 font-serif text-[2rem] leading-none">
+              5<span className="ml-0.5 font-sans text-[0.8125rem] text-ink-3">分钟</span>
+            </dd>
+          </div>
+          <div className="pl-3">
+            <dt className="text-[0.75rem] text-ink-3">满分</dt>
+            <dd className="tnum mt-1 font-serif text-[2rem] leading-none">100</dd>
+          </div>
+        </dl>
       </div>
+      <h2 className="sr-only">{MOCK_SIZE} 题 · 5 分钟</h2>
+      <p className="rise mt-4 text-[0.875rem] leading-relaxed text-ink-2" style={{ "--i": 1 } as React.CSSProperties}>
+        混合 8 种题型，学过的词优先出题。中途不显示对错，交卷后逐题回顾，错题一键进生词本。小测不影响复习计划。
+      </p>
+      <ol className="rise mt-4 grid grid-cols-2 gap-x-5 border-t border-rule pt-3 text-[0.8125rem]" data-testid="mock-types" style={{ "--i": 2 } as React.CSSProperties}>
+        {types.map((t, k) => (
+          <li key={t} className="flex min-h-8 items-baseline gap-2 border-b border-dashed border-rule py-1">
+            <i className="w-4 shrink-0 font-serif text-[0.9375rem] not-italic text-ink-3" aria-hidden>
+              {cn_no[k]}
+            </i>
+            <span>{t}</span>
+          </li>
+        ))}
+      </ol>
+      {stats.count > 0 && (
+        <div className="rise mt-5 grid grid-cols-3 divide-x divide-rule border-b border-rule pb-3" data-testid="mock-prev" style={{ "--i": 3 } as React.CSSProperties}>
+          <Mini label="上次" value={`${stats.last}`} />
+          <Mini label="最高" value={`${stats.best}`} />
+          <Mini label="已做" value={`${stats.count} 次`} />
+        </div>
+      )}
+      <div className="flex-1" />
+      <button type="button" onClick={onStart} data-testid="mock-start" className={actClass("primary") + " mb-4 mt-8 h-14 w-full rounded-xl text-[1.0625rem]"}>
+        <Timer className="size-5" /> 开始计时
+      </button>
     </div>
   );
 }
@@ -266,8 +292,8 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
 function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 px-3 first:pl-0">
-      <div className="tnum truncate font-serif text-[1.5rem] leading-none">{value}</div>
-      <div className="mt-1.5 text-[0.75rem] text-ink-3">{label}</div>
+      <div className="text-[0.75rem] text-ink-3">{label}</div>
+      <div className="tnum mt-1 truncate font-serif text-[1.375rem] leading-none">{value}</div>
     </div>
   );
 }
@@ -307,29 +333,29 @@ function Result({
           <X className="size-[22px]" />
         </Link>
       </TopBar>
-      <section className="card-in pt-6">
-        <div className="text-[0.8125rem] text-ink-3">得分</div>
-        <div className="mt-1 flex items-baseline gap-1.5">
-          <span className={cn("tnum font-serif text-[5.5rem] leading-[0.85]", score >= 90 && "hl-swipe")} data-testid="mock-score">
-            {score}
-          </span>
-          <span className="text-base text-ink-3">分</span>
+      {/* 12.0 · 成绩像老师批的分：一个大衬线分数，右边一句评语；下面一行三格读数 */}
+      <section className="card-in mt-4 border-t-2 border-ink pt-4">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <div className="text-[0.75rem] text-ink-3">得分</div>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className={cn("tnum font-serif text-[5.5rem] leading-[0.82] tracking-[-0.04em]", score >= 90 && "hl-swipe")} data-testid="mock-score">
+                {score}
+              </span>
+              <span className="text-base text-ink-3">分</span>
+            </div>
+          </div>
+          <p className="max-w-[9em] pb-2 text-right font-serif text-[1.25rem] italic leading-snug text-ink-2">{verdict}</p>
         </div>
-        <div className="mt-3 text-[0.9375rem] font-medium text-ink">{verdict}</div>
-        <div className="mt-6 grid grid-cols-3 divide-x divide-rule border-y border-rule py-4">
+        <div className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule py-3.5">
           <HeroStat label="答对" value={`${ok}/${items.length}`} testid="mock-ok" />
           <HeroStat label={timedOut ? "超时交卷" : "用时"} value={fmtClock(ms)} testid="mock-time" />
           <HeroStat label="比上次" value={prev === null ? "首次" : `${score - prev >= 0 ? "+" : ""}${score - prev}`} testid="mock-delta" />
         </div>
       </section>
 
-      <div className="mt-4 flex gap-2.5">
-        <button
-          type="button"
-          onClick={onAgain}
-          data-testid="mock-again"
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-paper-2 text-[0.9375rem] font-semibold"
-        >
+      <div className="mt-4 flex gap-2">
+        <button type="button" onClick={onAgain} data-testid="mock-again" className={actClass("secondary", true) + " h-12 text-[0.9375rem]"}>
           <RotateCcw className="size-4" /> 再来一套
         </button>
         {wrongWords.length > 0 && (
@@ -341,7 +367,7 @@ function Result({
               toast.success(`${unstarred.length} 个错题词已加入生词本`);
             }}
             data-testid="mock-star-all"
-            className="press flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 hover:bg-ink-2 disabled:bg-mark disabled:text-mark-ink"
+            className={cn(actClass("primary", true), "h-12 flex-[1.4] text-[0.9375rem] disabled:bg-mark disabled:text-mark-ink")}
           >
             <Star className={cn("size-4", !unstarred.length && "fill-current")} />
             {unstarred.length ? `错题加入生词本 ${unstarred.length}` : "错题已在生词本"}
@@ -349,35 +375,28 @@ function Result({
         )}
       </div>
 
-      <div className="mt-8 flex items-center justify-between gap-3">
+      <div className="mt-10 flex items-end justify-between gap-3 border-b border-ink pb-2">
         <h2 className="text-[1.0625rem] font-semibold tracking-[-0.01em]">逐题回顾</h2>
-        <div className="flex gap-1 rounded-lg ring-1 ring-rule-strong ring-inset p-0.5 text-xs font-semibold" role="radiogroup" data-testid="mock-filter">
+        <div className="flex gap-4 text-[0.8125rem]" role="radiogroup" data-testid="mock-filter">
           {(
             [
               ["wrong", `错题 ${items.length - ok}`],
               ["all", `全部 ${items.length}`],
             ] as const
           ).map(([v, label]) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={filter === v}
-              onClick={() => setFilter(v)}
-              className={cn("rounded-lg px-3 py-1", filter === v ? "bg-paper-3 text-ink" : "text-ink-3")}
-            >
-              {label}
+            <button key={v} type="button" role="radio" aria-checked={filter === v} onClick={() => setFilter(v)} className={cn("press h-9", filter === v ? "font-semibold text-ink" : "text-ink-3 hover:text-ink")}>
+              <span className={cn(filter === v && "hl")}>{label}</span>
             </button>
           ))}
         </div>
       </div>
       {ok === items.length && (
-        <div className="mt-3 flex items-center gap-2 py-3 text-[0.9375rem] font-medium text-know" data-testid="mock-perfect">
+        <div className="mt-3 flex items-center gap-2 border-l-2 border-know py-1 pl-3 text-[0.9375rem] font-medium text-know" data-testid="mock-perfect">
           <Check className="size-5" strokeWidth={2.4} /> 全部答对，没有错题
         </div>
       )}
       {shown.length === 0 ? null : (
-        <ul className="mt-3 divide-y divide-rule border-y border-rule" data-testid="mock-review">
+        <ol data-testid="mock-review">
           {shown.map(({ q, k }) => {
             const good = okAt(k);
             const a = answers[k];
@@ -386,15 +405,23 @@ function Result({
             const expanded = open === k;
             const starred = !!st.star[q.w];
             return (
-              <li key={k} data-testid="mock-review-item" data-ok={good ? 1 : 0}>
-                <button type="button" onClick={() => setOpen(expanded ? null : k)} aria-expanded={expanded} className="press flex w-full items-start gap-3 py-3 text-left" data-testid="mock-review-toggle">
-                  <span className={cn("mt-1 grid size-5 shrink-0 place-items-center rounded-[4px] text-paper-3", good ? "bg-know" : "bg-forget")} aria-label={good ? "答对" : "答错"}>
-                    {good ? <Check className="size-3.5" strokeWidth={2.4} /> : <X className="size-3.5" strokeWidth={2.4} />}
+              <li key={k} data-testid="mock-review-item" data-ok={good ? 1 : 0} className="border-b border-rule">
+                <button
+                  type="button"
+                  onClick={() => setOpen(expanded ? null : k)}
+                  aria-expanded={expanded}
+                  className="press grid w-full grid-cols-[1.75rem_minmax(0,1fr)_auto] items-baseline gap-x-2 py-3 text-left"
+                  data-testid="mock-review-toggle"
+                >
+                  {/* 题号：答对是墨色，答错是砖红并打一个 × */}
+                  <span className={cn("tnum font-serif text-[1.125rem] leading-none", good ? "text-ink-3" : "text-forget")} aria-label={good ? "答对" : "答错"}>
+                    {k + 1}
+                    {!good && <span className="ml-px text-[0.75rem]">×</span>}
                   </span>
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0">
                     <span className="flex items-baseline gap-2">
                       <span className="word-head truncate text-[1.375rem] leading-tight">{q.w}</span>
-                      <span className="shrink-0 rounded-[3px] px-1.5 text-[0.6875rem] text-ink-3 ring-1 ring-rule-strong ring-inset">{MODE_LABEL[q.mode]}</span>
+                      <span className="shrink-0 text-[0.6875rem] text-ink-3">{MODE_LABEL[q.mode]}</span>
                     </span>
                     {!good && (
                       <span className="mt-1 block text-[0.8125rem] leading-snug">
@@ -403,25 +430,21 @@ function Result({
                         </span>
                         <span className="mx-1.5 text-ink-3">→</span>
                         {q.mode === "poly" && <span className="text-ink-3">不属于的是 </span>}
-                        <span className="font-semibold text-know" data-testid="mock-right">
+                        <span className="hl font-semibold text-ink" data-testid="mock-right">
                           {right?.text}
                         </span>
                       </span>
                     )}
                     {good && <span className="mt-0.5 block truncate text-[0.8125rem] text-ink-3">{right?.text}</span>}
                   </span>
-                  <ChevronDown className={cn("mt-1.5 size-4 shrink-0 text-ink-3 transition-transform duration-300 ease-[var(--ease-spring)]", expanded && "rotate-180")} />
+                  <ChevronDown className={cn("size-4 shrink-0 self-center text-ink-3 transition-transform duration-300 ease-[var(--ease-spring)]", expanded && "rotate-180")} />
                 </button>
                 {expanded && (
-                  <div className="rise pb-4 pl-8" data-testid="mock-review-detail">
+                  <div className="rise pb-4 pl-[2.25rem]" data-testid="mock-review-detail">
                     {right?.sub && q.mode === "poly" && <p className="mb-2 text-[0.8125rem] text-ink-3">「{right.text}」{right.sub.replace("这是", "是")}</p>}
                     <Meanings word={word} />
                     <div className="mt-3 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => speak(q.w, st.settings.accent)}
-                        className="press h-10 rounded-lg px-3.5 text-[0.8125rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2"
-                      >
+                      <button type="button" onClick={() => speak(q.w, st.settings.accent)} className={actClass("secondary") + " h-10 text-[0.8125rem]"}>
                         听发音
                       </button>
                       <button
@@ -431,7 +454,7 @@ function Result({
                           toast(starred ? "已移出生词本" : "已加入生词本");
                         }}
                         data-testid="mock-star-one"
-                        className={cn("press flex h-10 items-center gap-1.5 rounded-lg px-3.5 text-[0.8125rem] font-medium", starred ? "bg-mark text-mark-ink" : "bg-paper-2 text-ink-2 hover:bg-rule")}
+                        className={cn(actClass(starred ? "mark" : "secondary"), "h-10 text-[0.8125rem]")}
                       >
                         <Star className={cn("size-3.5", starred && "fill-current")} />
                         {starred ? "在生词本" : "加入生词本"}
@@ -442,9 +465,9 @@ function Result({
               </li>
             );
           })}
-        </ul>
+        </ol>
       )}
-      <Link to="/" data-testid="mock-home" className="press mt-8 flex h-12 items-center justify-center rounded-lg bg-ink text-base font-semibold text-paper-3 hover:bg-ink-2">
+      <Link to="/" data-testid="mock-home" className={actClass("primary") + " mt-8 h-12 w-full text-base"}>
         回到今日
       </Link>
     </div>
@@ -454,10 +477,10 @@ function Result({
 function HeroStat({ label, value, testid }: { label: string; value: string; testid?: string }) {
   return (
     <div className="min-w-0 px-3 first:pl-0">
-      <div className="tnum truncate font-serif text-[1.75rem] leading-none" data-testid={testid}>
+      <div className="text-[0.75rem] text-ink-3">{label}</div>
+      <div className="tnum mt-1 truncate font-serif text-[1.625rem] leading-none" data-testid={testid}>
         {value}
       </div>
-      <div className="mt-1.5 text-[0.75rem] text-ink-3">{label}</div>
     </div>
   );
 }
