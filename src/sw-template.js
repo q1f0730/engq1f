@@ -75,6 +75,18 @@ function audioResponse(req) {
   );
 }
 
+/**
+ * 13.0.0 · 离线打开：app shell。Cloudflare Pages 把 /index.html 308 到 /，缓存里那份是「重定向过的」响应，
+ * 浏览器不许拿它回答导航请求（ERR_FAILED）。先找 "./"，再找 index.html，并且总是复制成一个干净的响应。
+ */
+function shell() {
+  const o = { ignoreSearch: true, ignoreVary: true };
+  return caches
+    .match("./", o)
+    .then((hit) => hit || caches.match("index.html", o))
+    .then((hit) => (hit && hit.redirected ? hit.blob().then((b) => new Response(b, { status: 200, headers: hit.headers })) : hit));
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -84,10 +96,10 @@ self.addEventListener("fetch", (event) => {
   }
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // 其它外部资源（例句接口等）不拦截
-  // 13.0 · 版本号文件永远走网络（更新提示要看服务器上的最新版本）；同域的 /sb-api（云同步）不缓存
-  if (/\/version\.json$/.test(url.pathname) || /\/sb-api\//.test(url.pathname)) return;
+  // 13.0 · 版本号文件永远走网络（更新提示要看服务器上的最新版本）；同域的 /sb-api、/api（云同步，Cloudflare 站点的 Pages Functions）不缓存
+  if (/\/version\.json$/.test(url.pathname) || /\/(sb-)?api\//.test(url.pathname)) return;
   if (req.mode === "navigate") {
-    event.respondWith(fetch(req).catch(() => caches.match("index.html", { ignoreSearch: true, ignoreVary: true })));
+    event.respondWith(fetch(req).catch(() => shell()));
     return;
   }
   event.respondWith(
