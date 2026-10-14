@@ -44,7 +44,7 @@ export function RetentionLine({ days, testid }: { days: RetentionDay[]; testid?:
         </g>
       ))}
       {segs.map((d, k) => (
-        <path key={k} d={d} fill="none" stroke="var(--know)" strokeWidth={3.5} strokeLinejoin="round" strokeLinecap="round" />
+        <path key={k} d={d} fill="none" stroke="var(--know)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
       ))}
       {pts.map((p) => (
         <circle key={p.k} cx={x(p.k)} cy={y(p.rate!)} r={p.k === n - 1 ? 6.5 : 4.5} fill={p.k === n - 1 ? "var(--know)" : "var(--card)"} stroke="var(--know)" strokeWidth={2.6} data-rate={p.rate}>
@@ -130,7 +130,7 @@ export function Forecast30({ data, testid }: { data: ForecastDay[]; testid?: str
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="30 天复习预测">
         {data.map((d, k) => {
           const h = d.reviews ? Math.max(4, (d.reviews / maxR) * (H - 70)) : 0;
-          return <rect key={k} x={P + bw * k + bw * 0.16} y={H - 30 - h} width={bw * 0.68} height={h} rx={2.5} fill="var(--primary)" opacity={k === 0 ? 0.9 : 0.3} data-reviews={d.reviews} />;
+          return <rect key={k} x={P + bw * k + bw * 0.16} y={H - 30 - h} width={bw * 0.68} height={h} rx={2.5} fill={k === 0 ? "var(--mark)" : "var(--ink-3)"} stroke={k === 0 ? "var(--ink)" : "none"} strokeWidth={1.5} opacity={k === 0 ? 1 : 0.4} data-reviews={d.reviews} />;
         })}
         <path d={line} fill="none" stroke="var(--know)" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
         <circle cx={pts[n - 1][0]} cy={pts[n - 1][1]} r={5} fill="var(--know)" />

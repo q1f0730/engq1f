@@ -36,7 +36,9 @@
 @theme inline {
   --font-sans: "HarmonyOS Sans SC", "MiSans", "vivo Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
     "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
-  --font-serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, "Noto Serif", "Songti SC", serif;
+  /* 衬线只管拉丁字母和数字；中文（「天」「分」这类单位）落到系统黑体，不混宋体 */
+  --font-serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, "HarmonyOS Sans SC", "MiSans", "PingFang SC",
+    "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", serif;
   --font-display: var(--font-sans);
   --font-ipa: "Lucida Sans Unicode", "Segoe UI", "Noto Sans", "DejaVu Sans", "Arial Unicode MS", sans-serif;
 
@@ -123,6 +125,8 @@
   --mark: #f2e05a;
   --mark-soft: #f8efa8;
   --mark-ink: #1a1a18;
+  /* 荧光笔压在文字上的那一道：浅色是实色；深色压暗，浅色字在上面照样读得清 */
+  --hl: var(--mark);
 
   --background: var(--paper);
   --surface: var(--paper-2);
@@ -171,6 +175,7 @@
   --mark: #dccb4a;
   --mark-soft: #3a3517;
   --mark-ink: #121211;
+  --hl: color-mix(in oklab, var(--mark) 38%, var(--paper));
 
   --primary-foreground: #121211;
   --destructive: #ef8b7b;
@@ -267,7 +272,7 @@
 
   /* 荧光笔：静态的一道（文字下半部） */
   .hl {
-    background-image: linear-gradient(transparent 52%, var(--mark) 52%, var(--mark) 92%, transparent 92%);
+    background-image: linear-gradient(transparent 52%, var(--hl) 52%, var(--hl) 92%, transparent 92%);
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
     color: inherit;
@@ -285,7 +290,7 @@
     right: -0.08em;
     bottom: 0.08em;
     height: 0.42em;
-    background: var(--mark);
+    background: var(--hl);
     border-radius: 2px;
     transform-origin: left center;
     animation: hl-swipe 420ms var(--ease-out) 80ms both;

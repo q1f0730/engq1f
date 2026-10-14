@@ -58,11 +58,12 @@ export function Bars({
     <div className={cn("flex items-end gap-2", className)} style={{ height: height + 40 }} data-testid={testid}>
       {data.map((d, k) => (
         <div key={k} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-          <span className={cn("tnum text-[0.6875rem] font-semibold", d.strong ? "text-ink" : "text-ink-3")}>{d.value}</span>
+          <span className={cn("tnum font-serif text-[1rem] leading-none", d.strong ? "text-ink" : "text-ink-3")}>{d.value}</span>
           <div className="flex w-full justify-center" style={{ height }}>
             <div
-              className={cn("w-full max-w-9 self-end rounded-t-lg rounded-b-sm", d.strong ? "bg-ink" : "bg-ink")}
-              style={{ height: `${Math.max(d.value ? 6 : 2, (d.value / max) * height)}px`, transition: "height 600ms ease" }}
+              // 12.0 · 单色柱：普通 = 墨色淡一档，「今天」= 荧光笔 + 墨色描边
+              className={cn("w-full max-w-8 origin-bottom self-end rounded-t-[3px]", d.strong ? "bg-mark shadow-[inset_0_0_0_1.5px_var(--ink)]" : "bg-ink-3/45")}
+              style={{ height: `${Math.max(d.value ? 6 : 2, (d.value / max) * height)}px`, transition: "height 700ms var(--ease-spring)" }}
             />
           </div>
           <span className={cn("truncate text-[0.6875rem]", d.strong ? "font-semibold text-ink" : "text-ink-3")}>{d.label}</span>
@@ -94,12 +95,6 @@ export function Curve({ logs, firstDays, today, days = 30 }: { logs: Record<stri
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="30 天学习曲线">
-        <defs>
-          <linearGradient id="curveFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="var(--primary)" stopOpacity="0.28" />
-            <stop offset="1" stopColor="var(--primary)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
         {daily.map((v, k) => (
           <rect
             key={k}
@@ -108,13 +103,13 @@ export function Curve({ logs, firstDays, today, days = 30 }: { logs: Record<stri
             width={bw * 0.64}
             height={(v / maxBar) * (H - 60)}
             rx={2}
-            fill="var(--know)"
-            opacity={0.35}
+            fill="var(--ink-3)"
+            opacity={0.3}
           />
         ))}
-        <path d={area} fill="url(#curveFill)" />
-        <path d={line} fill="none" stroke="var(--primary)" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
-        <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r={5} fill="var(--primary)" />
+        <path d={area} fill="var(--mark)" opacity={0.35} />
+        <path d={line} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        <rect x={pts[pts.length - 1][0] - 5} y={pts[pts.length - 1][1] - 5} width={10} height={10} rx={2} fill="var(--mark)" stroke="var(--ink)" strokeWidth={1.5} />
         <line x1={P} x2={W - P} y1={H - 18} y2={H - 18} stroke="var(--border)" />
         <text x={P} y={H - 2} fontSize={12} fill="var(--muted-foreground)">
           {start.slice(5).replace("-", "/")}
@@ -334,12 +329,6 @@ export function ScoreLine({ scores, labels, testid }: { scores: number[]; labels
   const area = n > 1 ? `${line} L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z` : "";
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="小测成绩曲线" data-testid={testid} data-points={n}>
-      <defs>
-        <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--primary)" stopOpacity="0.22" />
-          <stop offset="1" stopColor="var(--primary)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
       {[0, 60, 100].map((g) => (
         <g key={g}>
           <line x1={L} x2={W - R} y1={y(g)} y2={y(g)} stroke="var(--border)" strokeDasharray={g === 60 ? "6 6" : undefined} />
@@ -348,11 +337,11 @@ export function ScoreLine({ scores, labels, testid }: { scores: number[]; labels
           </text>
         </g>
       ))}
-      {area && <path d={area} fill="url(#scoreFill)" />}
-      {n > 1 && <path d={line} fill="none" stroke="var(--primary)" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />}
+      {area && <path d={area} fill="var(--mark)" opacity={0.3} />}
+      {n > 1 && <path d={line} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
       {scores.map((v, k) => (
         <g key={k}>
-          <circle cx={x(k)} cy={y(v)} r={k === n - 1 ? 6 : 4} fill={k === n - 1 ? "var(--primary)" : "var(--card)"} stroke="var(--primary)" strokeWidth={2.5} data-score={v} />
+          <circle cx={x(k)} cy={y(v)} r={k === n - 1 ? 6 : 3.5} fill={k === n - 1 ? "var(--mark)" : "var(--card)"} stroke="var(--ink)" strokeWidth={1.75} data-score={v} />
           {(k === n - 1 || n <= 8) && (
             <text x={x(k)} y={y(v) - 11} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--foreground)">
               {v}

@@ -170,7 +170,7 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
             <span
               className={cn(
                 "tnum flex h-8 items-center gap-1 rounded-md px-2 text-[0.8125rem] font-medium",
-                left < 60000 ? "bg-forget text-paper-3" : "text-ink ring-1 ring-rule-strong ring-inset",
+                left < 60000 ? "text-forget ring-[1.5px] ring-forget ring-inset" : "text-ink ring-1 ring-rule-strong ring-inset",
               )}
               data-testid="mock-timer"
             >

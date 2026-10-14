@@ -72,7 +72,7 @@ export function Meanings({ word, size = "md" }: { word: Word; size?: "md" | "lg"
         <li key={k} className={cn("flex items-baseline gap-2.5 leading-relaxed text-ink", size === "lg" ? "text-[1.0625rem]" : "text-[0.9375rem]")}>
           {/* 12.0 · 词性：词典的斜体衬线，不是灰色小药丸 */}
           {pos && (
-            <span className={cn("pos w-[2.4em] shrink-0 text-ink-3", size === "lg" ? "text-[1.1875rem]" : "text-[1.0625rem]")}>
+            <span className={cn("pos min-w-[1.9em] shrink-0 text-ink-3", size === "lg" ? "text-[1.1875rem]" : "text-[1.0625rem]")}>
               {posLabel(pos)}
             </span>
           )}

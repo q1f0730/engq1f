@@ -182,7 +182,7 @@ function HowTab() {
   );
 }
 
-const SERIES_COLOR = ["var(--forget)", "var(--primary)", "var(--know)"];
+const SERIES_COLOR = ["var(--forget)", "var(--ink)", "var(--know)"];
 
 function GrowthChart({ series }: { series: number[][] }) {
   const W = 600;
@@ -353,7 +353,7 @@ function SimBars({ res, cur }: { res: ReturnType<typeof simulatePlan>; cur: Retu
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="30 天每日复习量">
         {res.days.map((d, k) => {
           const h = d.reviews ? Math.max(3, H - 28 - y(d.reviews)) : 0;
-          return <rect key={k} x={P + bw * k + bw * 0.15} y={H - 28 - h} width={bw * 0.7} height={h} rx={2.5} fill="var(--primary)" opacity={k === res.peakDay ? 0.95 : 0.35} />;
+          return <rect key={k} x={P + bw * k + bw * 0.15} y={H - 28 - h} width={bw * 0.7} height={h} rx={2.5} fill={k === res.peakDay ? "var(--mark)" : "var(--ink-3)"} stroke={k === res.peakDay ? "var(--ink)" : "none"} strokeWidth={1.5} opacity={k === res.peakDay ? 1 : 0.4} />;
         })}
         {line && <path d={line} fill="none" stroke="var(--muted-foreground)" strokeWidth={2.5} strokeDasharray="5 5" strokeLinejoin="round" />}
         <line x1={P} x2={W - P} y1={H - 28} y2={H - 28} stroke="var(--border)" />

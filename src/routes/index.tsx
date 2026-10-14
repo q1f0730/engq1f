@@ -347,7 +347,7 @@ function Today() {
                 </span>
               )}
             </div>
-            <div className={cn("mt-5 grid gap-2", (sum.recovering && !sum.goal) || noSecond ? "grid-cols-1" : "grid-cols-[1.5fr_1fr]")} data-testid="hero-actions" data-next={canCheck ? "checkin" : reviewFirst ? "review" : "new"}>
+            <div className={cn("mt-5 grid gap-2", (sum.recovering && !sum.goal) || noSecond ? "grid-cols-1" : "grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]")} data-testid="hero-actions" data-next={canCheck ? "checkin" : reviewFirst ? "review" : "new"}>
               {canCheck ? (
                 <button
                   type="button"
@@ -391,7 +391,7 @@ function Today() {
                     onClick={guardNew(sum.due === 0)}
                     data-testid={sum.due > 0 ? "start-review" : "start-learn"}
                     className={cn(
-                      "press flex h-12 items-center justify-center gap-1.5 rounded-lg bg-paper-2 text-[0.9375rem] font-medium text-ink hover:bg-rule",
+                      "press flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-paper-2 px-2 text-[0.9375rem] font-medium text-ink hover:bg-rule",
                       sum.due === 0 && sum.newLeft === 0 && "pointer-events-none opacity-45",
                     )}
                   >
@@ -405,7 +405,7 @@ function Today() {
                     disabled={reviewFirst && sum.newLeft === 0}
                     data-testid={reviewFirst ? "start-learn" : "start-review"}
                     className={cn(
-                      "press flex h-12 items-center justify-center gap-1.5 rounded-lg bg-paper-2 text-[0.9375rem] font-medium text-ink hover:bg-rule",
+                      "press flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-paper-2 px-2 text-[0.9375rem] font-medium text-ink hover:bg-rule",
                       (reviewFirst ? sum.newLeft === 0 : sum.due === 0) && "text-ink-3",
                       reviewFirst && sum.newLeft === 0 && "pointer-events-none",
                     )}

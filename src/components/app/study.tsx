@@ -765,7 +765,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
 
 /** 11.1 · 卡片下面的小工具条：撤销 / 明天再说 / 收藏，带文字（原来挤在顶栏、只有图标） */
 function CardTools({ onUndo, canUndo, onBury, onStar, starred }: { onUndo: () => void; canUndo: boolean; onBury?: () => void; onStar: () => void; starred: boolean }) {
-  const cls = "press flex h-10 items-center gap-1.5 rounded-lg px-3 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-ink disabled:pointer-events-none disabled:opacity-35";
+  const cls = "press flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-ink disabled:pointer-events-none disabled:opacity-35";
   return (
     <div className="flex shrink-0 items-center justify-center gap-0.5 pt-1.5" data-testid="card-tools">
       <button type="button" onClick={onUndo} disabled={!canUndo} data-testid="undo" aria-label="撤销" className={cls}>
@@ -930,7 +930,7 @@ function SpeedCard({
             onKill();
           }}
           data-testid="kill"
-          className="press absolute bottom-3 left-1/2 flex h-10 -translate-x-1/2 items-center gap-1.5 rounded-lg px-3.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
+          className="press absolute bottom-3 left-1/2 flex h-10 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
         >
           <Swords className="size-3.5" /> 斩 · 我本来就会
         </button>
@@ -1227,7 +1227,7 @@ function FlipCard({
                 onKill();
               }}
               data-testid="kill"
-              className="card-kill press absolute bottom-3 left-1/2 flex h-10 -translate-x-1/2 items-center gap-1.5 rounded-lg px-3.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
+              className="card-kill press absolute bottom-3 left-1/2 flex h-10 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
             >
               <Swords className="size-3.5" /> 斩 · 我本来就会
             </button>}
