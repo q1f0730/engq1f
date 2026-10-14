@@ -83,7 +83,8 @@ export function ToolRow({
           仅核心
         </button>
       )}
-      <span className="ml-auto flex shrink-0 items-center">
+      {/* 右端两个文字工具：多选、导出（选中时墨底） */}
+      <span className="ml-auto flex shrink-0 items-center gap-1 pl-2">
         <button
           type="button"
           aria-label="多选"
@@ -91,9 +92,10 @@ export function ToolRow({
           data-testid="select-mode"
           aria-pressed={selecting}
           onClick={onSelect}
-          className={cn("press grid size-10 place-items-center rounded-md", selecting ? "bg-ink text-paper-3" : "text-ink-2 hover:bg-paper-2 hover:text-ink")}
+          className={cn("press flex h-9 items-center gap-1.5 rounded-md px-2 text-[0.8125rem] font-medium", selecting ? "bg-ink text-paper-3" : "text-ink-2 hover:bg-paper-2 hover:text-ink")}
         >
-          <CheckSquare className="size-[18px]" />
+          <CheckSquare className="size-4" />
+          <span className="hidden min-[400px]:inline">多选</span>
         </button>
         <button
           type="button"
@@ -102,9 +104,10 @@ export function ToolRow({
           data-testid="export-open"
           disabled={!canExport}
           onClick={onExport}
-          className="press grid size-10 place-items-center rounded-md text-ink-2 hover:bg-paper-2 hover:text-ink disabled:opacity-40"
+          className="press flex h-9 items-center gap-1.5 rounded-md px-2 text-[0.8125rem] font-medium text-ink-2 hover:bg-paper-2 hover:text-ink disabled:opacity-40"
         >
-          <Download className="size-[18px]" />
+          <Download className="size-4" />
+          <span className="hidden min-[400px]:inline">导出</span>
         </button>
       </span>
     </div>
@@ -192,28 +195,35 @@ export function SelectBar({ selected, total, onAll, onClear, onExit, listId }: {
     toast.success(`${label} ${n} 词`, { action: { label: "撤销", onClick: () => restoreSnapshot(snap) } });
     onExit();
   };
-  const actions: { key: string; label: string; icon: ReactNode; cls?: string; on: () => void }[] = [
-    { key: "star", label: "生词本", icon: <Star className="size-[18px]" />, on: () => run("已加入生词本", () => starWords(selected)) },
-    { key: "kill", label: "斩", icon: <Swords className="size-[18px]" />, cls: "text-know", on: () => run("已斩", () => batchKill(selected)) },
-    { key: "reset", label: "重置", icon: <RotateCcw className="size-[18px]" />, on: () => run("已重置", () => batchReset(selected)) },
-    { key: "list", label: "加入词单", icon: <ListPlus className="size-[18px]" />, on: () => setPicker(true) },
+  const actions: { key: string; label: string; icon: ReactNode; on: () => void }[] = [
+    { key: "star", label: "生词本", icon: <Star className="size-4" />, on: () => run("已加入生词本", () => starWords(selected)) },
+    { key: "kill", label: "斩", icon: <Swords className="size-4" />, on: () => run("已斩", () => batchKill(selected)) },
+    { key: "reset", label: "重置", icon: <RotateCcw className="size-4" />, on: () => run("已重置", () => batchReset(selected)) },
+    { key: "list", label: "加入词单", icon: <ListPlus className="size-4" />, on: () => setPicker(true) },
   ];
-  if (listId) actions.push({ key: "unlist", label: "移出词单", icon: <ListMinus className="size-[18px]" />, cls: "text-forget", on: () => run("已移出词单", () => removeFromList(listId, selected)) });
+  if (listId) actions.push({ key: "unlist", label: "移出词单", icon: <ListMinus className="size-4" />, on: () => run("已移出词单", () => removeFromList(listId, selected)) });
+  // 12.0 · 多选栏：一张浮起的墨色纸条。上面一行「已选 N / 总数」+ 全选 + 关闭，
+  // 下面一排文字动作（小图标在字前），危险的「移出词单」用砖红字；不再是一格一个图标的宫格
   return (
     <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 px-3 pb-2 md:bottom-4" data-testid="select-bar">
-      <div className="float-shell mx-auto max-w-xl rounded-2xl px-2 pb-2 pt-1">
-        <div className="flex items-center gap-3 border-b border-rule px-2 py-1.5">
-          <span className="tnum text-[0.875rem] font-semibold" data-testid="select-count">
-            已选 <span className="font-serif text-[1.25rem] font-normal">{n}</span> / {total}
+      <section className="mx-auto max-w-xl rounded-2xl bg-ink px-3 pb-2.5 pt-2 text-paper-3 shadow-[0_18px_40px_-20px_rgba(20,20,10,0.6)]">
+        <header className="flex items-center gap-3">
+          <span className="tnum text-[0.875rem] font-medium" data-testid="select-count">
+            已选 <span className="font-serif text-[1.375rem] font-normal">{n}</span> / {total}
           </span>
-          <button type="button" data-testid="select-all" onClick={n === total ? onClear : onAll} className={actClass("quiet") + " h-9 text-[0.8125rem]"}>
+          <button
+            type="button"
+            data-testid="select-all"
+            onClick={n === total ? onClear : onAll}
+            className="press h-9 px-1 text-[0.8125rem] font-medium text-paper-3/80 underline decoration-paper-3/40 underline-offset-4 hover:text-paper-3"
+          >
             {n === total ? "全不选" : "全选"}
           </button>
-          <button type="button" aria-label="退出多选" data-testid="select-exit" onClick={onExit} className="press ml-auto grid size-10 place-items-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink">
+          <button type="button" aria-label="退出多选" data-testid="select-exit" onClick={onExit} className="press ml-auto grid size-10 place-items-center rounded-md text-paper-3/70 hover:bg-paper-3/10 hover:text-paper-3">
             <X className="size-4" />
           </button>
-        </div>
-        <div className={cn("mt-1 grid", actions.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
+        </header>
+        <div className="no-scrollbar -mx-1 mt-1 flex gap-1 overflow-x-auto">
           {actions.map((a) => (
             <button
               key={a.key}
@@ -221,14 +231,17 @@ export function SelectBar({ selected, total, onAll, onClear, onExit, listId }: {
               data-testid={`bulk-${a.key}`}
               disabled={!n}
               onClick={a.on}
-              className={cn("press flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium hover:bg-paper-2 disabled:opacity-35", a.cls)}
+              className={cn(
+                "press flex h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[0.8125rem] font-semibold disabled:opacity-35",
+                a.key === "unlist" ? "text-forget-soft hover:bg-paper-3/10" : a.key === "star" ? "bg-mark text-mark-ink hover:brightness-95" : "hover:bg-paper-3/10",
+              )}
             >
               {a.icon}
               {a.label}
             </button>
           ))}
         </div>
-      </div>
+      </section>
       <ListPicker open={picker} onOpenChange={setPicker} words={selected} onDone={onExit} />
     </div>
   );
@@ -253,84 +266,86 @@ export function ExportSheet({ open, onOpenChange, words, title }: { open: boolea
     };
   }, [printing]);
 
-  const row = "press flex min-h-16 w-full items-center gap-3 border-b border-rule py-3 text-left hover:bg-paper-2/60";
+  const csv = () => download(`${name}.csv`, toCSV(words, accent), "text/csv;charset=utf-8");
+  const anki = () => download(`${name}-anki.txt`, toAnki(words, accent), "text/tab-separated-values;charset=utf-8");
+  const print = () => {
+    onOpenChange(false);
+    setPrinting(true);
+  };
   return (
     <>
       <BottomSheet open={open} onOpenChange={onOpenChange} title={`导出「${title}」· ${words.length} 词`} testid="export-sheet">
-        <p className="pb-3 text-[0.8125rem] text-ink-3">导出的是当前看到的列表（已按筛选、搜索和排序）。</p>
-        {/* 三种格式排成一张小目录：格式名 · 用途 · 右边一个「下载 / 打印」 */}
-        <div className="border-t border-ink">
-          <button type="button" className={row} data-testid="export-csv" onClick={() => download(`${name}.csv`, toCSV(words, accent), "text/csv;charset=utf-8")}>
-            <span className="w-14 shrink-0 font-serif text-[1.375rem] italic leading-none">.csv</span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[0.9375rem] font-semibold">CSV 表格</span>
-              <span className="block text-[0.75rem] text-ink-3">单词, 音标, 释义 · Excel / WPS 直接打开</span>
-            </span>
-            <Download className="size-4 shrink-0 text-ink-3" />
-          </button>
-          <button type="button" className={row} data-testid="export-anki" onClick={() => download(`${name}-anki.txt`, toAnki(words, accent), "text/tab-separated-values;charset=utf-8")}>
-            <span className="w-14 shrink-0 font-serif text-[1.375rem] italic leading-none">.tsv</span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[0.9375rem] font-semibold">Anki 卡组（TSV）</span>
-              <span className="block text-[0.75rem] text-ink-3">正面单词，背面音标 + 释义 · Anki「导入文件」</span>
-            </span>
-            <Download className="size-4 shrink-0 text-ink-3" />
-          </button>
-          <div className="py-4">
-            <div className="flex items-baseline gap-3">
-              <span className="w-14 shrink-0 font-serif text-[1.375rem] italic leading-none">A4</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[0.9375rem] font-semibold">打印词单</span>
-                <span className="block text-[0.75rem] text-ink-3">A4 三栏紧凑排版，可存为 PDF</span>
-              </span>
-            </div>
-            <label className="ml-[4.25rem] mt-3 flex min-h-9 items-center gap-2.5 text-[0.875rem]">
-              <input type="checkbox" checked={hideMeaning} onChange={(e) => setHideMeaning(e.target.checked)} data-testid="print-hide" className="size-4 accent-[var(--ink)]" />
-              隐藏释义，做成自测纸
-            </label>
-            <button
-              type="button"
-              data-testid="export-print"
-              onClick={() => {
-                onOpenChange(false);
-                setPrinting(true);
-              }}
-              className={actClass("primary") + " mt-3 h-11 w-full"}
-            >
-              <Printer className="size-4" /> 打印 {words.length} 词
-            </button>
-          </div>
+        <p className="text-[0.8125rem] text-ink-3">导出的是当前看到的列表（已按筛选、搜索和排序）。</p>
+        {/* 12.0 · 两种文件格式并排成两张「文件卡」：大号斜体扩展名 + 用途；打印单独一节，带一个开关和主按钮 */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <FileCard ext=".csv" name="CSV 表格" use="Excel / WPS 直接打开" testid="export-csv" onClick={csv} />
+          <FileCard ext=".tsv" name="Anki 卡组" use="Anki「导入文件」" testid="export-anki" onClick={anki} />
         </div>
+        <section className="mt-6 border-t border-ink pt-3">
+          <h3 className="flex items-baseline gap-2.5">
+            <span className="font-serif text-[1.375rem] italic leading-none">A4</span>
+            <span className="text-[0.9375rem] font-semibold">打印词单</span>
+            <span className="text-[0.75rem] text-ink-3">三栏紧凑，可存为 PDF</span>
+          </h3>
+          <label className="mt-3 flex min-h-11 items-center justify-between gap-3 text-[0.875rem]">
+            隐藏释义，做成自测纸
+            <input type="checkbox" checked={hideMeaning} onChange={(e) => setHideMeaning(e.target.checked)} data-testid="print-hide" className="size-4 accent-[var(--ink)]" />
+          </label>
+          <button type="button" data-testid="export-print" onClick={print} className={actClass("primary") + " mt-2 h-12 w-full"}>
+            <Printer className="size-4" /> 打印 {words.length} 词
+          </button>
+        </section>
       </BottomSheet>
       {printing && <PrintView words={words} title={title} hideMeaning={hideMeaning} accent={accent} />}
     </>
   );
 }
 
-/** 只在打印时出现的版面（屏幕上隐藏，见 styles.css @media print） */
+function FileCard({ ext, name, use, testid, onClick }: { ext: string; name: string; use: string; testid: string; onClick: () => void }) {
+  return (
+    <button type="button" data-testid={testid} onClick={onClick} className="press group flex min-h-28 flex-col justify-between rounded-xl bg-paper-3 p-3.5 text-left ring-1 ring-inset ring-rule hover:ring-ink">
+      <span className="flex items-start justify-between">
+        <span className="font-serif text-[1.75rem] italic leading-none">{ext}</span>
+        <Download className="size-4 text-ink-3 transition-colors group-hover:text-ink" />
+      </span>
+      <span>
+        <span className="block text-[0.875rem] font-semibold">{name}</span>
+        <span className="mt-0.5 block text-[0.6875rem] leading-snug text-ink-3">{use}</span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * 只在打印时出现的版面（屏幕上隐藏，见 styles.css @media print）。
+ * 12.0 · 像一张词典附页：抬头左边词单名、右边词数和日期，三栏正文，页脚一行小字说明怎么用。
+ */
 function PrintView({ words, title, hideMeaning, accent }: { words: Word[]; title: string; hideMeaning: boolean; accent: "us" | "uk" }) {
+  const ipa = (w: Word) => (w.p ? (accent === "uk" ? w.p[1] : w.p[0]) : "");
+  const meta = `${words.length} 词 · ${today()}${hideMeaning ? " · 自测纸" : ""}`;
   return createPortal(
-    <div id="print-root" data-testid="print-root" data-hide={hideMeaning ? "1" : "0"}>
+    <article id="print-root" data-testid="print-root" data-hide={hideMeaning ? "1" : "0"}>
       <header className="print-head">
         <b>四级词单 · {title}</b>
-        <span>
-          {words.length} 词 · {today()}
-          {hideMeaning ? " · 自测纸" : ""}
-        </span>
+        <span>{meta}</span>
       </header>
       <ol className="print-cols">
-        {words.map((w, k) => (
-          <li key={w.w} className="print-item" data-testid="print-item">
-            <span className="print-no">{k + 1}</span>
-            <div className="print-body">
-              <span className="print-word">{w.w}</span>
-              {w.p && <span className="print-ipa">/{accent === "uk" ? w.p[1] : w.p[0]}/</span>}
-              {hideMeaning ? <span className="print-blank" /> : <span className="print-mean">{shortMeaning(w, 2)}</span>}
-            </div>
-          </li>
-        ))}
+        {words.map((w, k) => {
+          const p = ipa(w);
+          return (
+            <li key={w.w} className="print-item" data-testid="print-item">
+              <small className="print-no">{k + 1}</small>
+              <p className="print-body">
+                <b className="print-word">{w.w}</b>
+                {p && <i className="print-ipa">/{p}/</i>}
+                {hideMeaning ? <span className="print-blank" /> : <span className="print-mean">{shortMeaning(w, 2)}</span>}
+              </p>
+            </li>
+          );
+        })}
       </ol>
-    </div>,
+      <footer className="print-foot">{hideMeaning ? "盖住左边的词，看着空格默写意思；写完对照原词单。" : "四级单词打卡 · 离线可用的背单词 PWA"}</footer>
+    </article>,
     document.body,
   );
 }

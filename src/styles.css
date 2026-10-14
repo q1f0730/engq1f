@@ -789,6 +789,22 @@ html [data-sonner-toaster][data-y-position="top"] [data-sonner-toast][data-mount
     height: 13pt;
     border-bottom: 0.6pt dashed #999;
   }
+  .print-body {
+    margin: 0;
+  }
+  .print-word {
+    font-weight: 400;
+  }
+  .print-ipa {
+    font-style: normal;
+  }
+  .print-foot {
+    margin-top: 6pt;
+    border-top: 0.5pt solid #000;
+    padding-top: 3pt;
+    color: #555;
+    font-size: 7.5pt;
+  }
 }
 
 /* ---------------------------------------------------------------- 打卡成功：荧光笔扩散一圈 */

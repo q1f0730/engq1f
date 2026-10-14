@@ -150,41 +150,45 @@ function MatchGame({ index }: { index: WordIndex }) {
       )}
       {phase === "run" && (
         <>
-          <div className="flex shrink-0 items-center gap-3 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
-              <X className="size-[22px]" />
-            </button>
-            <span className="text-[0.75rem] text-ink-3" data-testid="match-round">
-              第 {round + 1} 轮 · 已消 {score.pairs} 对
-            </span>
-            <span
-              className={cn("tnum ml-auto flex h-9 items-center gap-1.5 border-b-2 px-0.5 font-serif text-[1.375rem] leading-none", left < 10000 ? "border-forget text-forget" : "border-ink text-ink")}
-              data-testid="match-timer"
-            >
-              <Timer className="size-4" />
-              {fmtClock(left)}
-            </span>
-          </div>
-          {/* 剩余时间：一条细线从右往左收短 */}
-          <div className="mt-2 h-[3px] shrink-0 bg-rule" aria-hidden>
-            <div className={cn("h-full origin-left transition-transform duration-200", left < 10000 ? "bg-forget" : "bg-ink")} style={{ transform: `scaleX(${left / MATCH_MS})` }} />
-          </div>
-          <div className="mt-4 flex shrink-0 items-end justify-between">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[0.75rem] text-ink-3">得分</span>
-              <span className="tnum font-serif text-[3rem] leading-[0.85] tracking-[-0.03em]" data-testid="match-score" data-score={score.score}>
+          {/* 12.0 · 记分牌：左边大号得分（连对时旁边划一笔荧光笔写加分），右边倒计时；下面一条时间线从右往左收短 */}
+          <header className="shrink-0 pt-3">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={quit} aria-label="退出" className="press -ml-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
+                <X className="size-[22px]" />
+              </button>
+              <span className="tnum font-serif text-[2.25rem] leading-none tracking-[-0.03em]" data-testid="match-score" data-score={score.score}>
                 {score.score}
               </span>
-            </div>
-            {score.combo >= 2 && (
-              <span key={score.combo} className="pop hl font-serif text-[1.25rem] italic text-ink" data-testid="match-combo">
-                连对 ×{score.combo} · +{MATCH_POINT + comboBonus(score.combo)}
+              <span className="min-w-0 flex-1 truncate pl-1">
+                {score.combo >= 2 ? (
+                  <span key={score.combo} className="pop hl font-serif text-[1.125rem] italic text-ink" data-testid="match-combo">
+                    ×{score.combo} · +{MATCH_POINT + comboBonus(score.combo)}
+                  </span>
+                ) : (
+                  <span className="text-[0.75rem] text-ink-3">分</span>
+                )}
               </span>
-            )}
-          </div>
+              <span
+                className={cn("tnum flex h-10 shrink-0 items-center gap-1.5 border-b-2 px-0.5 font-serif text-[1.5rem] leading-none", left < 10000 ? "border-forget text-forget" : "border-ink text-ink")}
+                data-testid="match-timer"
+              >
+                <Timer className="size-4" />
+                {fmtClock(left)}
+              </span>
+            </div>
+            <div className="mt-2.5 h-[3px] bg-rule" aria-hidden>
+              <div className={cn("h-full origin-left transition-transform duration-200", left < 10000 ? "bg-forget" : "bg-ink")} style={{ transform: `scaleX(${left / MATCH_MS})` }} />
+            </div>
+            <p className="mt-2 flex justify-between text-[0.75rem] text-ink-3">
+              <span data-testid="match-round">
+                第 {round + 1} 轮 · 已消 {score.pairs} 对
+              </span>
+              <span>点英文，再点它的中文</span>
+            </p>
+          </header>
           {/* 棋盘：两栏，像词典左页英文、右页中文；中间一条竖细线 */}
-          <div key={round} className="card-in mt-4 grid min-h-0 flex-1 grid-cols-2 content-center gap-x-4 pb-6" data-testid="match-board">
-            <div className="flex flex-col gap-2 border-r border-rule pr-4">
+          <div key={round} className="card-in mt-3 grid min-h-0 flex-1 grid-cols-2 content-center gap-x-3 pb-5" data-testid="match-board">
+            <div className="flex flex-col gap-2 border-r border-rule pr-3">
               {data.left.map((w) => (
                 <Tile key={w} testid="match-l" w={w} state={tileState(w, "l", selL, flash, gone)} onClick={() => pickL(w)} en>
                   {w}
@@ -199,7 +203,6 @@ function MatchGame({ index }: { index: WordIndex }) {
               ))}
             </div>
           </div>
-          <p className="shrink-0 pb-4 text-center text-[0.75rem] text-ink-3">点英文，再点它的中文意思</p>
         </>
       )}
       {phase === "done" && (
