@@ -509,14 +509,14 @@ function Tile({ icon, label, value, sub, tone, testid, small }: { icon: React.Re
   return (
     <div className="rounded-3xl border border-border/70 bg-card p-4" data-testid={testid}>
       {/* 11.7 · 标签不折行（360 宽下「近 7 天记得住」不再把「住」挤到第二行） */}
-      <div className="flex items-center gap-2 whitespace-nowrap text-[13px] text-muted-foreground" data-testid={testid ? `${testid}-label` : undefined}>
+      <div className="flex items-center gap-2 whitespace-nowrap text-[13px] text-muted-foreground" data-part="label">
         <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${tone}`}>{icon}</span>
         {label}
       </div>
       <div className={`tnum mt-2.5 [overflow-wrap:anywhere] font-extrabold leading-tight tracking-tight ${small ? "text-[21px]" : "text-[26px]"}`} data-value={value}>
         {value}
       </div>
-      {sub && <div className="text-[12px] text-muted-foreground" data-testid={testid ? `${testid}-sub` : undefined}>{sub}</div>}
+      {sub && <div className="text-[12px] text-muted-foreground" data-part="sub">{sub}</div>}
     </div>
   );
 }
