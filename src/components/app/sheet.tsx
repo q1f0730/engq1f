@@ -44,16 +44,32 @@ export function BottomSheet({
             className,
           )}
         >
-          <div className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-rule-strong md:hidden" aria-hidden />
-          <div className={cn("flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-3.5", hideTitle && "sr-only")}>
-            <D.Title className="min-w-0 pt-1.5 text-[1.125rem] font-semibold leading-snug tracking-[-0.01em]">{title}</D.Title>
-            <D.Close className="press -mr-2 grid size-10 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink" aria-label="关闭">
-              <X className="size-[18px]" />
-            </D.Close>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6">{children}</div>
+          <Grabber />
+          <SheetHead title={title} hidden={hideTitle} />
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-1">{children}</div>
         </D.Content>
       </D.Portal>
     </D.Root>
+  );
+}
+
+/** 手机上顶部那一小截把手：提示「可以往下拖」，桌面居中弹窗不需要 */
+function Grabber() {
+  return (
+    <div className="flex shrink-0 justify-center pt-2 md:hidden" aria-hidden>
+      <span className="h-1 w-9 rounded-full bg-rule-strong" />
+    </div>
+  );
+}
+
+/** 浮层标题行：左对齐的标题压在一条细线上，右边一个安静的关闭方块 */
+function SheetHead({ title, hidden }: { title: ReactNode; hidden?: boolean }) {
+  return (
+    <header className={cn("mx-5 mb-3 flex shrink-0 items-center gap-3 border-b border-rule pb-2.5 pt-3", hidden && "sr-only")}>
+      <D.Title className="min-w-0 flex-1 text-[1.125rem] font-semibold leading-snug tracking-[-0.01em]">{title}</D.Title>
+      <D.Close className="press -mr-2.5 grid size-11 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink" aria-label="关闭">
+        <X className="size-[18px]" />
+      </D.Close>
+    </header>
   );
 }
