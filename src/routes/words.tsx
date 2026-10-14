@@ -1,8 +1,8 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, ChevronLeft, GraduationCap, Headphones, Play, Search, Shuffle, SlidersHorizontal, Star, X } from "@/components/app/icons";
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { PageHeader, Segmented, Spinner } from "@/components/app/shell";
-import { actClass } from "@/components/app/kit";
+import { PageHeader, Spinner } from "@/components/app/shell";
+import { TabLine, Tag, actClass } from "@/components/app/kit";
 import { StateBadge, WordSheet } from "@/components/app/word-bits";
 import { ListPanel, ListsOverview } from "@/components/app/lists";
 import { AlphaRail, ExportSheet, SelectBar, ToolRow } from "@/components/app/word-tools";
@@ -198,6 +198,37 @@ function WordsPage() {
   }, []);
 
   if (error) return <div className="p-8 text-center text-sm text-ink-3">{error}</div>;
+  // 一行单词的按压：点 = 打开详情（多选时勾选）；长按 = 进入多选；按住移动超过 10px 就不算长按
+  const pressProps = (w: Word) => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      press.current.fired = false;
+      press.current.x = e.clientX;
+      press.current.y = e.clientY;
+      cancelPress();
+      press.current.t = setTimeout(() => {
+        press.current.fired = true;
+        if (selecting) toggle(w.w);
+        else startSelect(w.w);
+        navigator.vibrate?.(15);
+      }, LONG_PRESS);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (Math.abs(e.clientX - press.current.x) + Math.abs(e.clientY - press.current.y) > 10) cancelPress();
+    },
+    onPointerUp: cancelPress,
+    onPointerCancel: cancelPress,
+    onPointerLeave: cancelPress,
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+    onClick: () => {
+      if (press.current.fired) {
+        press.current.fired = false;
+        return;
+      }
+      if (selecting) toggle(w.w);
+      else setOpen(w);
+    },
+  });
+
   if (!index) return <Spinner />;
 
   const counts = {
@@ -232,82 +263,36 @@ function WordsPage() {
 
       {/* 吸顶：搜索是一条下划线，来源是一排字（选中的那个下面一道荧光笔），不是药丸 */}
       <div ref={sticky} className="sticky top-0 z-20 -mx-4 bg-paper/95 px-4 pb-2 pt-1 backdrop-blur-sm md:top-16 md:-mx-6 md:px-6">
-        <div className={cn("flex items-center gap-3 border-b-[1.5px] border-ink", tab === "lists" && "hidden")}>
-          <Search className="size-[18px] shrink-0 text-ink-3" />
-          <input
-            ref={input}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="搜索英文或中文释义"
-            data-testid="search"
-            inputMode="search"
-            className="h-12 min-w-0 flex-1 bg-transparent font-serif text-[1.25rem] outline-none placeholder:font-sans placeholder:text-[0.9375rem] placeholder:text-ink-3"
+        <SearchLine hidden={tab === "lists"} inputRef={input} q={q} setQ={setQ} filterOn={filtersOpen || selecting} filters={activeFilters} onFilter={() => setFiltersOpen(!filtersOpen)} />
+        {/* 来源：一排字，选中的那个划荧光笔，数字是衬线小号 */}
+        <nav className="no-scrollbar fade-x mt-1 flex gap-5 overflow-x-auto" role="tablist" aria-label="词的来源">
+          {SOURCES.map(([t, label]) => (
+            <SourceTab
+              key={t}
+              t={t}
+              label={label}
+              n={{ all: null, core: coreCount, star: counts.star, wrong: counts.wrong, hard: counts.hard, mastered: counts.mastered, lists: listCount, list: null }[t]}
+              on={tab === t || (t === "lists" && tab === "list")}
+              onPick={() => navigate({ to: "/words", search: t === "all" ? {} : { tab: t }, replace: true })}
+            />
+          ))}
+        </nav>
+        {/* 筛选打开时：状态是一排文字单选（选中划荧光笔），排序 / 词性在下面的工具行里 */}
+        <div className={cn("mt-1 flex items-center gap-3", (tab === "lists" || !(filtersOpen || selecting)) && "hidden")}>
+          <span className="shrink-0 text-[0.75rem] text-ink-3">状态</span>
+          <TabLine<Filter>
+            className="no-scrollbar min-w-0 flex-1 gap-5 overflow-x-auto border-b-0 [&_button]:text-[0.8125rem]"
+            value={filter}
+            onChange={setFilter}
+            testid="state-filter"
+            options={[
+              { value: "any", label: "全部" },
+              { value: "new", label: "未学" },
+              { value: "learning", label: "学习中" },
+              { value: "mastered", label: "已掌握" },
+            ]}
           />
-          {q && (
-            <button type="button" aria-label="清空" onClick={() => setQ("")} className="press grid size-9 shrink-0 place-items-center rounded-md text-ink-3 hover:text-ink">
-              <X className="size-4" />
-            </button>
-          )}
-          <button
-            type="button"
-            data-testid="filter-toggle"
-            aria-expanded={filtersOpen || selecting}
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            className={cn(
-              "press relative -mr-1 flex h-10 shrink-0 items-center gap-1.5 rounded-md px-2 text-[0.8125rem] font-semibold",
-              filtersOpen || selecting ? "bg-ink text-paper-3" : "text-ink-2 hover:bg-paper-2 hover:text-ink",
-            )}
-          >
-            <SlidersHorizontal className="size-4" /> 筛选
-            {activeFilters > 0 && (
-              <span className={cn("tnum font-serif text-[1rem] leading-none", filtersOpen || selecting ? "text-mark" : "text-ink")} data-testid="filter-count">
-                {activeFilters}
-              </span>
-            )}
-          </button>
         </div>
-        <div className="no-scrollbar fade-x mt-1 flex gap-5 overflow-x-auto" role="tablist">
-          {(
-            [
-              ["all", "全部", null],
-              ["core", "核心未掌握", coreCount],
-              ["star", "生词本", counts.star],
-              ["wrong", "错词本", counts.wrong],
-              ["hard", "顽固词", counts.hard],
-              ["mastered", "已斩", counts.mastered],
-              ["lists", "词单", listCount],
-            ] as [Tab, string, number | null][]
-          ).map(([t, label, n]) => {
-            const on = tab === t || (t === "lists" && tab === "list");
-            return (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                data-testid={`tab-${t}`}
-                onClick={() => navigate({ to: "/words", search: t === "all" ? {} : { tab: t }, replace: true })}
-                className={cn("press h-11 shrink-0 whitespace-nowrap text-[0.875rem]", on ? "font-semibold text-ink" : "text-ink-3 hover:text-ink")}
-              >
-                <span className={cn(on && "hl")}>{label}</span>
-                {n !== null && " "}
-                {n !== null && <span className={cn("tnum font-serif text-[1rem] font-normal", on ? "text-ink-2" : "text-ink-3")}>{n}</span>}
-              </button>
-            );
-          })}
-        </div>
-        <Segmented<Filter>
-          className={cn("mt-1.5", (tab === "lists" || !(filtersOpen || selecting)) && "hidden")}
-          value={filter}
-          onChange={setFilter}
-          testid="state-filter"
-          options={[
-            { value: "any", label: "全部状态" },
-            { value: "new", label: "未学" },
-            { value: "learning", label: "学习中" },
-            { value: "mastered", label: "已掌握" },
-          ]}
-        />
       </div>
 
       {tab === "lists" && <ListsOverview index={index} />}
@@ -397,92 +382,36 @@ function WordsPage() {
           </div>
 
           {results.length === 0 ? (
-            <div className="border-t border-rule py-16 text-center" data-testid="no-results">
-              <div className="font-serif text-[2rem] italic leading-none text-rule-strong" aria-hidden>
-                —
-              </div>
-              <p className="mt-3 text-[0.875rem] text-ink-3">
-                {dq
-                  ? "没有找到匹配的词"
-                  : pos !== "any" || coreOnly
-                    ? "没有符合筛选条件的词"
-                    : tab === "star"
-                      ? "生词本还是空的，学习时按 S 收藏"
-                      : tab === "wrong"
-                        ? "错词本是空的，继续保持"
-                        : tab === "hard"
-                          ? "没有顽固词：遗忘 3 次以上的词会出现在这里"
-                          : tab === "mastered"
-                            ? "还没有斩掉的词"
-                            : tab === "core"
-                              ? "核心词全部掌握了 🎉"
-                              : tab === "list"
-                                ? "词单还是空的：去「全部」长按单词多选，加入这个词单"
-                                : "没有词"}
-              </p>
-            </div>
+            <p className="border-t border-rule py-12 text-[0.875rem] text-ink-3" data-testid="no-results">
+              <span className="block border-l-2 border-rule-strong pl-3">{dq ? "没有找到匹配的词" : pos !== "any" || coreOnly ? "没有符合筛选条件的词" : EMPTY[tab]}</span>
+            </p>
           ) : (
-            /* 词典正文：没有卡片框，词头衬线、释义一行，行间细线；按字母排时每个字母一个大写的栏头 */
+            /* 12.0 · 词典正文：没有卡片框；词头衬线、释义接在后面一行，行间细线；按字母排时每个字母一个大写栏头 */
             <ul className={cn("mt-1.5 border-t border-rule", showRail && "mr-5 md:mr-0")} data-testid="word-list" data-sort={sort}>
               {results.slice(0, limit).map((w, k) => {
                 const L = alpha ? letterOf(w.w) : "";
                 const head = alpha && (k === 0 || letterOf(results[k - 1].w) !== L);
                 const on = selected.has(w.w);
                 return [
-                  head ? (
-                    <li key={`h-${L}`} data-letter={L} className="flex items-baseline gap-3 border-b border-ink pb-1.5 pt-6">
-                      <span className="font-serif text-[2rem] leading-none">{L}</span>
-                      <span className="text-[0.6875rem] text-ink-3">{L.toLowerCase()}—</span>
-                    </li>
-                  ) : null,
+                  head ? <LetterHead key={`h-${L}`} L={L} /> : null,
                   <li key={w.w} data-idx={k} className="border-b border-rule">
                     <button
                       type="button"
                       data-testid="word-row"
                       data-w={w.w}
                       data-selected={on ? "1" : "0"}
-                      onPointerDown={(e) => {
-                        press.current.fired = false;
-                        press.current.x = e.clientX;
-                        press.current.y = e.clientY;
-                        cancelPress();
-                        press.current.t = setTimeout(() => {
-                          press.current.fired = true;
-                          if (selecting) toggle(w.w);
-                          else startSelect(w.w);
-                          navigator.vibrate?.(15);
-                        }, LONG_PRESS);
-                      }}
-                      onPointerMove={(e) => {
-                        if (Math.abs(e.clientX - press.current.x) + Math.abs(e.clientY - press.current.y) > 10) cancelPress();
-                      }}
-                      onPointerUp={cancelPress}
-                      onPointerCancel={cancelPress}
-                      onPointerLeave={cancelPress}
-                      onContextMenu={(e) => e.preventDefault()}
-                      onClick={() => {
-                        if (press.current.fired) {
-                          press.current.fired = false;
-                          return;
-                        }
-                        if (selecting) toggle(w.w);
-                        else setOpen(w);
-                      }}
+                      {...pressProps(w)}
                       className={cn("flex min-h-16 w-full select-none items-center gap-3 py-2.5 text-left transition-colors [-webkit-touch-callout:none]", on ? "-mx-2 bg-mark-soft px-2" : "hover:bg-paper-2/60")}
                     >
-                      {selecting && (
-                        <span className={cn("grid size-5 shrink-0 place-items-center rounded-[3px] transition", on ? "bg-ink text-paper-3" : "border-[1.5px] border-rule-strong")}>
-                          {on && <Check className="size-3.5" strokeWidth={3} />}
-                        </span>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline gap-2">
+                      {selecting && <Tick on={on} />}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline gap-2">
                           <span className="word-head truncate text-[1.5rem] leading-tight">{w.w}</span>
                           {st.star[w.w] && <Star className="size-3.5 shrink-0 self-center fill-current text-ink" aria-label="生词本" />}
-                          {w.c && <span className="shrink-0 text-[0.6875rem] font-medium text-ink-3">核心</span>}
-                        </div>
-                        <div className="truncate text-[0.8125rem] text-ink-2">{shortMeaning(w, 2)}</div>
-                      </div>
+                          {w.c && <Tag className="self-center">核心</Tag>}
+                        </span>
+                        <span className="block truncate text-[0.8125rem] text-ink-2">{shortMeaning(w, 2)}</span>
+                      </span>
                       <SortMeta sort={sort} card={st.cards[w.w]} day={day} />
                       <StateBadge card={st.cards[w.w]} />
                     </button>
@@ -529,5 +458,93 @@ function SortMeta({ sort, card, day }: { sort: SortKey; card: import("@/lib/srs"
     <span className="tnum shrink-0 border-r border-rule pr-3 text-right font-serif text-[0.9375rem] italic leading-none text-ink-2" data-testid="sort-meta">
       {text}
     </span>
+  );
+}
+
+/** 每个 tab 空着时的那句话 */
+const EMPTY: Record<string, string> = {
+  star: "生词本还是空的，学习时按 S 收藏",
+  wrong: "错词本是空的，继续保持",
+  hard: "没有顽固词：遗忘 3 次以上的词会出现在这里",
+  mastered: "还没有斩掉的词",
+  core: "核心词全部掌握了 🎉",
+  list: "词单还是空的：去「全部」长按单词多选，加入这个词单",
+  all: "没有词",
+  lists: "没有词",
+};
+
+/** 按字母排时的栏头：一个衬线大写字母压在墨线上，像词典书眉 */
+function LetterHead({ L }: { L: string }) {
+  return (
+    <li data-letter={L} className="flex items-end justify-between border-b border-ink pb-1 pt-6">
+      <span className="font-serif text-[2rem] leading-none">{L}</span>
+      <span className="font-serif text-[0.9375rem] italic text-ink-3">{L.toLowerCase()}</span>
+    </li>
+  );
+}
+
+/** 多选时行首的小方框 */
+function Tick({ on }: { on: boolean }) {
+  return (
+    <span className={cn("grid size-5 shrink-0 place-items-center rounded-[3px] transition", on ? "bg-ink text-paper-3" : "border-[1.5px] border-rule-strong")}>
+      {on && <Check className="size-3.5" strokeWidth={3} />}
+    </span>
+  );
+}
+
+const SOURCES: [Tab, string][] = [
+  ["all", "全部"],
+  ["core", "核心未掌握"],
+  ["star", "生词本"],
+  ["wrong", "错词本"],
+  ["hard", "顽固词"],
+  ["mastered", "已斩"],
+  ["lists", "词单"],
+];
+
+function SourceTab({ t, label, n, on, onPick }: { t: Tab; label: string; n: number | null; on: boolean; onPick: () => void }) {
+  return (
+    <button type="button" role="tab" aria-selected={on} data-testid={`tab-${t}`} onClick={onPick} className={cn("press h-11 shrink-0 whitespace-nowrap text-[0.875rem]", on ? "font-semibold text-ink" : "text-ink-3 hover:text-ink")}>
+      <span className={cn(on && "hl")}>{label}</span>
+      {n !== null && " "}
+      {n !== null && <span className={cn("tnum font-serif text-[1rem] font-normal", on ? "text-ink-2" : "text-ink-3")}>{n}</span>}
+    </button>
+  );
+}
+
+/** 吸顶的搜索：一条墨色下划线，输入用衬线（搜的是英文词头）；右端「筛选」，打开时墨底 */
+function SearchLine({ hidden, inputRef, q, setQ, filterOn, filters, onFilter }: { hidden: boolean; inputRef: React.RefObject<HTMLInputElement | null>; q: string; setQ: (v: string) => void; filterOn: boolean; filters: number; onFilter: () => void }) {
+  return (
+    <div className={cn("flex items-center gap-3 border-b-[1.5px] border-ink focus-within:border-b-2", hidden && "hidden")}>
+      <Search className="size-[18px] shrink-0 text-ink-3" />
+      <input
+        ref={inputRef}
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="搜索英文或中文释义"
+        data-testid="search"
+        inputMode="search"
+        className="h-12 min-w-0 flex-1 bg-transparent font-serif text-[1.25rem] outline-none placeholder:font-sans placeholder:text-[0.9375rem] placeholder:text-ink-3"
+      />
+      {q && (
+        <button type="button" aria-label="清空" onClick={() => setQ("")} className="press grid size-9 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-ink">
+          <X className="size-4" />
+        </button>
+      )}
+      <button
+        type="button"
+        data-testid="filter-toggle"
+        aria-expanded={filterOn}
+        onClick={onFilter}
+        className={cn("press -mr-1 flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[0.8125rem] font-semibold", filterOn ? "bg-ink text-paper-3" : "text-ink-2 ring-1 ring-inset ring-rule-strong hover:bg-paper-2 hover:text-ink")}
+      >
+        <SlidersHorizontal className="size-4" /> 筛选
+        {filters > 0 && (
+          <span className={cn("tnum font-serif text-[1rem] leading-none", filterOn ? "text-mark" : "text-ink")} data-testid="filter-count">
+            {filters}
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
