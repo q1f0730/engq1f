@@ -7,33 +7,29 @@ import { BottomSheet } from "./sheet";
 
 /** v11 · 词单链接：词单压缩后编码进链接 hash（#/list-link?d=…），对方打开就能导入，不经服务器 */
 export default function ListLinkSheet({ open, onOpenChange, list }: { open: boolean; onOpenChange: (v: boolean) => void; list: WordList }) {
+  // 链接里最多放 LINK_MAX_WORDS 个词（11.x 用一个 state 存这个常量，没必要）
+  const max = LINK_MAX_WORDS;
   const [url, setUrl] = useState("");
-  const [max, setMax] = useState(0);
   useEffect(() => {
     if (!open) return;
     setUrl("");
     let dead = false;
-    encodeList(list.name, list.words).then((code) => {
-      if (!dead) {
-        setUrl(listLinkUrl(location.href, code));
-        setMax(LINK_MAX_WORDS);
-      }
-    });
+    void encodeList(list.name, list.words).then((code) => dead || setUrl(listLinkUrl(location.href, code)));
     return () => {
       dead = true;
     };
   }, [open, list.name, list.words]);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("链接已复制", { description: "发给同学，用浏览器打开就能导入" });
-    } catch {
-      toast.error("复制失败，长按上面的链接手动复制");
-    }
-  };
+  // 没有剪贴板接口（非安全上下文）也走失败提示
+  const copy = () =>
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(url))
+      .then(
+      () => toast.success("链接已复制", { description: "发给同学，用浏览器打开就能导入" }),
+      () => toast.error("复制失败，长按上面的链接手动复制"),
+    );
   const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
-  const shown = Math.min(list.words.length, max || list.words.length);
-  const cut = max > 0 && list.words.length > max;
+  const shown = Math.min(list.words.length, max);
+  const cut = list.words.length > max;
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="分享词单链接" testid="list-link-sheet">
       {/* 12.0 · 上面一行大字说链接里有什么，下面一张「票根」：虚线撕口 + 等宽链接 + 长度 */}
