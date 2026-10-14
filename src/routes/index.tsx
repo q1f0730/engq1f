@@ -392,7 +392,7 @@ function Today() {
                     onClick={guardNew(sum.due === 0)}
                     data-testid={sum.due > 0 ? "start-review" : "start-learn"}
                     className={cn(
-                      "press flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-paper-2 px-2 text-[0.9375rem] font-medium text-ink hover:bg-rule",
+                      "press flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-[0.9375rem] font-medium text-ink ring-1 ring-rule-strong ring-inset hover:bg-paper-2",
                       sum.due === 0 && sum.newLeft === 0 && "pointer-events-none opacity-45",
                     )}
                   >
@@ -406,7 +406,7 @@ function Today() {
                     disabled={reviewFirst && sum.newLeft === 0}
                     data-testid={reviewFirst ? "start-learn" : "start-review"}
                     className={cn(
-                      "press flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-paper-2 px-2 text-[0.9375rem] font-medium text-ink hover:bg-rule",
+                      "press flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-[0.9375rem] font-medium text-ink ring-1 ring-rule-strong ring-inset hover:bg-paper-2",
                       (reviewFirst ? sum.newLeft === 0 : sum.due === 0) && "text-ink-3",
                       reviewFirst && sum.newLeft === 0 && "pointer-events-none",
                     )}

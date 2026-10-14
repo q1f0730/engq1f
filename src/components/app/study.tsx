@@ -1116,7 +1116,7 @@ function FlipCard({
 
   // 12.0 · 正面是一张索引卡：词头（衬线、左对齐）占上半，下面一条短墨线，再下面是读音；提示语贴在卡片底部
   const front = (
-    <div className="flex h-full flex-col justify-center px-7 pb-14 text-left" data-testid="card-front">
+    <div className="flex h-full flex-col justify-center px-7 pb-8 text-left" data-testid="card-front">
       {cnFirst ? (
         <div className="fs-card w-full max-w-md text-left">
           <div className="mb-4 text-[0.75rem] text-ink-3">中 → 英</div>

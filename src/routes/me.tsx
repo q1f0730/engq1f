@@ -104,7 +104,7 @@ function MePage() {
               </span>
             }
           >
-            {/* 考试日期：三行，像目录里的条目；选中的那一行左边一道墨线 */}
+            {/* 考试日期：三行，像目录里的条目；选中的那一行：荧光笔 + 对勾 */}
             <div data-testid="exam-settings">
               <h3 className="mb-1.5 text-[0.8125rem] font-medium text-ink-2">考试日期</h3>
               <div className="border-t border-rule" data-testid="exam-options" role="radiogroup" aria-label="考试日期">
@@ -121,7 +121,6 @@ function MePage() {
                       examPick === k ? "text-ink" : "text-ink-3 hover:text-ink",
                     )}
                   >
-                    {examPick === k && <span className="absolute inset-y-2 left-0 w-[3px] bg-ink" aria-hidden />}
                     <span className={cn("tnum font-serif text-[1.375rem] leading-none", examPick === k && "hl")}>{fmtDate(e.day)}</span>
                     <span className="text-[0.75rem]">
                       {e.day.slice(0, 4)} · {e.official ? "官方" : "预估"}
@@ -135,7 +134,6 @@ function MePage() {
                     examPick === 2 ? "text-ink" : "text-ink-3 hover:text-ink",
                   )}
                 >
-                  {examPick === 2 && <span className="absolute inset-y-2 left-0 w-[3px] bg-ink" aria-hidden />}
                   <span className={cn("leading-none", examPick === 2 ? "hl tnum font-serif text-[1.375rem]" : "text-[0.9375rem] font-medium")}>
                     {examPick === 2 ? fmtDate(exam.day) : "自定义"}
                   </span>
