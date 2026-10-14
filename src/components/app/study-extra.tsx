@@ -47,38 +47,45 @@ export function PreviewList({
   }, [start]);
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe pt-safe" data-testid="preview">
-      <div className="flex shrink-0 items-center gap-2 pt-3">
-        <button type="button" onClick={onQuit} aria-label="退出" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
+      {/* 12.0 · 预习 = 一张生词表。抬头是大号词数 + 一句说明，表里每行一个词条，右边「斩」；斩掉的词被墨线划掉 */}
+      <header className="flex shrink-0 items-start gap-2 pt-3">
+        <button type="button" onClick={onQuit} aria-label="退出" className="press -ml-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
           <X className="size-[22px]" />
         </button>
-        <div className="flex-1 text-center text-[0.9375rem] font-medium">预习这组新词</div>
-        <span className="tnum w-10 text-right font-serif text-[1.125rem] leading-none">{words.length}</span>
-      </div>
-      {/* 12.0 · 预习是一张生词表：左边衬线词头，右边「斩」；斩掉的词划一道墨线、整行变淡 */}
-      <p className="mt-2 shrink-0 border-l-2 border-mark pl-3 text-[0.8125rem] leading-snug text-ink-2">先过一眼：已经认识的点「斩」，不用再学；剩下的进入学习。</p>
-      <ul className="card-in mt-3 min-h-0 flex-1 overflow-y-auto border-t border-ink pb-2" data-testid="preview-list">
-        {words.map((w) => {
+        <div className="min-w-0 flex-1 pt-1.5">
+          <h1 className="flex items-baseline gap-2">
+            <span className="tnum font-serif text-[1.75rem] leading-none">{words.length}</span>
+            <span className="text-[0.9375rem] font-medium">个新词 · 先预习</span>
+          </h1>
+          <p className="mt-1.5 text-[0.8125rem] leading-snug text-ink-3">已经认识的点「斩」，不用再学；剩下的进入学习。</p>
+        </div>
+      </header>
+      <ol className="card-in mt-4 min-h-0 flex-1 overflow-y-auto border-t border-ink pb-2" data-testid="preview-list">
+        {words.map((w, i) => {
           const word = index.map.get(w);
           if (!word) return null;
           const k = killed.has(w);
           return (
-            <li key={w} data-testid="preview-row" data-w={w} data-killed={k ? 1 : 0} className={cn("flex min-h-16 items-center gap-2 border-b border-rule py-2 transition-colors", k && "bg-paper-2/60")}>
-              <button type="button" aria-label={`朗读 ${w}`} onClick={() => speak(w, accent)} className="press grid size-10 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-mark hover:text-ink">
-                <Volume2 className="size-4" />
-              </button>
-              <div className={cn("min-w-0 flex-1", k && "opacity-50")}>
-                <div className="flex items-baseline gap-2">
+            <li key={w} data-testid="preview-row" data-w={w} data-killed={k ? 1 : 0} className={cn("grid min-h-16 grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-x-2 border-b border-rule py-2 transition-colors", k && "bg-paper-2/60")}>
+              <span className="tnum self-start pt-1.5 font-serif text-[0.875rem] text-ink-3">{i + 1}</span>
+              <div className={cn("min-w-0", k && "opacity-50")}>
+                <div className="flex items-center gap-1.5">
                   <span className={cn("word-head truncate text-[1.5rem] leading-tight", k && "line-through decoration-1")}>{w}</span>
-                  <Phonetic word={word} accent={accent} className="truncate text-[0.75rem] text-ink-3" />
+                  <button type="button" aria-label={`朗读 ${w}`} onClick={() => speak(w, accent)} className="press grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-mark hover:text-ink">
+                    <Volume2 className="size-3.5" />
+                  </button>
                 </div>
-                <div className="fs-card truncate text-[0.8125rem] text-ink-2">{shortMeaning(word, 2)}</div>
+                <div className="fs-card flex min-w-0 items-baseline gap-2 text-[0.8125rem] text-ink-2">
+                  <Phonetic word={word} accent={accent} className="shrink-0 text-[0.75rem] text-ink-3" />
+                  <span className="truncate">{shortMeaning(word, 2)}</span>
+                </div>
               </div>
               <button
                 type="button"
                 data-testid="preview-kill"
                 aria-pressed={k}
                 onClick={() => toggle(w)}
-                className={cn("press flex h-10 shrink-0 items-center gap-1 rounded-lg px-3 text-[0.8125rem] font-medium", k ? "bg-ink text-paper-3" : "text-ink-2 ring-1 ring-rule-strong ring-inset hover:text-know")}
+                className={cn("press flex h-10 min-w-16 items-center justify-center gap-1 rounded-lg px-3 text-[0.8125rem] font-medium", k ? "bg-ink text-paper-3" : "text-ink-2 ring-1 ring-rule-strong ring-inset hover:bg-know-soft hover:text-know")}
               >
                 {k ? <Undo2 className="size-3.5" /> : <Swords className="size-3.5" />}
                 {k ? "已斩" : "斩"}
@@ -86,8 +93,8 @@ export function PreviewList({
             </li>
           );
         })}
-      </ul>
-      <div className="shrink-0 pb-4 pt-3">
+      </ol>
+      <footer className="shrink-0 pb-4 pt-3">
         <button type="button" onClick={start} data-testid="preview-start" className="press flex h-14 w-full items-center justify-center gap-2.5 rounded-xl bg-ink text-base font-semibold text-paper-3 hover:bg-ink-2">
           {left > 0 ? `开始学习 ${left} 词` : "全部认识，换一组"}
           {killed.size > 0 && (
@@ -96,7 +103,7 @@ export function PreviewList({
             </span>
           )}
         </button>
-      </div>
+      </footer>
     </div>
   );
 }
@@ -167,31 +174,38 @@ export function PostQuiz({
   const ok = done && pick !== null && pick >= 0 && choices[pick]?.correct;
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe pt-safe" data-testid="post-quiz">
-      <div className="flex shrink-0 items-center gap-2 pt-3">
-        <button type="button" onClick={onSkip} aria-label="跳过速测" data-testid="post-skip" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
-          <X className="size-[22px]" />
-        </button>
-        {/* 一格一题：答对墨色，答错砖红 */}
-        <div className="flex h-2 flex-1 gap-[3px]" aria-hidden>
-          {order.map((ow, k) => (
-            <span key={ow} className={cn("h-full flex-1 transition-colors duration-300", k < pos || (k === pos && done) ? (res[ow] ? "bg-ink" : "bg-forget") : k === pos ? "bg-mark" : "bg-rule")} />
-          ))}
+      {/* 12.0 · 抬头：左边关闭 + 「学后速测」和一行说明，右边大号进度；下面一排格子，一格一题（答对墨色，答错砖红） */}
+      <header className="shrink-0 pt-3">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={onSkip} aria-label="跳过速测" data-testid="post-skip" className="press -ml-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
+            <X className="size-[22px]" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.9375rem] font-medium leading-tight">学后速测</p>
+            <p className="truncate text-[0.75rem] text-ink-3">刚学的词马上检验 · 不影响复习计划</p>
+          </div>
+          <span className="tnum shrink-0 font-serif text-[1.375rem] leading-none" data-testid="post-progress">
+            {pos + 1}/{order.length}
+          </span>
         </div>
-        <span className="tnum min-w-11 text-right font-serif text-[1.125rem] leading-none" data-testid="post-progress">
-          {pos + 1}/{order.length}
-        </span>
-      </div>
-      <div className="mt-1.5 flex h-6 shrink-0 items-center gap-2 text-[0.75rem] text-ink-3">
-        <span className="font-medium text-ink-2">学后速测</span>
-        <span className="text-rule-strong">·</span>
-        <span>刚学的词马上检验 · 不影响复习计划</span>
-      </div>
+        <ol className="mt-3 flex h-1.5 gap-[3px]" aria-hidden>
+          {order.map((ow, k) => (
+            <li key={ow} className={cn("h-full flex-1 transition-colors duration-300", k < pos || (k === pos && done) ? (res[ow] ? "bg-ink" : "bg-forget") : k === pos ? "bg-mark" : "bg-rule")} />
+          ))}
+        </ol>
+      </header>
       <div key={pos} className="card-in flex min-h-0 flex-1 flex-col" data-testid="post-item" data-w={word.w}>
         <QuizPrompt word={word} mode="en2cn" accent={accent} seed={seed} done={done} compact />
         <ChoiceList choices={choices} done={done} pick={pick ?? undefined} wrong={done && !ok && pick !== -1} onPick={choose} />
       </div>
-      <div className="shrink-0 pb-4 pt-3">
-        {done ? (
+      <footer className="shrink-0 border-t border-rule pb-4 pt-3">
+        {!done && (
+          <button type="button" onClick={() => choose(-1)} data-testid="post-giveup" className="press flex h-12 w-full items-center justify-center gap-1.5 rounded-xl text-[0.875rem] font-medium text-ink-2 ring-1 ring-inset ring-rule-strong hover:bg-paper-2 hover:text-ink">
+            <CircleHelp className="size-4" />
+            忘了，看答案
+          </button>
+        )}
+        {done && (
           <button
             type="button"
             onClick={next}
@@ -200,13 +214,8 @@ export function PostQuiz({
           >
             {pos + 1 >= order.length ? "看小结" : ok ? "答对了 · 下一个" : "记住它 · 下一个"}
           </button>
-        ) : (
-          <button type="button" onClick={() => choose(-1)} data-testid="post-giveup" className="press flex h-11 w-full items-center justify-center gap-1.5 rounded-lg text-[0.875rem] font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink">
-            <CircleHelp className="size-4" />
-            忘了，看答案
-          </button>
         )}
-      </div>
+      </footer>
     </div>
   );
 }
