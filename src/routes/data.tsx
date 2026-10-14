@@ -23,7 +23,8 @@ import {
 } from "@/components/app/icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
-import { PageHeader, Panel, PanelTitle, Spinner } from "@/components/app/shell";
+import { Spinner } from "@/components/app/shell";
+import { SubHead, Tag, actClass } from "@/components/app/kit";
 import { BottomSheet } from "@/components/app/sheet";
 import { ImportFlow } from "@/components/app/import-flow";
 import { RESCUE_KEY } from "@/components/app/rescue";
@@ -66,28 +67,43 @@ function DataPage() {
   const profile = reg.list.find((p) => p.id === ACTIVE_PROFILE);
   return (
     <div data-testid="data-page">
-      <Link to="/me" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[0.8125rem] font-semibold text-ink-3 hover:text-ink" data-testid="data-back">
-        <ChevronLeft className="size-4" /> 我的
-      </Link>
-      <PageHeader
+      <SubHead
+        back={{ to: "/me", label: "我的", testid: "data-back" }}
         title="数据中心"
         sub="不联网 · 记录只存在这台手机上"
         right={
           profile && (
-            <span className="mb-1 max-w-[40%] truncate rounded-lg bg-mark-soft px-3 py-1.5 text-xs font-semibold text-ink" data-testid="data-profile">
+            <Tag tone="mark" className="mb-1 max-w-[40%] truncate" data-testid="data-profile">
               {profile.name}
-            </span>
+            </Tag>
           )
         }
       />
-      <div className="grid gap-4 md:grid-cols-2 md:gap-5">
-        <div className="min-w-0 space-y-4 md:space-y-5">
+      {/* 目录：九章，点一下滚到那一章 */}
+      <nav aria-label="目录" className="mb-10 border-y border-rule py-3">
+        <ol className="grid grid-cols-2 gap-x-6 gap-y-1 text-[0.8125rem] md:grid-cols-3">
+          {CHAPTERS.map((c, k) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => document.getElementById(c.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="press flex min-h-9 w-full items-baseline gap-2 text-left text-ink-2 hover:text-ink"
+              >
+                <span className="tnum w-5 shrink-0 font-serif text-[1rem] text-ink-3">{k + 1}</span>
+                <span className="truncate">{c.title}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </nav>
+      <div className="grid gap-12 md:grid-cols-2 md:gap-x-10">
+        <div className="min-w-0 space-y-12">
           <BackupPanel />
           <SnapPanel />
           <ReportPanel index={index} profileName={reg.list.length > 1 ? (profile?.name ?? "") : ""} />
           <WordFilePanel index={index} />
         </div>
-        <div className="min-w-0 space-y-4 md:space-y-5">
+        <div className="min-w-0 space-y-12">
           <ProfilesPanel />
           <HealthPanel index={index} />
           <StoragePanel />
@@ -160,13 +176,12 @@ function BackupPanel() {
   };
 
   return (
-    <Panel data-testid="backup-panel">
-      <PanelTitle>备份与恢复</PanelTitle>
-      <label className="mb-1.5 block text-xs font-semibold text-ink-3" htmlFor="enc-pass">
+    <Chapter n={1} id="ch-backup" title="备份与恢复" testid="backup-panel" intro="恢复时如果这台设备已有记录，可以选「合并」：每个词取最近复习的那份，两台设备的打卡和日志都保留。">
+      <label className="mb-1 block text-[0.8125rem] font-medium text-ink-2" htmlFor="enc-pass">
         备份口令（可选）
       </label>
-      <div className={cn("flex items-center gap-2 rounded-2xl bg-paper-2 px-3 ring-ink transition focus-within:ring-2", tooShort && "ring-2 ring-forget/50")}>
-        <KeyRound className="size-4 shrink-0 text-ink-3" />
+      {/* 口令：一条下划线输入框，不是灰色药丸 */}
+      <div className={cn("flex items-center gap-2 border-b-[1.5px] transition-colors focus-within:border-ink", tooShort ? "border-forget" : "border-rule-strong")}>
         <input
           id="enc-pass"
           type={show ? "text" : "password"}
@@ -177,20 +192,21 @@ function BackupPanel() {
           data-testid="enc-pass"
           className="h-11 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-ink-3"
         />
-        <button type="button" onClick={() => setShow(!show)} aria-label={show ? "隐藏口令" : "显示口令"} className="grid size-8 place-items-center text-ink-3">
+        <button type="button" onClick={() => setShow(!show)} aria-label={show ? "隐藏口令" : "显示口令"} className="press grid size-10 place-items-center rounded-md text-ink-3 hover:text-ink">
           {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
       </div>
-      <p className="mt-1.5 text-xs text-ink-3" data-testid="enc-hint">
+      <p className={cn("mt-2 text-[0.75rem] leading-relaxed", tooShort ? "text-forget" : "text-ink-3")} data-testid="enc-hint">
         {pass ? (tooShort ? `口令至少 ${PASS_MIN} 位` : "导出和复制都会用 AES-GCM 加密；口令不保存，忘了就打不开") : "设了口令，备份发到聊天或网盘里别人也看不了"}
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-5 grid grid-cols-[auto_1fr_1fr] items-center gap-x-3 gap-y-2 text-[0.75rem] text-ink-3">
+        <span>存</span>
         <Btn testid="export-file" icon={<Download className="size-4" />} label={pass ? "导出加密备份" : "导出备份文件"} onClick={exportFile} primary />
         <Btn testid="copy-backup" icon={<ClipboardCopy className="size-4" />} label="复制到剪贴板" onClick={copy} />
+        <span>取</span>
         <Btn testid="restore-file" icon={<FileUp className="size-4" />} label="从文件恢复" onClick={() => file.current?.click()} />
         <Btn testid="paste-backup" icon={<ClipboardPaste className="size-4" />} label="从剪贴板恢复" onClick={paste} />
       </div>
-      <p className="mt-2.5 text-xs leading-relaxed text-ink-3">恢复时如果这台设备已有记录，可以选「合并」：每个词取最近复习的那份，两台设备的打卡和日志都保留。</p>
       <input
         ref={file}
         type="file"
@@ -204,14 +220,14 @@ function BackupPanel() {
         }}
       />
       <BottomSheet open={pasting} onOpenChange={setPasting} title="粘贴备份" testid="paste-sheet">
-        <p className="text-[0.8125rem] text-ink-3">浏览器没让读剪贴板，长按下面的框粘贴备份文本。</p>
+        <p className="text-[0.8125rem] leading-relaxed text-ink-2">浏览器没让读剪贴板，长按下面的框粘贴备份文本。</p>
         <textarea
           value={pasteText}
           onChange={(e) => setPasteText(e.target.value)}
           data-testid="paste-text"
           rows={5}
           placeholder='{"app":"cet4-vocab", …}'
-          className="mt-3 w-full resize-none rounded-2xl border border-rule bg-paper p-3 font-mono text-xs outline-none focus:border-ink"
+          className="mt-3 w-full resize-none rounded-lg border border-rule-strong bg-paper p-3 font-mono text-[0.75rem] outline-none focus:border-ink"
         />
         <button
           type="button"
@@ -221,28 +237,19 @@ function BackupPanel() {
             setPasting(false);
             setPending(pasteText);
           }}
-          className="press mt-3 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 disabled:opacity-50 hover:bg-ink-2"
+          className={actClass("primary", true) + " mt-3 h-12 w-full disabled:opacity-45"}
         >
           恢复
         </button>
       </BottomSheet>
       <ImportFlow text={pending} onDone={() => setPending(null)} />
-    </Panel>
+    </Chapter>
   );
 }
 
 function Btn({ icon, label, onClick, testid, primary, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; testid: string; primary?: boolean; disabled?: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      data-testid={testid}
-      className={cn(
-        "flex h-12 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 text-sm font-semibold transition disabled:opacity-50",
-        primary ? "bg-ink text-paper-3" : "bg-paper-2 hover:bg-paper-2",
-      )}
-    >
+    <button type="button" onClick={onClick} disabled={disabled} data-testid={testid} className={cn(actClass(primary ? "primary" : "secondary"), "h-11 w-full px-2 text-[0.8125rem] disabled:opacity-45")}>
       {icon}
       <span className="truncate">{label}</span>
     </button>
@@ -294,64 +301,64 @@ function SnapPanel() {
     setPick(null);
   };
   return (
-    <Panel data-testid="snap-panel">
-      <PanelTitle right={<History className="size-4 text-ink-3" />}>自动快照</PanelTitle>
-      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">每天第一次打开时自动存一份，保留最近 7 份；导入或合并前也会先存一份。误操作了可以回滚。</p>
+    <Chapter n={2} id="ch-snap" title="自动快照" testid="snap-panel" intro="每天第一次打开时自动存一份，保留最近 7 份；导入或合并前也会先存一份。误操作了可以回滚。">
       {failed ? (
-        <p className="rounded-2xl bg-paper-2 px-4 py-3 text-[0.8125rem] text-ink-3">这个浏览器不支持 IndexedDB，无法保存快照。</p>
+        <p className="border-l-2 border-rule-strong pl-3 text-[0.8125rem] text-ink-3">这个浏览器不支持 IndexedDB，无法保存快照。</p>
       ) : list === null ? (
-        <div className="h-16 animate-pulse rounded-2xl bg-paper-2" />
+        <div className="h-16 animate-pulse rounded-lg bg-paper-2" />
       ) : list.length === 0 ? (
-        <p className="rounded-2xl bg-paper-2 px-4 py-3 text-[0.8125rem] text-ink-3" data-testid="snap-empty">
+        <p className="border-l-2 border-rule-strong pl-3 text-[0.8125rem] text-ink-3" data-testid="snap-empty">
           {Object.keys(st.cards).length ? "还没有快照，今天的会在几秒后自动保存。" : "开始学习后，每天会自动保存一份。"}
         </p>
       ) : (
-        <ul className="divide-y divide-rule rounded-2xl border border-rule" data-testid="snap-list">
+        /* 一张时间表：日期时间 · 种类 · 词数，右边「回滚」 */
+        <ol className="border-t border-rule" data-testid="snap-list">
           {list.map((s, k) => (
-            <li key={s.id} className="flex items-center gap-3 px-3.5 py-2.5" data-testid="snap-item" data-kind={s.kind} data-words={s.words}>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 text-sm font-semibold">
-                  <span className="tnum">
-                    {s.day === dayKey() ? "今天" : fmtDate(s.day)} {hm(s.at)}
-                  </span>
-                  <span className={cn("rounded-[3px] px-1.5 py-px text-[0.6875rem] font-semibold", s.kind === "auto" ? "bg-know-soft text-know" : s.kind === "import" ? "bg-vague-soft text-vague" : "bg-paper-2 text-ink-3")}>
-                    {SNAP_KIND[s.kind]}
-                  </span>
-                </div>
-                <div className="tnum text-xs text-ink-3">
+            <li key={s.id} className="grid min-h-14 grid-cols-[4.75rem_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-rule py-2" data-testid="snap-item" data-kind={s.kind} data-words={s.words}>
+              <span className="tnum leading-tight">
+                <span className="block text-[0.75rem] text-ink-3">{s.day === dayKey() ? "今天" : fmtDate(s.day)}</span>
+                <span className="block font-serif text-[1.25rem] leading-none">{hm(s.at)}</span>
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[0.875rem] font-medium">{SNAP_KIND[s.kind]}</span>
+                <span className="tnum block text-[0.75rem] text-ink-3">
                   {s.words} 词 · {fmtBytes(s.size)}
-                </div>
-              </div>
-              <button type="button" data-testid={`snap-restore-${k}`} onClick={() => setPick(s)} className="h-9 shrink-0 rounded-lg bg-paper-2 px-3.5 text-[0.8125rem] font-semibold hover:bg-paper-2">
+                </span>
+              </span>
+              <button type="button" data-testid={`snap-restore-${k}`} onClick={() => setPick(s)} className={actClass("quiet") + " h-10 text-[0.8125rem]"}>
                 回滚
               </button>
             </li>
           ))}
-        </ul>
+        </ol>
       )}
       {!failed && (
-        <button type="button" data-testid="snap-now" onClick={saveNow} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold text-ink-3 hover:bg-paper-2 hover:text-ink">
+        <button type="button" data-testid="snap-now" onClick={saveNow} className={actClass("secondary") + " mt-3 h-11 w-full"}>
           <Plus className="size-4" /> 现在存一份
         </button>
       )}
       <BottomSheet open={!!pick} onOpenChange={(v) => !v && setPick(null)} title="回滚到这份快照？" testid="snap-confirm">
         {pick && (
           <>
-            <p className="text-sm text-ink-3">
-              学习记录会回到 <b className="text-ink">{fmtDate(pick.day)} {hm(pick.at)}</b>（{pick.words} 词），之后的进度会丢失。不放心可以先「现在存一份」。
+            <p className="text-[0.875rem] leading-relaxed text-ink-2">
+              学习记录会回到{" "}
+              <b className="font-semibold text-ink">
+                {fmtDate(pick.day)} {hm(pick.at)}
+              </b>
+              （{pick.words} 词），之后的进度会丢失。不放心可以先「现在存一份」。
             </p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setPick(null)} className="h-12 rounded-lg bg-paper-2 font-semibold">
+            <div className="mt-5 flex gap-2">
+              <button type="button" onClick={() => setPick(null)} className={actClass("secondary", true) + " h-12"}>
                 取消
               </button>
-              <button type="button" data-testid="snap-confirm-yes" onClick={() => rollback(pick)} className="h-12 rounded-2xl bg-destructive font-semibold text-destructive-foreground">
+              <button type="button" data-testid="snap-confirm-yes" onClick={() => rollback(pick)} className="press inline-flex h-12 flex-1 items-center justify-center rounded-lg bg-destructive text-[0.875rem] font-semibold text-destructive-foreground">
                 回滚
               </button>
             </div>
           </>
         )}
       </BottomSheet>
-    </Panel>
+    </Chapter>
   );
 }
 
@@ -382,31 +389,23 @@ function ReportPanel({ index, profileName }: { index: WordIndex; profileName: st
   };
   const native = !!blob && canShareFile(new File([blob], name, { type: "image/png" }));
   return (
-    <Panel data-testid="report-panel">
-      <PanelTitle>学习报告图</PanelTitle>
-      <div className="flex items-center gap-3">
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 text-center">
-          <Mini v={data.learned} k="学过" />
-          <Mini v={data.dist.mastered + data.dist.killed} k="掌握" />
-          <Mini v={data.streak} k="连续天数" />
-        </div>
-      </div>
-      <button
-        type="button"
-        data-testid="report-open"
-        onClick={() => setOpen(true)}
-        className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-paper-2 text-sm font-semibold hover:bg-paper-2"
-      >
+    <Chapter n={3} id="ch-report" title="学习报告图" testid="report-panel" intro="一张长图：总进度、掌握分布、连续天数。">
+      <dl className="grid grid-cols-3 divide-x divide-rule border-y border-rule py-3">
+        <Mini v={data.learned} k="学过" />
+        <Mini v={data.dist.mastered + data.dist.killed} k="掌握" />
+        <Mini v={data.streak} k="连续天数" />
+      </dl>
+      <button type="button" data-testid="report-open" onClick={() => setOpen(true)} className={actClass("secondary") + " mt-3 h-11 w-full"}>
         <ImageDown className="size-4" /> 生成长图：总进度 · 掌握分布 · 连续天数
       </button>
       <BottomSheet open={open} onOpenChange={setOpen} title="学习报告" testid="report-sheet">
         {url ? (
-          <img src={url} alt="学习报告长图" data-testid="report-img" className="mx-auto w-full max-w-sm rounded-2xl border border-rule" />
+          <img src={url} alt="学习报告长图" data-testid="report-img" className="mx-auto w-full max-w-sm rounded-lg border border-rule" />
         ) : (
-          <div className="mx-auto aspect-[1/2] w-full max-w-sm animate-pulse rounded-2xl bg-paper-2" />
+          <div className="mx-auto aspect-[1/2] w-full max-w-sm animate-pulse rounded-lg bg-paper-2" />
         )}
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={save} disabled={!url} data-testid="report-save" className={cn("flex h-12 items-center justify-center gap-2 rounded-2xl font-semibold", native ? "bg-paper-2" : "col-span-2 bg-ink text-paper-3")}>
+        <div className="mt-4 flex gap-2">
+          <button type="button" onClick={save} disabled={!url} data-testid="report-save" className={cn(actClass(native ? "secondary" : "primary", true), "h-12")}>
             <Download className="size-4" /> 保存图片
           </button>
           {native && (
@@ -417,22 +416,22 @@ function ReportPanel({ index, profileName }: { index: WordIndex; profileName: st
                 const r = await shareImage(blob!, name, save);
                 if (r === "downloaded") toast("已保存图片");
               }}
-              className="press flex h-12 items-center justify-center gap-2 rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
+              className={actClass("primary", true) + " h-12"}
             >
               <Share2 className="size-4" /> 分享
             </button>
           )}
         </div>
       </BottomSheet>
-    </Panel>
+    </Chapter>
   );
 }
 
 function Mini({ v, k }: { v: number | string; k: string }) {
   return (
-    <div className="border-t border-rule pt-2.5 pb-1.5">
-      <div className="tnum text-[1.75rem] font-serif leading-none">{v}</div>
-      <div className="mt-1 text-[0.6875rem] text-ink-3">{k}</div>
+    <div className="min-w-0 px-3 first:pl-0">
+      <dd className="tnum font-serif text-[1.75rem] leading-none">{v}</dd>
+      <dt className="mt-1.5 text-[0.6875rem] text-ink-3">{k}</dt>
     </div>
   );
 }
@@ -453,9 +452,7 @@ function WordFilePanel({ index }: { index: WordIndex }) {
     if (!r.found.length) toast.error("没有找到词库里收录的单词");
   };
   return (
-    <Panel data-testid="wordfile-panel">
-      <PanelTitle right={<FileText className="size-4 text-ink-3" />}>导入词表</PanelTitle>
-      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">从 CSV / TXT 生成词单：每行一个词，或「单词,释义」的表格（只看第一列）。只保留四级词库里有的词。</p>
+    <Chapter n={4} id="ch-wordfile" title="导入词表" testid="wordfile-panel" intro="从 CSV / TXT 生成词单：每行一个词，或「单词,释义」的表格（只看第一列）。只保留四级词库里有的词。">
       <textarea
         value={text}
         onChange={(e) => {
@@ -465,9 +462,9 @@ function WordFilePanel({ index }: { index: WordIndex }) {
         rows={3}
         placeholder={"abandon\nability, n. 能力\nabsorb\tv. 吸收"}
         data-testid="wordfile-text"
-        className="w-full resize-none rounded-2xl border border-rule bg-paper p-3 text-sm outline-none placeholder:text-ink-3 focus:border-ink"
+        className="w-full resize-none rounded-lg border border-rule-strong bg-paper-3 p-3 font-serif text-[1rem] leading-snug outline-none placeholder:font-sans placeholder:text-[0.8125rem] placeholder:text-ink-3 focus:border-ink"
       />
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="mt-2 flex gap-2">
         <Btn testid="wordfile-pick" icon={<FileUp className="size-4" />} label="选择文件" onClick={() => file.current?.click()} />
         <Btn testid="wordfile-parse" icon={<Check className="size-4" />} label="识别单词" onClick={() => run(text)} disabled={!text.trim()} />
       </div>
@@ -487,38 +484,40 @@ function WordFilePanel({ index }: { index: WordIndex }) {
         }}
       />
       {res && res.found.length > 0 && (
-        <div className="mt-3 rounded-2xl bg-paper-2 p-3" data-testid="wordfile-result" data-found={res.found.length} data-missing={res.missing.length}>
-          <div className="text-sm font-semibold">
-            收录 <span className="tnum text-know">{res.found.length}</span> 个
+        <div className="rise mt-5 border-t border-ink pt-3" data-testid="wordfile-result" data-found={res.found.length} data-missing={res.missing.length}>
+          <div className="flex items-baseline gap-2 text-[0.875rem]">
+            <span className="tnum font-serif text-[1.75rem] leading-none">{res.found.length}</span>
+            <span className="font-medium">个收录</span>
             {res.missing.length > 0 && (
-              <span className="font-medium text-ink-3">
-                {" "}
+              <span className="text-ink-3">
                 · 词库里没有 <span className="tnum">{res.missing.length}</span> 个
               </span>
             )}
           </div>
-          <div className="mt-2 flex max-h-24 flex-wrap gap-1 overflow-hidden" data-testid="wordfile-found">
-            {res.found.slice(0, 30).map((w) => (
-              <span key={w} className="rounded-[3px] bg-paper-3 px-2 py-0.5 text-xs font-semibold">
+          {/* 识别出的词：一段衬线文字，像词典的索引页 */}
+          <p className="mt-2 line-clamp-3 font-serif text-[1.0625rem] leading-snug text-ink-2" data-testid="wordfile-found">
+            {res.found.slice(0, 30).map((w, k) => (
+              <span key={w}>
+                {k > 0 && <span className="text-rule-strong"> · </span>}
                 {w}
               </span>
             ))}
-            {res.found.length > 30 && <span className="px-1 text-xs text-ink-3">…</span>}
-          </div>
+            {res.found.length > 30 && <span className="text-ink-3"> …</span>}
+          </p>
           {res.missing.length > 0 && (
-            <div className="mt-1.5 truncate text-xs text-ink-3" data-testid="wordfile-missing">
+            <div className="mt-1.5 truncate text-[0.75rem] text-ink-3" data-testid="wordfile-missing">
               跳过：{res.missing.slice(0, 8).join("、")}
               {res.missing.length > 8 ? " 等" : ""}
             </div>
           )}
-          <div className="mt-3 flex gap-2">
+          <div className="mt-4 flex items-end gap-3">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={20}
               placeholder="词单名"
               data-testid="wordfile-name"
-              className="h-11 min-w-0 flex-1 rounded-2xl border border-rule bg-paper px-3.5 text-[0.9375rem] outline-none focus:border-ink"
+              className="h-11 min-w-0 flex-1 border-b-[1.5px] border-rule-strong bg-transparent text-[0.9375rem] outline-none focus:border-ink"
             />
             <button
               type="button"
@@ -529,14 +528,14 @@ function WordFilePanel({ index }: { index: WordIndex }) {
                 toast.success(`已生成词单：${res.found.length} 词`);
                 navigate({ to: "/words", search: { tab: "list", list: id } });
               }}
-              className="press flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-ink px-4 text-sm font-semibold text-paper-3 hover:bg-ink-2"
+              className={actClass("primary") + " h-11 shrink-0"}
             >
               <ListPlus className="size-4" /> 生成词单
             </button>
           </div>
         </div>
       )}
-    </Panel>
+    </Chapter>
   );
 }
 
@@ -576,44 +575,49 @@ function ProfilesPanel() {
   };
   const del = reg.list.find((p) => p.id === deleting);
   return (
-    <Panel data-testid="profiles-panel">
-      <PanelTitle right={<span className="tnum text-xs font-semibold text-ink-3">{reg.list.length}/{PROFILE_MAX}</span>}>学习档案</PanelTitle>
-      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">一台手机给几个人用，或者四级、六级分开背：每个档案的进度、打卡、设置互不影响。</p>
-      <ul className="space-y-2" data-testid="profile-list">
+    <Chapter
+      n={5}
+      id="ch-profiles"
+      title="学习档案"
+      testid="profiles-panel"
+      aside={
+        <span className="tnum">
+          {reg.list.length}/{PROFILE_MAX}
+        </span>
+      }
+      intro="一台手机给几个人用，或者四级、六级分开背：每个档案的进度、打卡、设置互不影响。"
+    >
+      <ul className="border-t border-rule" data-testid="profile-list">
         {reg.list.map((p) => {
           const on = p.id === reg.active;
           return (
-            <li
-              key={p.id}
-              data-testid="profile-row"
-              data-id={p.id}
-              data-active={on ? "1" : "0"}
-              className={cn("flex items-center gap-3 rounded-2xl border px-3.5 py-3", on ? "border-ink bg-mark-soft" : "border-rule")}
-            >
-              <span className={cn("grid size-9 shrink-0 place-items-center rounded-full text-[0.9375rem] font-semibold", on ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3")}>
+            <li key={p.id} data-testid="profile-row" data-id={p.id} data-active={on ? "1" : "0"} className="relative flex min-h-16 items-center gap-3 border-b border-rule py-2.5 pl-4">
+              {on && <span className="absolute inset-y-2.5 left-0 w-[3px] bg-ink" aria-hidden />}
+              {/* 档案的首字：一个衬线大写字母（像书脊上的字），不是圆形头像 */}
+              <span className={cn("w-7 shrink-0 text-center font-serif text-[1.75rem] leading-none", on ? "text-ink" : "text-ink-3")} aria-hidden>
                 {[...p.name][0]}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate text-[0.9375rem] font-semibold" data-testid="profile-name">
+                <div className="flex items-center gap-2">
+                  <span className={cn("truncate text-[0.9375rem]", on ? "font-semibold" : "font-medium")} data-testid="profile-name">
                     {p.name}
                   </span>
-                  {on && <span className="shrink-0 rounded-[3px] bg-ink px-1.5 py-px text-[0.6875rem] font-semibold text-paper-3">使用中</span>}
+                  {on && <Tag tone="mark">使用中</Tag>}
                 </div>
-                <div className="tnum text-xs text-ink-3">
+                <div className="tnum mt-0.5 text-[0.75rem] text-ink-3">
                   {sums[p.id].words} 词 · 打卡 {sums[p.id].days} 天
                 </div>
               </div>
-              <button type="button" aria-label={`重命名 ${p.name}`} data-testid="profile-rename" onClick={() => setRenaming(p.id)} className="press grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2 hover:text-ink">
-                <Pencil className="size-3.5" />
+              <button type="button" aria-label={`重命名 ${p.name}`} data-testid="profile-rename" onClick={() => setRenaming(p.id)} className="press grid size-11 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink">
+                <Pencil className="size-4" />
               </button>
               {!on && p.id !== "main" && (
-                <button type="button" aria-label={`删除 ${p.name}`} data-testid="profile-delete" onClick={() => setDeleting(p.id)} className="press grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2 hover:text-forget">
-                  <Trash2 className="size-3.5" />
+                <button type="button" aria-label={`删除 ${p.name}`} data-testid="profile-delete" onClick={() => setDeleting(p.id)} className="press grid size-11 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-forget">
+                  <Trash2 className="size-4" />
                 </button>
               )}
               {!on && (
-                <button type="button" data-testid="profile-switch" onClick={() => switchProfile(reg, p.id)} className="h-9 shrink-0 rounded-lg bg-ink px-3.5 text-[0.8125rem] font-semibold text-paper-3">
+                <button type="button" data-testid="profile-switch" onClick={() => switchProfile(reg, p.id)} className={actClass("primary") + " h-9 shrink-0 px-3.5 text-[0.8125rem]"}>
                   切换
                 </button>
               )}
@@ -626,12 +630,12 @@ function ProfilesPanel() {
         data-testid="profile-new"
         disabled={reg.list.length >= PROFILE_MAX}
         onClick={() => setCreating(true)}
-        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-rule text-sm font-semibold text-ink-3 hover:text-ink disabled:opacity-50"
+        className="press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-rule-strong text-[0.875rem] font-medium text-ink-2 hover:border-ink hover:text-ink disabled:opacity-45"
       >
-        <Users className="size-4" /> {reg.list.length >= PROFILE_MAX ? `最多 ${PROFILE_MAX} 个档案` : "新建档案"}
+        <Plus className="size-4" /> {reg.list.length >= PROFILE_MAX ? `最多 ${PROFILE_MAX} 个档案` : "新建档案"}
       </button>
       <BottomSheet open={creating} onOpenChange={setCreating} title="新建学习档案" testid="profile-create">
-        <p className="mb-3 text-[0.8125rem] text-ink-3">新档案从头开始（重新选词书和每日新词），当前档案的记录原样保留。</p>
+        <p className="mb-4 text-[0.8125rem] leading-relaxed text-ink-2">新档案从头开始（重新选词书和每日新词），当前档案的记录原样保留。</p>
         <NameField
           placeholder={`档案名，最多 ${PROFILE_NAME_MAX} 字`}
           action="创建并切换"
@@ -658,9 +662,9 @@ function ProfilesPanel() {
         />
       </BottomSheet>
       <BottomSheet open={!!del} onOpenChange={(v) => !v && setDeleting(null)} title={`删除「${del?.name ?? ""}」？`} testid="profile-delete-sheet">
-        <p className="text-sm text-ink-3">这个档案的学习记录、打卡和快照都会删掉，无法恢复。</p>
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setDeleting(null)} className="h-12 rounded-lg bg-paper-2 font-semibold">
+        <p className="text-[0.875rem] leading-relaxed text-ink-2">这个档案的学习记录、打卡和快照都会删掉，无法恢复。</p>
+        <div className="mt-5 flex gap-2">
+          <button type="button" onClick={() => setDeleting(null)} className={actClass("secondary", true) + " h-12"}>
             取消
           </button>
           <button
@@ -679,13 +683,13 @@ function ProfilesPanel() {
                 /* ignore */
               }
             }}
-            className="h-12 rounded-2xl bg-destructive font-semibold text-destructive-foreground"
+            className="press inline-flex h-12 flex-1 items-center justify-center rounded-lg bg-destructive text-[0.875rem] font-semibold text-destructive-foreground"
           >
             删除
           </button>
         </div>
       </BottomSheet>
-    </Panel>
+    </Chapter>
   );
 }
 
@@ -704,23 +708,22 @@ function HealthPanel({ index }: { index: WordIndex }) {
     run();
   };
   return (
-    <Panel data-testid="health-panel">
-      <PanelTitle right={<Stethoscope className="size-4 text-ink-3" />}>数据体检</PanelTitle>
-      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">检查学习记录、生词本、词单、复习日志和打卡里有没有损坏或词库里不存在的词。</p>
+    <Chapter n={6} id="ch-health" title="数据体检" testid="health-panel" intro="检查学习记录、生词本、词单、复习日志和打卡里有没有损坏或词库里不存在的词。">
       {res &&
         (res.total === 0 ? (
-          <div className="mb-3 flex items-center gap-2 rounded-2xl bg-know-soft px-4 py-3 text-sm font-semibold text-know" data-testid="health-ok">
-            <Check className="size-5" strokeWidth={3} /> 数据健康，没有发现问题
-          </div>
+          <p className="mb-4 flex items-center gap-2 border-l-2 border-know pl-3 text-[0.875rem] font-medium text-know" data-testid="health-ok">
+            <Check className="size-4" strokeWidth={3} /> 数据健康，没有发现问题
+          </p>
         ) : (
-          <ul className="mb-3 space-y-2" data-testid="health-issues" data-total={res.total}>
+          /* 体检单：一项一行，右边是数量（衬线），下面一行是怎么修 */
+          <ul className="mb-4 border-t border-ink" data-testid="health-issues" data-total={res.total}>
             {res.issues.map((i) => (
-              <li key={i.kind} className="rounded-2xl bg-forget-soft/70 px-3.5 py-2.5" data-testid="health-issue" data-kind={i.kind} data-n={i.n}>
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <span className="min-w-0 flex-1">{i.label}</span>
-                  <span className="tnum shrink-0 text-forget">{i.n}</span>
+              <li key={i.kind} className="border-b border-rule py-2.5" data-testid="health-issue" data-kind={i.kind} data-n={i.n}>
+                <div className="flex items-baseline gap-3">
+                  <span className="min-w-0 flex-1 text-[0.875rem] font-medium">{i.label}</span>
+                  <span className="tnum shrink-0 font-serif text-[1.375rem] leading-none text-forget">{i.n}</span>
                 </div>
-                <div className="truncate text-xs text-ink-3">
+                <div className="mt-0.5 truncate text-[0.75rem] text-ink-3">
                   {i.fix}：{i.sample.join("、")}
                   {i.n > i.sample.length ? " 等" : ""}
                 </div>
@@ -729,15 +732,15 @@ function HealthPanel({ index }: { index: WordIndex }) {
           </ul>
         ))}
       {res && res.total > 0 ? (
-        <button type="button" data-testid="health-fix" onClick={fix} className="press flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 hover:bg-ink-2">
+        <button type="button" data-testid="health-fix" onClick={fix} className={actClass("primary") + " h-12 w-full"}>
           一键修复 {res.total} 处
         </button>
       ) : (
-        <button type="button" data-testid="health-run" onClick={run} className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-paper-2 text-sm font-semibold hover:bg-paper-2">
-          <Stethoscope className="size-4" /> {res ? "再查一次" : "开始体检"}
+        <button type="button" data-testid="health-run" onClick={run} className={actClass("secondary") + " h-11 w-full"}>
+          {res ? "再查一次" : "开始体检"}
         </button>
       )}
-    </Panel>
+    </Chapter>
   );
 }
 
@@ -783,14 +786,14 @@ function StoragePanel() {
       const exN = examplesCount();
       const out: StoreRow[] = [
         { k: "state", label: "学习记录", bytes: ls(KEY), tone: "bg-ink" },
-        { k: "revlog", label: "复习日志", bytes: ls(REV_KEY), tone: "bg-know" },
-        ...(reg.list.length > 1 ? [{ k: "profiles", label: "其他档案", bytes: others, sub: `${reg.list.length - 1} 个`, tone: "bg-[#7c5cd6]" }] : []),
+        { k: "revlog", label: "复习日志", bytes: ls(REV_KEY), tone: "bg-ink-2" },
+        ...(reg.list.length > 1 ? [{ k: "profiles", label: "其他档案", bytes: others, sub: `${reg.list.length - 1} 个`, tone: "bg-ink-3" }] : []),
         {
           k: "examples",
           label: "例句缓存",
           bytes: ls(EXAMPLES_KEY),
           sub: `${exN} 词`,
-          tone: "bg-vague",
+          tone: "bg-mark",
           clear: () => {
             const n = clearExamples();
             toast.success(`已清理 ${n} 个词的例句`, { description: "联网时会重新获取" });
@@ -800,7 +803,7 @@ function StoragePanel() {
       try {
         const m = await import("@/lib/snapshots");
         const u = await m.snapUsage();
-        out.push({ k: "snaps", label: "自动快照", bytes: u.bytes, sub: `${u.n} 份`, tone: "bg-[#3b82c4]" });
+        out.push({ k: "snaps", label: "自动快照", bytes: u.bytes, sub: `${u.n} 份`, tone: "bg-rule-strong" });
       } catch {
         /* 没有 IndexedDB */
       }
@@ -813,7 +816,7 @@ function StoragePanel() {
             label: "发音缓存",
             bytes: audio.bytes,
             sub: `${audio.n} 个词`,
-            tone: "bg-forget",
+            tone: "bg-[color-mix(in_oklab,var(--mark)_55%,var(--ink-3))]",
             clear: async () => {
               await caches.delete(AUDIO_CACHE);
               toast.success(`已清理 ${audio.n} 个发音`, { description: "联网时听过的词会重新缓存" });
@@ -824,7 +827,7 @@ function StoragePanel() {
             const u = await cacheUsage(n);
             app = { n: app.n + u.n, bytes: app.bytes + u.bytes };
           }
-          out.push({ k: "app", label: "离线应用文件", bytes: app.bytes, sub: `${app.n} 个文件 · 含词库`, tone: "bg-muted-foreground" });
+          out.push({ k: "app", label: "离线应用文件", bytes: app.bytes, sub: `${app.n} 个文件 · 含词库`, tone: "bg-rule" });
         } catch {
           /* ignore */
         }
@@ -847,56 +850,61 @@ function StoragePanel() {
   }, [tick]);
   const total = rows?.reduce((s, r) => s + r.bytes, 0) ?? 0;
   return (
-    <Panel data-testid="storage-panel">
-      <PanelTitle right={<HardDrive className="size-4 text-ink-3" />}>存储管理</PanelTitle>
+    <Chapter n={7} id="ch-storage" title="存储管理" testid="storage-panel" intro="学习记录和日志不能在这里删；例句和发音缓存清掉后，联网时会重新获取。">
       {!rows ? (
-        <div className="h-32 animate-pulse rounded-2xl bg-paper-2" />
+        <div className="h-32 animate-pulse rounded-lg bg-paper-2" />
       ) : (
         <>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="tnum text-[2rem] font-serif leading-none" data-testid="storage-total">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="tnum font-serif text-[2.5rem] leading-none tracking-[-0.02em]" data-testid="storage-total">
               {fmtBytes(total)}
             </span>
             {est && (
-              <span className="tnum text-xs text-ink-3" data-testid="storage-quota">
+              <span className="tnum text-right text-[0.75rem] leading-snug text-ink-3" data-testid="storage-quota">
                 浏览器分配 {fmtBytes(est.quota)}，已用 {Math.max(0.1, Math.round((est.usage / est.quota) * 1000) / 10)}%
               </span>
             )}
           </div>
-          <div className="mt-2 flex h-2.5 overflow-hidden rounded-[2px] bg-rule" aria-hidden>
+          {/* 一条分段的细线：深浅不同的墨色，不用彩虹色 */}
+          <div className="mt-3 flex h-1.5 gap-px overflow-hidden bg-paper-2" aria-hidden>
             {rows.map((r) => (
               <div key={r.k} className={cn("h-full", r.tone)} style={{ width: `${total ? (r.bytes / total) * 100 : 0}%` }} />
             ))}
           </div>
-          <ul className="mt-3 divide-y divide-rule">
-            {rows.map((r) => (
-              <li key={r.k} className="flex items-center gap-3 py-2.5" data-testid={`storage-row-${r.k}`} data-bytes={r.bytes}>
-                <span className={cn("size-2.5 shrink-0 rounded-full", r.tone)} />
-                <span className="min-w-0 flex-1">
-                  <span className="text-sm font-medium">{r.label}</span>
-                  {r.sub && <span className="ml-1.5 text-xs text-ink-3">{r.sub}</span>}
-                </span>
-                <span className="tnum shrink-0 text-[0.8125rem] font-semibold text-ink-3">{fmtBytes(r.bytes)}</span>
-                {r.clear && (
-                  <button
-                    type="button"
-                    data-testid={`storage-clear-${r.k}`}
-                    onClick={async () => {
-                      await r.clear!();
-                      setTick((t) => t + 1);
-                    }}
-                    className="h-8 shrink-0 rounded-lg bg-paper-2 px-3 text-xs font-semibold hover:bg-paper-2"
-                  >
-                    清理
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-1 text-xs text-ink-3">学习记录和日志不能在这里删；例句和发音缓存清掉后，联网时会重新获取。</p>
+          <table className="mt-3 w-full border-t border-rule text-left">
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.k} className="border-b border-rule" data-testid={`storage-row-${r.k}`} data-bytes={r.bytes}>
+                  <td className="w-4 py-2.5 align-middle">
+                    <span className={cn("block size-2 rounded-[2px]", r.tone)} />
+                  </td>
+                  <td className="py-2.5">
+                    <span className="block text-[0.875rem] font-medium leading-tight">{r.label}</span>
+                    {r.sub && <span className="block text-[0.75rem] text-ink-3">{r.sub}</span>}
+                  </td>
+                  <td className="tnum whitespace-nowrap py-2.5 pl-2 text-right font-serif text-[1.0625rem]">{fmtBytes(r.bytes)}</td>
+                  <td className="w-14 py-2.5 text-right">
+                    {r.clear && (
+                      <button
+                        type="button"
+                        data-testid={`storage-clear-${r.k}`}
+                        onClick={async () => {
+                          await r.clear!();
+                          setTick((t) => t + 1);
+                        }}
+                        className={actClass("quiet") + " h-9 text-[0.75rem]"}
+                      >
+                        清理
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </>
       )}
-    </Panel>
+    </Chapter>
   );
 }
 
@@ -931,9 +939,8 @@ function RescueDumpPanel() {
     /* 原样保存的坏数据 */
   }
   return (
-    <Panel data-testid="rescue-dump">
-      <PanelTitle>救援时另存的原始数据</PanelTitle>
-      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">
+    <Chapter n={8} id="ch-rescue" title="救援时另存的原始数据" testid="rescue-dump">
+      <p className="mb-4 border-l-2 border-vague pl-3 text-[0.8125rem] leading-relaxed text-ink-2">
         {at ? `${at} 救援时留下的一份。` : "救援时留下的一份。"}
         {restorable
           ? salvaged !== undefined
@@ -941,13 +948,13 @@ function RescueDumpPanel() {
             : "可以导出成文件，或者恢复回来（会先让你选合并还是覆盖）。"
           : "坏得太厉害，一个词都读不出来，只能导出成文件留底（求助时可以发给开发者）。"}
       </p>
-      <div className={cn("grid gap-2", restorable ? "grid-cols-3" : "grid-cols-2")}>
-        <button type="button" data-testid="rescue-dump-export" onClick={() => download(`四级单词打卡-救援原始数据-${at || today()}.json`, raw)} className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold">
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" data-testid="rescue-dump-export" onClick={() => download(`四级单词打卡-救援原始数据-${at || today()}.json`, raw)} className={actClass("secondary", true) + " h-11"}>
           导出
         </button>
         {/* 11.3 · 能恢复才显示「恢复」，不再放一个永远灰着的按钮 */}
         {restorable && (
-          <button type="button" data-testid="rescue-dump-restore" onClick={() => setPending(raw)} className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold">
+          <button type="button" data-testid="rescue-dump-restore" onClick={() => setPending(raw)} className={actClass("secondary", true) + " h-11"}>
             恢复
           </button>
         )}
@@ -963,13 +970,13 @@ function RescueDumpPanel() {
             setRaw(null);
             toast("已删除救援时另存的数据");
           }}
-          className="h-11 rounded-lg bg-paper-2 text-[0.8125rem] font-semibold text-destructive"
+          className="press h-11 rounded-lg px-4 text-[0.875rem] font-semibold text-destructive hover:bg-destructive/10"
         >
           删除
         </button>
       </div>
       <ImportFlow text={pending} onDone={() => setPending(null)} />
-    </Panel>
+    </Chapter>
   );
 }
 
@@ -978,14 +985,21 @@ function ResetPanel() {
   const navigate = useNavigate();
   const [confirm, setConfirm] = useState(false);
   return (
-    <Panel data-testid="reset-panel">
-      <button type="button" onClick={() => setConfirm(true)} data-testid="reset" className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-destructive hover:bg-destructive/10">
+    <section data-testid="reset-panel" className="border-t-2 border-destructive pt-4">
+      <h2 className="text-[0.9375rem] font-semibold text-destructive">危险操作</h2>
+      <p className="mt-1 text-[0.8125rem] text-ink-3">清空后无法恢复，先在第 1 章导出一份备份。</p>
+      <button
+        type="button"
+        onClick={() => setConfirm(true)}
+        data-testid="reset"
+        className="press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg text-[0.875rem] font-semibold text-destructive ring-1 ring-destructive/40 ring-inset hover:bg-destructive/10"
+      >
         清空所有学习记录
       </button>
       <BottomSheet open={confirm} onOpenChange={setConfirm} title="清空所有学习记录？" testid="reset-confirm">
-        <p className="text-sm text-ink-3">这台设备上这个档案的学习记录、打卡、词单都会删掉，无法恢复。建议先导出备份。</p>
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-lg bg-paper-2 font-semibold">
+        <p className="text-[0.875rem] leading-relaxed text-ink-2">这台设备上这个档案的学习记录、打卡、词单都会删掉，无法恢复。建议先导出备份。</p>
+        <div className="mt-5 flex gap-2">
+          <button type="button" onClick={() => setConfirm(false)} className={actClass("secondary", true) + " h-12"}>
             取消
           </button>
           <button
@@ -998,12 +1012,41 @@ function ResetPanel() {
               // 11.8 · 用路由压引导页（带序号）：重新引导完成后能退回第一条 app 记录，首页按返回不再白按一次（r8 R8-5）
               navigate({ to: "/welcome" });
             }}
-            className="h-12 rounded-2xl bg-destructive font-semibold text-paper-3"
+            className="press inline-flex h-12 flex-1 items-center justify-center rounded-lg bg-destructive text-[0.875rem] font-semibold text-destructive-foreground"
           >
             确认清空
           </button>
         </div>
       </BottomSheet>
-    </Panel>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- 12.0 · 章节
+
+const CHAPTERS = [
+  { id: "ch-backup", title: "备份与恢复" },
+  { id: "ch-snap", title: "自动快照" },
+  { id: "ch-report", title: "学习报告图" },
+  { id: "ch-wordfile", title: "导入词表" },
+  { id: "ch-profiles", title: "学习档案" },
+  { id: "ch-health", title: "数据体检" },
+  { id: "ch-storage", title: "存储管理" },
+];
+
+/** 数据中心的一章：墨线 + 衬线章号 + 标题，下面一句说明 */
+function Chapter({ n, id, title, aside, intro, testid, children }: { n: number; id: string; title: string; aside?: React.ReactNode; intro?: string; testid: string; children: React.ReactNode }) {
+  return (
+    <section id={id} data-testid={testid} className="min-w-0 scroll-mt-6 border-t border-ink pt-4">
+      <div className="flex items-baseline gap-3">
+        <span className="tnum w-6 shrink-0 font-serif text-[1.625rem] leading-none text-ink-3" aria-hidden>
+          {n}
+        </span>
+        <h2 className="min-w-0 flex-1 text-[1.125rem] font-semibold tracking-[-0.01em]">{title}</h2>
+        {aside && <span className="shrink-0 text-[0.75rem] text-ink-3">{aside}</span>}
+      </div>
+      {intro && <p className="mb-4 ml-9 mt-1.5 text-[0.8125rem] leading-relaxed text-ink-3">{intro}</p>}
+      <div className={intro ? "" : "mt-4"}>{children}</div>
+    </section>
   );
 }
