@@ -241,3 +241,85 @@ export function Tag({ tone, className, children, ...rest }: ComponentProps<"span
     </span>
   );
 }
+
+/**
+ * 一排数字选项（每日新词、复习上限、时长、休息日）：像尺子上的刻度，选中的那个划上荧光笔。
+ * 每一项是普通按钮（aria-pressed），不是药丸。
+ */
+export function Ticks<T extends string | number>({
+  value,
+  options,
+  onPick,
+  testid,
+  idOf,
+  serif = true,
+  className,
+}: {
+  value: T;
+  options: { value: T; label: ReactNode }[];
+  onPick: (v: T) => void;
+  testid?: string;
+  idOf?: (v: T) => string | undefined;
+  serif?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn("grid auto-cols-fr grid-flow-col border-y border-rule", className)} data-testid={testid}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={String(o.value)}
+            type="button"
+            aria-pressed={on}
+            data-testid={idOf?.(o.value)}
+            onClick={() => onPick(o.value)}
+            className={cn(
+              "press relative min-w-0 border-l border-rule px-0.5 py-2.5 first:border-l-0",
+              serif ? "tnum font-serif text-[1.3125rem] leading-none" : "text-[0.875rem] font-medium leading-none",
+              on ? "text-ink after:absolute after:inset-x-0 after:-top-px after:h-[2px] after:bg-ink" : "text-ink-3 hover:text-ink",
+            )}
+          >
+            <span className={cn("relative inline-block whitespace-nowrap px-0.5", on && "hl")}>{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * 二级页的页头：上面一行「‹ 上一级」，下面页名，再下面一句说明。
+ * 和一级页（PageHeader：说明在上）区分开，一眼看出这是「里面一层」。
+ */
+export function SubHead({
+  back,
+  title,
+  sub,
+  right,
+}: {
+  back: { to: "/me" | "/advanced" | "/words" | "/stats" | "/"; label: string; testid?: string };
+  title: ReactNode;
+  sub?: ReactNode;
+  right?: ReactNode;
+}) {
+  return (
+    <header className="pb-6 pt-4 md:pt-8">
+      <Link
+        to={back.to}
+        data-testid={back.testid}
+        className="press -ml-1.5 inline-flex h-10 items-center gap-1 rounded-md px-1.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-ink"
+      >
+        <span aria-hidden className="font-serif text-[1.375rem] leading-none">
+          ‹
+        </span>
+        {back.label}
+      </Link>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <h1 className="min-w-0 text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.02em]">{title}</h1>
+        {right}
+      </div>
+      {sub && <p className="mt-2 max-w-[34rem] text-[0.8125rem] leading-relaxed text-ink-3">{sub}</p>}
+    </header>
+  );
+}
