@@ -13,6 +13,8 @@
     <link rel="apple-touch-icon" href="./icon.svg" />
     <style>
       html, body { margin: 0; padding: 0; width: 100%; min-height: 100%; }
+      /* 13.0.0 · 内容不满一屏时（每日难度页）body 的纸纹也铺满一屏 */
+      body { min-height: 100dvh; }
       html.light, html.light body { background-color: #f7f3ea; color: #1c2333; }
       html.contrast, html.contrast body { background-color: #ffffff; color: #000000; }
       html.dark, html.dark body { background-color: #14171e; color: #ece6d8; }
