@@ -80,14 +80,7 @@ export function useLeaveGuard(active: boolean) {
   };
 }
 
-export function LeaveSheet({
-  blocker,
-  title,
-  desc,
-  stay = "继续",
-  leave = "退出",
-  extra,
-}: {
+type LeaveProps = {
   blocker: { status: string; proceed?: () => void; reset?: () => void };
   title: string;
   desc: string;
@@ -95,35 +88,32 @@ export function LeaveSheet({
   leave?: string;
   /** 额外的动作（小测：交卷） */
   extra?: { label: string; onClick: () => void; testid: string };
-}) {
+};
+
+/**
+ * 12.0 · 离开确认：一句话说清会丢什么，然后按「离拇指的远近」排出路——
+ * 最想让人点的（交卷 / 继续）在最上面、墨底整行；「离开」是最下面一行砖红字，单独隔一条细线。
+ */
+export function LeaveSheet({ blocker, title, desc, stay = "继续", leave = "退出", extra }: LeaveProps) {
   const open = blocker.status === "blocked";
+  const keep = () => blocker.reset?.();
+  const solid = "press h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2";
+  const outline = "press h-12 w-full rounded-lg font-semibold ring-1 ring-rule-strong ring-inset hover:bg-paper-2";
   return (
-    <BottomSheet open={open} onOpenChange={(v) => !v && blocker.reset?.()} title={title} testid="leave-confirm" noHistory>
-      <p className="text-[0.875rem] leading-relaxed text-ink-2">{desc}</p>
-      {/* 12.0 · 三种出路竖排：主动作（交卷 / 继续）是墨色，离开是砖红字的细线按钮，放最下面离拇指最远 */}
-      <div className="mt-5 flex flex-col gap-2">
+    <BottomSheet open={open} onOpenChange={(v) => !v && keep()} title={title} testid="leave-confirm" noHistory>
+      <p className="border-l-2 border-vague pl-3 text-[0.875rem] leading-relaxed text-ink-2">{desc}</p>
+      <div className="mt-6 space-y-2">
         {extra && (
-          <button
-            type="button"
-            data-testid={extra.testid}
-            onClick={() => {
-              blocker.reset?.();
-              extra.onClick();
-            }}
-            className="press h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
-          >
+          <button type="button" data-testid={extra.testid} className={solid} onClick={() => (keep(), extra.onClick())}>
             {extra.label}
           </button>
         )}
-        <button
-          type="button"
-          data-testid="leave-stay"
-          onClick={() => blocker.reset?.()}
-          className={extra ? "press h-12 rounded-lg font-semibold ring-1 ring-rule-strong ring-inset hover:bg-paper-2" : "press h-12 rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"}
-        >
+        <button type="button" data-testid="leave-stay" className={extra ? outline : solid} onClick={keep}>
           {stay}
         </button>
-        <button type="button" data-testid="leave-go" onClick={() => blocker.proceed?.()} className="press h-12 rounded-lg font-semibold text-forget hover:bg-forget-soft">
+      </div>
+      <div className="mt-3 border-t border-rule pt-3">
+        <button type="button" data-testid="leave-go" onClick={() => blocker.proceed?.()} className="press h-11 w-full rounded-lg text-[0.9375rem] font-semibold text-forget hover:bg-forget-soft">
           {leave}
         </button>
       </div>
