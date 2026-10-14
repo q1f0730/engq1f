@@ -127,3 +127,43 @@ describe("R8-4 考试当天临时推迟", () => {
     expect(acceptedSnapExams(st0({ dayRule: r })).has("2026-10-02")).toBe(true);
   });
 });
+
+describe("R8-2 / R8-3 fitLine：按实际宽度缩字号", async () => {
+  const { fitLine } = await import("./fit");
+  /** 假元素：一行宽 = 字号 × perPx；CSS 原来的字号 base */
+  const fake = (base: number, perPx: number, avail: number) => {
+    const props = new Map<string, string>();
+    const style = {
+      whiteSpace: "",
+      textAlign: "",
+      setProperty: (k: string, v: string) => void props.set(k, v),
+      removeProperty: (k: string) => void props.delete(k),
+    };
+    const fs = () => (props.has("font-size") ? parseFloat(props.get("font-size")!) : base);
+    const el = { style, clientWidth: avail, querySelectorAll: () => [], get scrollWidth() { return Math.max(avail, fs() * perPx); }, fs };
+    return el;
+  };
+  (globalThis as Record<string, unknown>).getComputedStyle = (e: { fs: () => number }) => ({ fontSize: `${e.fs()}px` });
+  it("放得下：不动字号", () => {
+    const el = fake(36, 6, 240);
+    expect(fitLine(el as unknown as HTMLElement)).toBeNull();
+    expect(el.fs()).toBe(36);
+  });
+  it("放不下：缩到正好放得下（≥ 90% 宽、不超出）", () => {
+    const el = fake(36, 8.2, 240); // 一行 295px
+    const fs = fitLine(el as unknown as HTMLElement)!;
+    expect(fs * 8.2).toBeLessThanOrEqual(240);
+    expect(fs * 8.2).toBeGreaterThanOrEqual(216);
+  });
+  it("最小字号兜底", () => {
+    const el = fake(36, 40, 240);
+    expect(fitLine(el as unknown as HTMLElement, 14)).toBe(14);
+  });
+  it("再量一次先恢复 CSS 字号（屏幕变宽能长回去）", () => {
+    const el = fake(36, 8.2, 240);
+    fitLine(el as unknown as HTMLElement);
+    el.clientWidth = 400;
+    expect(fitLine(el as unknown as HTMLElement)).toBeNull();
+    expect(el.fs()).toBe(36);
+  });
+});
