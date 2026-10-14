@@ -111,20 +111,20 @@ export function Curve({ logs, firstDays, today, days = 30 }: { logs: Record<stri
         <path d={line} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         <rect x={pts[pts.length - 1][0] - 5} y={pts[pts.length - 1][1] - 5} width={10} height={10} rx={2} fill="var(--mark)" stroke="var(--ink)" strokeWidth={1.5} />
         <line x1={P} x2={W - P} y1={H - 18} y2={H - 18} stroke="var(--border)" />
-        <text x={P} y={H - 2} fontSize={12} fill="var(--muted-foreground)">
+        <text x={P} y={H - 2} fontSize={12} fill="var(--ink-3)">
           {start.slice(5).replace("-", "/")}
         </text>
-        <text x={W - P} y={H - 2} fontSize={12} fill="var(--muted-foreground)" textAnchor="end">
+        <text x={W - P} y={H - 2} fontSize={12} fill="var(--ink-3)" textAnchor="end">
           今天
         </text>
       </svg>
       <div className="mt-2 flex flex-wrap gap-4 text-xs text-ink-3">
         <span className="flex items-center gap-1.5">
-          <i className="inline-block h-[3px] w-4 rounded bg-ink" />
+          <i className="inline-block h-[2px] w-4 bg-ink" />
           累计学过 {cum[cum.length - 1]} 词
         </span>
         <span className="flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-sm bg-know/40" />
+          <i className="inline-block size-2.5 rounded-[2px] bg-ink-3/30" />
           每日学习+复习
         </span>
       </div>
@@ -174,7 +174,8 @@ export function Heatmap({
     if (v < 60) return 3;
     return 4;
   };
-  const shade = ["bg-paper-2", "bg-ink", "bg-ink", "bg-ink", "bg-ink"];
+  // 12.0 · 五档墨色：纸 → 淡墨 → 中墨 → 深墨 → 墨；打卡的日子是格子中间一小块荧光笔
+  const shade = ["bg-paper-2", "bg-ink/20", "bg-ink/40", "bg-ink/65", "bg-ink"];
   const months: { col: number; label: string }[] = [];
   cols.forEach((c, k) => {
     const first = c.find((d) => d.endsWith("-01"));
@@ -211,13 +212,13 @@ export function Heatmap({
                       aria-label={onPick && !future ? `${d} 当日回看` : undefined}
                       onClick={onPick && !future ? () => onPick(d) : undefined}
                       className={cn(
-                        "relative size-[14px] rounded-[4px]",
-                        onPick && !future && "cursor-pointer hover:ring-2 hover:ring-ink",
-                        future ? "bg-transparent" : checked && !lv ? "bg-ink" : shade[lv],
-                        d === today && "ring-2 ring-foreground/70 ring-offset-1 ring-offset-card",
+                        "relative size-[14px] rounded-[2px]",
+                        onPick && !future && "cursor-pointer hover:outline hover:outline-2 hover:outline-ink",
+                        future ? "bg-transparent outline outline-1 -outline-offset-1 outline-rule" : checked && !lv ? "bg-ink/20" : shade[lv],
+                        d === today && "outline outline-[1.5px] outline-offset-1 outline-ink",
                       )}
                     >
-                      {checked && <span className="absolute inset-[4px] rounded-full bg-paper-3/90 dark:bg-paper-3/80" />}
+                      {checked && <span className="absolute inset-[3.5px] rounded-[1px] bg-mark" />}
                     </div>
                   );
                 })}
@@ -226,17 +227,17 @@ export function Heatmap({
           </div>
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between text-[0.6875rem] text-ink-3">
+      <div className="mt-3 flex items-center justify-between border-t border-rule pt-2 text-[0.6875rem] text-ink-3">
         <span className="flex items-center gap-1.5">
-          <span className="relative inline-block size-3 rounded-[3px] bg-ink">
-            <span className="absolute inset-[3.5px] rounded-full bg-paper-3/90" />
+          <span className="relative inline-block size-3 rounded-[2px] bg-ink/40">
+            <span className="absolute inset-[3px] rounded-[1px] bg-mark" />
           </span>
           已打卡
         </span>
         <span className="flex items-center gap-1">
           少
           {shade.map((s) => (
-            <i key={s} className={cn("inline-block size-3 rounded-[3px]", s)} />
+            <i key={s} className={cn("inline-block size-3 rounded-[2px]", s)} />
           ))}
           多
         </span>
@@ -343,7 +344,7 @@ export function ScoreLine({ scores, labels, testid }: { scores: number[]; labels
         <g key={k}>
           <circle cx={x(k)} cy={y(v)} r={k === n - 1 ? 6 : 3.5} fill={k === n - 1 ? "var(--mark)" : "var(--card)"} stroke="var(--ink)" strokeWidth={1.75} data-score={v} />
           {(k === n - 1 || n <= 8) && (
-            <text x={x(k)} y={y(v) - 11} fontSize={12} fontWeight={700} textAnchor="middle" fill="var(--foreground)">
+            <text x={x(k)} y={y(v) - 11} fontSize={15} textAnchor="middle" fill="var(--ink)" fontFamily="var(--font-serif)">
               {v}
             </text>
           )}
