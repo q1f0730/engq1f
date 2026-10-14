@@ -149,15 +149,16 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
   return (
     <>
       <BottomSheet open={phase.k === "pass"} onOpenChange={(v) => !v && finish()} title="这份备份设了口令" testid="import-pass-sheet">
-        <p className="text-[0.8125rem] text-ink-3">输入导出时设的口令解开备份（AES-GCM 加密，只在本机解密）。</p>
+        <p className="text-[0.8125rem] text-ink-2">输入导出时设的口令解开备份（AES-GCM 加密，只在本机解密）。</p>
         <form
-          className="mt-3"
+          className="mt-4"
           onSubmit={(e) => {
             e.preventDefault();
             void unlock();
           }}
         >
-          <div className="flex items-center gap-2 rounded-2xl bg-paper-2 px-3">
+          {/* 口令框：一条墨色下划线，不是灰底胶囊 */}
+          <div className="flex items-center gap-2 border-b-[1.5px] border-ink">
             <Lock className="size-4 shrink-0 text-ink-3" />
             <input
               type={show ? "text" : "password"}
@@ -168,9 +169,9 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
               aria-label="备份口令"
               placeholder="备份口令"
               autoComplete="off"
-              className="h-12 min-w-0 flex-1 bg-transparent text-base outline-none"
+              className="h-12 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-ink-3"
             />
-            <button type="button" onClick={() => setShow(!show)} aria-label={show ? "隐藏口令" : "显示口令"} className="grid size-8 place-items-center text-ink-3">
+            <button type="button" onClick={() => setShow(!show)} aria-label={show ? "隐藏口令" : "显示口令"} className="press grid size-10 place-items-center rounded-md text-ink-3 hover:text-ink">
               {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
@@ -179,7 +180,7 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
               {err}
             </p>
           )}
-          <button type="submit" disabled={!pass || busy} data-testid="import-pass-go" className="press mt-4 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 disabled:opacity-50 hover:bg-ink-2">
+          <button type="submit" disabled={!pass || busy} data-testid="import-pass-go" className="press mt-5 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2 disabled:opacity-50">
             {busy ? "解密中…" : "解开备份"}
           </button>
         </form>
@@ -188,13 +189,19 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
       <BottomSheet open={phase.k === "choose"} onOpenChange={(v) => !v && finish()} title="怎么恢复这份备份？" testid="import-choose">
         {remote && (
           <>
-            <div className="grid grid-cols-2 gap-2 text-center" data-testid="import-compare">
+            {/* 两边对照：备份 | 这台设备，像账本的两栏 */}
+            <div className="grid grid-cols-2 divide-x divide-rule border-y border-ink py-3" data-testid="import-compare">
               <Side label="备份" words={Object.keys(remote.cards).length} days={remote.checkins.length} sub={phase.k === "choose" && phase.at ? `导出于 ${fmtDate(dayKey(new Date(phase.at)), true)}` : "导出时间未知"} />
               <Side label="这台设备" words={Object.keys(local.cards).length} days={local.checkins.length} sub="当前记录" />
             </div>
             {bad && (
-              <p className="mt-3 flex gap-2 rounded-2xl bg-vague-soft px-3 py-2.5 text-xs font-medium text-vague" data-testid="import-dropped" data-n={phase.k === "choose" ? phase.rep.dropped.length : 0} data-salvaged={phase.k === "choose" ? (phase.rep.salvaged ?? "") : ""}>
-                <TriangleAlert className="mt-px size-4 shrink-0" />
+              <p
+                className="mt-3 flex gap-2 border-l-2 border-vague py-0.5 pl-3 text-[0.75rem] font-medium text-ink-2"
+                data-testid="import-dropped"
+                data-n={phase.k === "choose" ? phase.rep.dropped.length : 0}
+                data-salvaged={phase.k === "choose" ? (phase.rep.salvaged ?? "") : ""}
+              >
+                <TriangleAlert className="mt-px size-4 shrink-0 text-vague" />
                 {phase.k === "choose" && phase.rep.salvaged !== undefined ? `${bad}，坏掉的部分丢掉了。` : `备份里有坏数据：${bad}。`}
               </p>
             )}
@@ -207,12 +214,12 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
                 await applyMerge(remote);
                 finish();
               }}
-              className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-ink p-4 text-left text-paper-3"
+              className="press mt-5 flex w-full items-center gap-3 rounded-xl bg-ink p-4 text-left text-paper-3 hover:bg-ink-2"
             >
-              <GitMerge className="size-6 shrink-0" />
+              <GitMerge className="size-5 shrink-0" />
               <span className="min-w-0">
                 <b className="block text-[0.9375rem]">合并两台设备的记录</b>
-                <span className="block text-xs opacity-85">每个词取最近复习的那份；日志、打卡、生词本、词单取并集</span>
+                <span className="block text-[0.75rem] opacity-85">每个词取最近复习的那份；日志、打卡、生词本、词单取并集</span>
               </span>
             </button>
             <button
@@ -231,17 +238,17 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
                 finish();
               }}
               className={cn(
-                "mt-2 flex w-full items-center gap-3 rounded-2xl border p-4 text-left",
-                risky ? "border-destructive bg-destructive/10" : "border-rule",
-                risky && sure && "bg-destructive text-destructive-foreground",
+                "press mt-2 flex w-full items-center gap-3 rounded-xl p-4 text-left ring-inset",
+                risky ? "ring-[1.5px] ring-forget" : "ring-1 ring-rule-strong hover:bg-paper-2",
+                risky && sure && "bg-forget text-paper-3",
               )}
             >
-              <Replace className={cn("size-6 shrink-0", risky && sure ? "" : "text-destructive")} />
+              <Replace className={cn("size-5 shrink-0", risky && sure ? "" : "text-forget")} />
               <span className="min-w-0">
                 <b className="block text-[0.9375rem]" data-testid="import-replace-label">
                   {risky && sure ? `确认覆盖：${Object.keys(local.cards).length} 词 → ${Object.keys(remote.cards).length} 词` : "覆盖这台设备"}
                 </b>
-                <span className={cn("block text-xs", risky && sure ? "opacity-90" : risky ? "font-semibold text-destructive" : "text-ink-3")}>
+                <span className={cn("block text-[0.75rem]", risky && sure ? "opacity-90" : risky ? "font-semibold text-forget" : "text-ink-3")}>
                   {risky
                     ? Object.keys(remote.cards).length === 0
                       ? "备份里一个学习记录都没有，覆盖 = 清空这台设备"
@@ -250,7 +257,7 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
                 </span>
               </span>
             </button>
-            <p className="mt-3 text-xs text-ink-3">动手前会给这台设备自动存一份快照，可以在「数据中心 → 自动快照」回滚。</p>
+            <p className="mt-3 text-[0.75rem] text-ink-3">动手前会给这台设备自动存一份快照，可以在「数据中心 → 自动快照」回滚。</p>
           </>
         )}
       </BottomSheet>
@@ -260,11 +267,14 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
 
 function Side({ label, words, days, sub }: { label: string; words: number; days: number; sub: string }) {
   return (
-    <div className="border-t border-rule pt-2.5 pb-1">
-      <div className="text-xs font-semibold text-ink-3">{label}</div>
-      <div className="tnum mt-1 text-[1.875rem] font-serif leading-none">{words}</div>
-      <div className="text-xs text-ink-3">词 · 打卡 {days} 天</div>
-      <div className="mt-1 text-[0.6875rem] text-ink-3">{sub}</div>
+    <div className="min-w-0 px-3 first:pl-0">
+      <div className="text-[0.75rem] font-medium text-ink-2">{label}</div>
+      <div className="tnum mt-1.5 font-serif text-[2rem] leading-none">
+        {words}
+        <span className="ml-1 font-sans text-[0.75rem] text-ink-3">词</span>
+      </div>
+      <div className="mt-1 text-[0.75rem] text-ink-3">打卡 {days} 天</div>
+      <div className="mt-0.5 text-[0.6875rem] text-ink-3">{sub}</div>
     </div>
   );
 }
