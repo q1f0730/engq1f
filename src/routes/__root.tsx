@@ -71,16 +71,44 @@ export const Route = createRootRoute({
   errorComponent: ErrorView,
 });
 
+/**
+ * 12.0 · 根组件只做两件事：摆版面（有没有底栏、提示条放哪），以及挂上几个「后台」钩子。
+ * 每个钩子一件事，逻辑和 11.x 一样，只是从一个长函数里拆出来了。
+ */
 function Root() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const st = useApp();
-  const booted = useRef(false);
-  const theme = st.settings.theme;
   const bare = BARE.some((p) => path.startsWith(p));
-  // 11.1 · 有弹层开着时 toast 挪到顶部，不挡弹层底部的主按钮
-  const sheetOpen = useSheetOpen();
-  const top = bare || sheetOpen;
-  // 11.1 · 多窗口：别的窗口改了记录 → 已同步 / 已合并，提示一次（固定 id 去重）
+  useMultiTabNotice();
+  useAutoCredit(st.onboarded, path);
+  useRetryReset(path);
+  useEffect(() => {
+    // 申请持久化存储，避免浏览器清理学习记录
+    void requestPersist();
+  }, []);
+  useBadgeUnlocks(st);
+  useAutoSnapshot(st.onboarded);
+  // 学习提醒（到点发通知）与图标角标（待复习数）
+  useReminder(st.settings.remindAt ?? "", st.onboarded);
+  useAppBadge(st);
+  return (
+    <>
+      {bare ? (
+        <Outlet />
+      ) : (
+        <AppShell sub={SUB.some((p) => path.startsWith(p))}>
+          <Outlet />
+        </AppShell>
+      )}
+      <UpdatePrompt bare={bare} />
+      <MilestoneOverlay />
+      <ToastLayer bare={bare} theme={st.settings.theme} />
+    </>
+  );
+}
+
+/** 11.1 · 多窗口：别的窗口改了记录 → 已同步 / 已合并，提示一次（固定 id 去重） */
+function useMultiTabNotice() {
   useEffect(
     () =>
       onExternalChange((why) =>
@@ -92,9 +120,12 @@ function Root() {
       ),
     [],
   );
-  // 11.3 · 任务达标 = 打卡：打开（或切回前台）时把最近几天达标却没点打卡的日子补上，并说一声
+}
+
+/** 11.3 · 任务达标 = 打卡：打开（或切回前台）时把最近几天达标却没点打卡的日子补上，并说一声 */
+function useAutoCredit(onboarded: boolean, path: string) {
   useEffect(() => {
-    if (!st.onboarded) return;
+    if (!onboarded) return;
     const run = () => {
       const d = today();
       const r = creditMissed(d);
@@ -116,35 +147,45 @@ function Root() {
       window.removeEventListener("focus", vis);
     };
     // 换页面时也看一眼（学完一组、过了 0 点直接点回首页）
-  }, [st.onboarded, path]);
-  // 11.3 · 页面成功打开了：清掉「加载失败自动重试」的计数
+  }, [onboarded, path]);
+}
+
+/** 11.3 · 页面成功打开了：清掉「加载失败自动重试」的计数 */
+function useRetryReset(path: string) {
   useEffect(() => {
     const t = setTimeout(() => {
       if (!document.querySelector('[data-testid="load-failed"]')) clearRetry();
     }, 1500);
     return () => clearTimeout(t);
   }, [path]);
-  // 申请持久化存储，避免浏览器清理学习记录
-  useEffect(() => {
-    void requestPersist();
-  }, []);
-  // 成就：状态变化时检查有没有新达成的，记下解锁日期并提示
+}
+
+/**
+ * 成就：状态变化时检查有没有新达成的，记下解锁日期并提示。
+ * 12.0 · 「第一次看到已完成引导的记录」那一轮一律静默补记：
+ * 以前用「组件挂载后的第一轮」判断启动，但记录可能在挂载之后才变成已引导
+ * （另一个窗口写入、先停在引导页再载入备份），那时旧版会把早就达成的成就当成新解锁弹出来。
+ */
+function useBadgeUnlocks(st: ReturnType<typeof useApp>) {
+  const settled = useRef(false);
   useEffect(() => {
     if (!st.onboarded) return;
+    const first = !settled.current;
+    settled.current = true;
     const ids = newlyEarned(badgeCtx(st, getWordsSync()?.list.length ?? 0), st.badges ?? {});
     if (!ids.length) return;
     unlockBadges(ids, today());
     // 打开应用时就已达成的（例如从旧版本升级）：静默补记，不弹提示
-    if (!booted.current) return;
+    if (first) return;
     const names = ids.map((id) => BADGES.find((b) => b.id === id)?.name).filter(Boolean);
     toast.success(`解锁成就：${names.join("、")}`, { description: "去「统计 → 成就」看看", duration: 2600 });
   }, [st.cards, st.checkins, st.quizzes, st.onboarded, st.badges, st.settings.restDay]);
+}
+
+/** v11 · 自动快照：每天第一次打开（或切回前台）时存一份，延后执行，不占首屏 */
+function useAutoSnapshot(onboarded: boolean) {
   useEffect(() => {
-    booted.current = true;
-  }, []);
-  // v11 · 自动快照：每天第一次打开（或切回前台）时存一份，延后执行，不占首屏
-  useEffect(() => {
-    if (!st.onboarded) return;
+    if (!onboarded) return;
     const run = () => {
       const s = getState();
       if (!Object.keys(s.cards).length && !s.checkins.length) return;
@@ -159,12 +200,19 @@ function Root() {
       clearTimeout(t);
       document.removeEventListener("visibilitychange", vis);
     };
-  }, [st.onboarded]);
-  // 11.3 · 提示条：第一次 toast 时加载；首页空闲 4 秒后也预热一下（第一次提示不用等下载）
-  const toasterOn = useToasterWanted();
+  }, [onboarded]);
+}
+
+/**
+ * 提示条层。11.3 · 第一次 toast 时才加载 sonner；首页空闲 4 秒后、或第一次点按时预热。
+ * 有底栏的页面：底部居中、浮在标签栏之上；学习/测试页底部是作答按钮，或者有弹层开着（11.1），就放顶部（让开刘海）。
+ */
+function ToastLayer({ bare, theme }: { bare: boolean; theme: ReturnType<typeof useApp>["settings"]["theme"] }) {
+  const sheetOpen = useSheetOpen();
+  const top = bare || sheetOpen;
+  const on = useToasterWanted();
   useEffect(() => {
     const t = setTimeout(wantToaster, 4000);
-    // 第一次点按就开始加载（点下去到松手之间就下载完了，提示几乎不用等）
     window.addEventListener("pointerdown", wantToaster, { once: true, passive: true });
     window.addEventListener("keydown", wantToaster, { once: true });
     return () => {
@@ -173,48 +221,30 @@ function Root() {
       window.removeEventListener("keydown", wantToaster);
     };
   }, []);
-  // 学习提醒（到点发通知）与图标角标（待复习数）
-  useReminder(st.settings.remindAt ?? "", st.onboarded);
-  useAppBadge(st);
+  if (!on) return null;
+  const offset = top ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" };
   return (
-    <>
-      {bare ? <Outlet /> : <AppShell sub={SUB.some((p) => path.startsWith(p))}><Outlet /></AppShell>}
-      <UpdatePrompt bare={bare} />
-      <MilestoneOverlay />
-      {/* 有底栏的页面：底部居中、浮在标签栏之上；学习/测试页底部是作答按钮，放顶部（让开刘海） */}
-      {toasterOn && (
-        <Suspense fallback={null}>
-          <Toaster
-            position={top ? "top-center" : "bottom-center"}
-            offset={top ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
-            mobileOffset={top ? { top: "var(--toast-top)" } : { bottom: "var(--toast-bottom)" }}
-            theme={resolvedTheme(theme)}
-            duration={1600}
-          />
-        </Suspense>
-      )}
-    </>
+    <Suspense fallback={null}>
+      <Toaster position={top ? "top-center" : "bottom-center"} offset={offset} mobileOffset={offset} theme={resolvedTheme(theme)} duration={1600} />
+    </Suspense>
   );
 }
 
-/** 新版本已下载、等待接管时的小提示 */
+/** 新版本已下载、等待接管时的小提示：一张浮起的纸条，左边一小块荧光笔 */
 function UpdatePrompt({ bare }: { bare: boolean }) {
   const ready = useSwUpdate();
   if (!ready) return null;
   return (
-    <div
-      className={cn(
-        "pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4",
-        bare ? "top-[var(--toast-top)]" : "bottom-[var(--toast-bottom)]",
-      )}
-    >
+    <div className={cn("pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4", bare ? "top-[var(--toast-top)]" : "bottom-[var(--toast-bottom)]")}>
       <button
         type="button"
         onClick={applyUpdate}
         data-testid="sw-update"
-        className="pop pointer-events-auto flex items-center gap-2 rounded-lg border border-rule bg-paper-3 px-4 py-2.5 text-[0.8125rem] font-semibold"
+        className="float-shell pop pointer-events-auto flex h-11 items-center gap-2.5 rounded-lg pl-2 pr-4 text-[0.8125rem] font-semibold"
       >
-        <RefreshCw className="size-4 text-ink" />
+        <span className="grid size-7 place-items-center rounded-md bg-mark text-mark-ink">
+          <RefreshCw className="size-4" />
+        </span>
         有新版本，点击刷新
       </button>
     </div>
