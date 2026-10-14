@@ -470,6 +470,7 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
           <button
             onClick={() => resetWord(word.w)}
             disabled={!card}
+            data-testid="sheet-reset"
             className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2 disabled:opacity-40"
           >
             <span className="font-serif text-[1rem] leading-4" aria-hidden>
