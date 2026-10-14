@@ -2,46 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { addDays, diffDays, type DayLog } from "@/lib/srs";
 import { cn } from "@/lib/utils";
 
-export function Ring({
-  value,
-  size = 120,
-  stroke = 12,
-  className,
-  track = "color-mix(in oklab, currentColor 18%, transparent)",
-  children,
-}: {
-  value: number;
-  size?: number;
-  stroke?: number;
-  className?: string;
-  track?: string;
-  children?: React.ReactNode;
-}) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const v = Math.max(0, Math.min(1, value));
-  return (
-    <div className={cn("relative inline-grid place-items-center", className)} style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90" aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track} strokeWidth={stroke} />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - v)}
-          style={{ transition: "stroke-dashoffset 700ms cubic-bezier(.2,.8,.2,1)" }}
-        />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center">{children}</div>
-    </div>
-  );
-}
-
+/**
+ * 12.0 · 柱状读数（统计 → 本周）：像尺子上的刻度。
+ * 每根柱子上面写数字（衬线），下面写日期；普通柱是淡墨，「今天」是荧光笔 + 墨色描边。底下一条墨色基线。
+ */
 export function Bars({
   data,
   height = 120,
@@ -54,81 +18,84 @@ export function Bars({
   testid?: string;
 }) {
   const max = Math.max(1, ...data.map((d) => d.value));
+  const h = (v: number) => Math.max(v ? 6 : 2, (v / max) * height);
   return (
-    <div className={cn("flex items-end gap-2", className)} style={{ height: height + 40 }} data-testid={testid}>
-      {data.map((d, k) => (
-        <div key={k} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-          <span className={cn("tnum font-serif text-[1rem] leading-none", d.strong ? "text-ink" : "text-ink-3")}>{d.value}</span>
-          <div className="flex w-full justify-center" style={{ height }}>
-            <div
-              // 12.0 · 单色柱：普通 = 墨色淡一档，「今天」= 荧光笔 + 墨色描边
-              className={cn("w-full max-w-8 origin-bottom self-end rounded-t-[3px]", d.strong ? "bg-mark shadow-[inset_0_0_0_1.5px_var(--ink)]" : "bg-ink-3/45")}
-              style={{ height: `${Math.max(d.value ? 6 : 2, (d.value / max) * height)}px`, transition: "height 700ms var(--ease-spring)" }}
+    <figure className={cn("min-w-0", className)} data-testid={testid}>
+      <ol className="grid items-end gap-2 border-b border-ink" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))`, height: height + 22 }}>
+        {data.map((d, k) => (
+          <li key={k} className="flex h-full min-w-0 flex-col items-center justify-end gap-1.5">
+            <span className={cn("tnum font-serif text-[1rem] leading-none", d.strong ? "text-ink" : "text-ink-3")}>{d.value}</span>
+            <span
+              className={cn("block w-full max-w-8 rounded-t-[3px]", d.strong ? "bg-mark shadow-[inset_0_0_0_1.5px_var(--ink)]" : "bg-ink-3/45")}
+              style={{ height: h(d.value), transition: "height 700ms var(--ease-spring)" }}
             />
-          </div>
-          <span className={cn("truncate text-[0.6875rem]", d.strong ? "font-semibold text-ink" : "text-ink-3")}>{d.label}</span>
-        </div>
-      ))}
-    </div>
+          </li>
+        ))}
+      </ol>
+      <figcaption className="mt-1.5 grid gap-2" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }}>
+        {data.map((d, k) => (
+          <span key={k} className={cn("truncate text-center text-[0.6875rem]", d.strong ? "font-semibold text-ink" : "text-ink-3")}>
+            {d.label}
+          </span>
+        ))}
+      </figcaption>
+    </figure>
   );
 }
 
-/** 30 天学习曲线：柱 = 每日学习量，线 = 累计学会的词 */
+/**
+ * 30 天学习曲线。12.0 · 墨线 = 累计学过的词（只有它是主角），每天的学习量退成线下的一排细刻度；
+ * 终点一个荧光笔小方块，旁边写总数。没有面积填充，没有网格。
+ */
 export function Curve({ logs, firstDays, today, days = 30 }: { logs: Record<string, DayLog>; firstDays: string[]; today: string; days?: number }) {
   const W = 600;
   const H = 180;
-  const P = 6;
+  const PAD = 6;
+  const BASE = H - 20;
   const range = Array.from({ length: days }, (_, k) => addDays(today, k - days + 1));
   const daily = range.map((d) => (logs[d]?.n ?? 0) + (logs[d]?.r ?? 0));
   const start = range[0];
-  const before = firstDays.filter((d) => d < start).length;
   const perDay = new Map<string, number>();
   for (const d of firstDays) perDay.set(d, (perDay.get(d) ?? 0) + 1);
-  let acc = before;
+  let acc = firstDays.filter((d) => d < start).length;
   const cum = range.map((d) => (acc += perDay.get(d) ?? 0));
-  const maxBar = Math.max(1, ...daily);
-  const maxCum = Math.max(1, ...cum);
-  const bw = (W - P * 2) / days;
-  const pts = cum.map((v, k) => [P + bw * k + bw / 2, H - 18 - (v / maxCum) * (H - 40)] as const);
-  const line = pts.map((p, k) => `${k ? "L" : "M"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-  const area = `${line} L${pts[pts.length - 1][0]},${H - 18} L${pts[0][0]},${H - 18} Z`;
+  const topBar = Math.max(1, ...daily);
+  const topCum = Math.max(1, ...cum);
+  const step = (W - PAD * 2) / days;
+  const cx = (k: number) => PAD + step * k + step / 2;
+  const cy = (v: number) => BASE - 8 - (v / topCum) * (BASE - 40);
+  const path = cum.map((v, k) => `${k ? "L" : "M"}${cx(k).toFixed(1)},${cy(v).toFixed(1)}`).join(" ");
+  const end = { x: cx(days - 1), y: cy(cum[days - 1]) };
   return (
-    <div>
+    <figure>
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="30 天学习曲线">
         {daily.map((v, k) => (
-          <rect
-            key={k}
-            x={P + bw * k + bw * 0.18}
-            y={H - 18 - (v / maxBar) * (H - 60)}
-            width={bw * 0.64}
-            height={(v / maxBar) * (H - 60)}
-            rx={2}
-            fill="var(--ink-3)"
-            opacity={0.3}
-          />
+          <line key={k} x1={cx(k)} x2={cx(k)} y1={BASE} y2={BASE - 4 - (v / topBar) * 28} stroke="var(--ink-3)" strokeOpacity={0.55} strokeWidth={step * 0.42} />
         ))}
-        <path d={area} fill="var(--mark)" opacity={0.35} />
-        <path d={line} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-        <rect x={pts[pts.length - 1][0] - 5} y={pts[pts.length - 1][1] - 5} width={10} height={10} rx={2} fill="var(--mark)" stroke="var(--ink)" strokeWidth={1.5} />
-        <line x1={P} x2={W - P} y1={H - 18} y2={H - 18} stroke="var(--border)" />
-        <text x={P} y={H - 2} fontSize={12} fill="var(--ink-3)">
+        <line x1={PAD} x2={W - PAD} y1={BASE} y2={BASE} stroke="var(--ink)" />
+        <path d={path} fill="none" stroke="var(--ink)" strokeWidth={2.25} strokeLinejoin="round" strokeLinecap="round" />
+        <rect x={end.x - 5} y={end.y - 5} width={10} height={10} rx={2} fill="var(--mark)" stroke="var(--ink)" strokeWidth={1.5} />
+        <text x={end.x - 12} y={end.y - 12} fontSize={20} textAnchor="end" fill="var(--ink)" fontFamily="var(--font-serif)">
+          {cum[days - 1]}
+        </text>
+        <text x={PAD} y={H - 3} fontSize={12} fill="var(--ink-3)">
           {start.slice(5).replace("-", "/")}
         </text>
-        <text x={W - P} y={H - 2} fontSize={12} fill="var(--ink-3)" textAnchor="end">
+        <text x={W - PAD} y={H - 3} fontSize={12} fill="var(--ink-3)" textAnchor="end">
           今天
         </text>
       </svg>
-      <div className="mt-2 flex flex-wrap gap-4 text-xs text-ink-3">
+      <figcaption className="mt-2 flex flex-wrap gap-4 text-[0.75rem] text-ink-3">
         <span className="flex items-center gap-1.5">
           <i className="inline-block h-[2px] w-4 bg-ink" />
-          累计学过 {cum[cum.length - 1]} 词
+          累计学过 {cum[days - 1]} 词
         </span>
         <span className="flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-[2px] bg-ink-3/30" />
+          <i className="inline-block h-2.5 w-1 bg-ink-3/55" />
           每日学习+复习
         </span>
-      </div>
-    </div>
+      </figcaption>
+    </figure>
   );
 }
 
@@ -314,53 +281,50 @@ export function WeekStrip({
   );
 }
 
-/** 模拟小测成绩曲线：0~100 分，虚线 = 60 分 */
+/**
+ * 模拟小测成绩曲线：0~100 分。12.0 · 只有两条参考线——底线和「及格 60」的虚线（右端标字）；
+ * 点是小圆（最近一次是荧光笔大圆），分数写在点上方，用衬线数字。
+ */
 export function ScoreLine({ scores, labels, testid }: { scores: number[]; labels: string[]; testid?: string }) {
   const W = 600;
   const H = 170;
-  const L = 30;
-  const R = 14;
-  const T = 26;
-  const B = 24;
-  const PAD = 14;
+  const LEFT = 12;
+  const RIGHT = 44;
+  const TOP = 28;
+  const BOTTOM = 24;
   const n = scores.length;
-  const x = (k: number) => (n === 1 ? (L + W - R) / 2 : L + PAD + ((W - L - R - PAD * 2) * k) / (n - 1));
-  const y = (v: number) => T + (H - T - B) * (1 - v / 100);
-  const line = scores.map((v, k) => `${k ? "L" : "M"}${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-  const area = n > 1 ? `${line} L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z` : "";
+  const span = W - LEFT - RIGHT;
+  const x = (k: number) => (n === 1 ? LEFT + span / 2 : LEFT + 12 + ((span - 24) * k) / (n - 1));
+  const y = (v: number) => TOP + (H - TOP - BOTTOM) * (1 - v / 100);
+  const path = scores.map((v, k) => `${k ? "L" : "M"}${x(k).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const last = n - 1;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="小测成绩曲线" data-testid={testid} data-points={n}>
-      {[0, 60, 100].map((g) => (
-        <g key={g}>
-          <line x1={L} x2={W - R} y1={y(g)} y2={y(g)} stroke="var(--border)" strokeDasharray={g === 60 ? "6 6" : undefined} />
-          <text x={L - 6} y={y(g) + 4} fontSize={12} textAnchor="end" fill="var(--muted-foreground)">
-            {g}
-          </text>
-        </g>
-      ))}
-      {area && <path d={area} fill="var(--mark)" opacity={0.3} />}
-      {n > 1 && <path d={line} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
+      <line x1={LEFT} x2={W - RIGHT} y1={y(0)} y2={y(0)} stroke="var(--ink)" />
+      <line x1={LEFT} x2={W - RIGHT} y1={y(60)} y2={y(60)} stroke="var(--rule-strong)" strokeDasharray="5 6" />
+      <text x={W - RIGHT + 6} y={y(60) + 4} fontSize={12} fill="var(--ink-3)">
+        及格
+      </text>
+      {n > 1 && <path d={path} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
       {scores.map((v, k) => (
         <g key={k}>
-          <circle cx={x(k)} cy={y(v)} r={k === n - 1 ? 6 : 3.5} fill={k === n - 1 ? "var(--mark)" : "var(--card)"} stroke="var(--ink)" strokeWidth={1.75} data-score={v} />
-          {(k === n - 1 || n <= 8) && (
-            <text x={x(k)} y={y(v) - 11} fontSize={15} textAnchor="middle" fill="var(--ink)" fontFamily="var(--font-serif)">
+          <circle cx={x(k)} cy={y(v)} r={k === last ? 6.5 : 3.5} fill={k === last ? "var(--mark)" : "var(--paper-3)"} stroke="var(--ink)" strokeWidth={1.75} data-score={v} />
+          {(k === last || n <= 8) && (
+            <text x={x(k)} y={y(v) - 12} fontSize={k === last ? 18 : 14} textAnchor="middle" fill={k === last ? "var(--ink)" : "var(--ink-2)"} fontFamily="var(--font-serif)">
               {v}
             </text>
           )}
         </g>
       ))}
       {n > 0 && (
-        <>
-          <text x={x(0)} y={H - 4} fontSize={12} textAnchor={n === 1 ? "middle" : "start"} fill="var(--muted-foreground)">
-            {labels[0]}
-          </text>
-          {n > 1 && (
-            <text x={x(n - 1)} y={H - 4} fontSize={12} textAnchor="end" fill="var(--muted-foreground)">
-              {labels[n - 1]}
-            </text>
-          )}
-        </>
+        <text x={x(0)} y={H - 4} fontSize={12} textAnchor={n === 1 ? "middle" : "start"} fill="var(--ink-3)">
+          {labels[0]}
+        </text>
+      )}
+      {n > 1 && (
+        <text x={x(last)} y={H - 4} fontSize={12} textAnchor="end" fill="var(--ink-3)">
+          {labels[last]}
+        </text>
       )}
     </svg>
   );

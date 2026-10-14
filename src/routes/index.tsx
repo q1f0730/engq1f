@@ -27,7 +27,7 @@ import {
 } from "@/components/app/icons";
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
-import { Meter, Ring, WeekStrip } from "@/components/app/charts";
+import { Meter, WeekStrip } from "@/components/app/charts";
 import { Logo, Spinner } from "@/components/app/shell";
 import { Act, Note, Tag, actClass } from "@/components/app/kit";
 import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
