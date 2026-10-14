@@ -1,6 +1,6 @@
 # 四级单词打卡 · 更新日志
 
-## v13.0.0 · 真词典 + 乱序 / 基础词 / 难度 / 例句 / 同义词 / 登录同步（2026-10-14）
+## v13.0.0 · 真词典 + 乱序 / 基础词 / 难度 / 例句 / 同义词 / 双站登录同步（2026-10-15）
 - **视觉「A 真词典（收敛版）」**：纸 #F7F3EA（极淡的纸纹）+ 墨 #1C2333 + 细线 #DDD5C5；中文标题宋体（自托管 Noto Serif SC 标题字子集 + 系统宋体兜底），英文词头和数字 Instrument Serif；唯一的强调色是一道手画的黄色荧光笔（#F5E27A，multiply），只给「今天」「完成了的」和例句里的目标词。学习卡是一张索引卡：横格线、一条细红边线、底下两层纸边；圆角统一 4px。评分键「认识」是细长墨色主按钮，其余细线框，不再用语义色条。深色单独调。
 - **乱序**：新词按一个固定的种子乱序（每台设备 / 每个账号一个），顺序稳定、刷新不变，不再按字母从 a 开始；登录后第二台设备沿用账号的种子。设置里也能选「全部乱序」。
 - **基础词默认隐藏**：人教版小学 / 初中词表 + 词频 + 词长的收紧规则（见 `data-licenses/README.md`），4544 个词 → 4182 个，362 个基础词默认不出现在学习、词库、统计里；「我的 → 包含基础词」可以打开。government、information、degree 这类中等词留在词库里。已经学过的基础词照常复习，不丢记录。
@@ -9,7 +9,12 @@
 - **离线例句预取**：浏览器空闲时把 26 个例句分片预取进 service worker 缓存，之后断网翻面照样有例句。
 - **同义词**：WordNet 3.0 + Moby Thesaurus II，只留词库里有、且两边中文释义有相同两字片段的词；可见的 4182 个词里 66.9% 有同义词，点一下跳到那个词。
 - **登录 + 云同步（Meoo Cloud / Supabase）**：邮箱 + 密码注册（6 位邮件验证码）、登录、找回密码（6 位找回码）。不登录一切照旧（本机 localStorage，离线可用，没登录不下载 supabase-js）。第一次登录把本机进度并进账号，两边都不丢；之后每个词按最后作答时间更晚的赢，改动 4 秒后增量上传，回到前台 / 联网时拉一次。**墓碑**：重置 / 批量重置 / 撤销第一次作答 / 清空 → 上传 `card = null` 的一行，别的设备同步后也删掉、不会复活；撤销删除记成「复活」，比旧墓碑新。服务端 `vocab_push_cards` 按时间戳把关，RLS 保证只能读写自己的行。`.env` 有 `SUPABASE_URL` / `SUPABASE_ANON_KEY` 时默认开，`CET4V_CLOUD=0` 强制纯本机版。详见 `docs/cloud.md`。
-- **Cloudflare Pages 支持**：`public/_headers`（sw.js / version.json 不缓存、assets 长期缓存）、手动触发的 wrangler workflow、`functions/sb-api` 同域代理（Meoo 网关只认 meoo.run 来源，watercoloreyes.cn 直连会 403）。watercoloreyes.cn（CF Pages）和 gz58y2647ucx.meoo.run 共用同一个 Meoo Cloud。详见 `docs/deploy-cloudflare.md`。
+- **两个独立站点（双后端）**：同一份代码，构建时 `BACKEND=supabase | cloudflare` 选后端，账号和数据**互不相通**，两个都是 push 到 `main` 自动发布。详见 `docs/cloud.md`、`docs/deploy-cloudflare.md`。
+  - **gz58y2647ucx.meoo.run**（`BACKEND=supabase`，默认）：Meoo Cloud（上面那套），`.github/workflows/meoo-deploy.yml` 构建后用 Meoo CLI（`meoo login --ak` + `meoo deploy --skip-build --skip-push --force`）发布。
+  - **watercoloreyes.cn**（`BACKEND=cloudflare`）：Cloudflare Pages + Pages Functions（`functions/api/[[route]].ts` → `server/api.ts`）+ D1（`migrations/d1/0001_init.sql`：users / sessions / cards / profile / auth_attempts / reset_codes，`wrangler.toml` 绑定 `DB`）。邮箱 + 密码，注册即登录；密码 PBKDF2-SHA256（WebCrypto，每用户随机盐，100000 次 = Workers 上限）；会话是 HS256 JWT（`JWT_SECRET`）+ D1 里的 jti，退出 / 改密码即吊销；登录失败按邮箱（15 分钟 5 次）和 IP 限流；每条查询都限定在会话的 user_id（等价于 RLS）；推送由服务端裁决（ts 更晚的赢，ts 相同墓碑赢）。忘记密码默认是说明页（没有邮件服务），设了 `RESEND_API_KEY` 才通过 Resend 发 6 位找回码。由 Cloudflare Pages 的 Git 集成自己构建（`BACKEND=cloudflare pnpm build` → `dist`）。
+  - **前端适配层** `src/lib/backend/`：`Backend` 接口（signUp / signIn / signOut / session / resetPassword / pullCards / pushCards / profile …），Supabase 实现是原来的调用原样搬过去，Cloudflare 实现只用 fetch；`cloud.ts` 只管什么时候同步，合并 / 墓碑规则（`cloud-merge.ts`）没改。后端按构建常量懒加载，另一个不进产物（Cloudflare 构建里没有 supabase-js）。
+  - 删掉了之前的 `functions/sb-api` 同域代理（让 Cloudflare 站点共用 Meoo Cloud 的方案，已作废）。
+  - Service worker 不再缓存 `/api/*`；离线打开时不会因为 Cloudflare Pages 把 `/index.html` 308 到 `/` 而打不开（缓存里重定向过的响应换成干净的）。`public/_headers` 照旧（sw.js / version.json 不缓存、assets 长期缓存）。
 - **测试**：vitest __VITEST__；e2e 全量 __E2E__（main、v2–v11、jobs-r1–r8、v13）；`pnpm typecheck` 通过；首屏 JS gzip __GZIP__。真实云端测试（mail.tm 邮箱注册 → 验证码 → 两个浏览器同步 → 重置墓碑传播 → RLS 挡住另一个用户 → 清理）20/20 通过。
 
 ## v12.0.0 · taste-skill 重设计「荧光笔」（2026-10-14）
