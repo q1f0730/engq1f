@@ -277,7 +277,7 @@ export function WeekStrip({
   const monday = addDays(today, -dow);
   return (
     // 11.3 · 圆圈直径跟着列宽走（最大 2.25rem）：系统字号放大到 130% 时也不挤在一起
-    <div className="grid grid-cols-7 gap-1.5" data-testid="week-strip">
+    <div className="grid grid-cols-7 gap-1" data-testid="week-strip">
       {names.map((n, k) => {
         const d = addDays(monday, k);
         const checked = set.has(d);
@@ -287,22 +287,26 @@ export function WeekStrip({
         const sk = !checked && d <= today && skip ? skip(d) : null;
         const isExam = sk === "exam";
         const isRest = !checked && (isExam || sk === "rest" || (rest >= 0 && new Date(d + "T12:00:00").getDay() === rest) || (!!pause && d >= pause.from && (!pause.until || d < pause.until) && d <= today));
+        const future = d > today;
         return (
           <div key={d} className="flex min-w-0 flex-col items-center gap-1.5" data-day={d} data-state={isPatch ? "patched" : checked ? "checked" : isExam ? "exam" : isRest ? "rest" : studied ? "studied" : "none"}>
             <span className={cn("text-[0.6875rem]", isToday ? "font-semibold text-ink" : "text-ink-3")}>{n}</span>
+            {/* 12.0 · 方格：打卡 = 荧光笔涂满；补卡 = 斜线涂；学了没打卡 = 底部一道；休 / 考 = 虚线框；今天 = 墨色框 */}
             <span
               className={cn(
-                "grid aspect-square w-[calc(100%-2px)] max-w-9 place-items-center rounded-full text-xs font-semibold tnum",
+                "tnum grid aspect-square w-full max-w-10 place-items-center rounded-lg text-[0.8125rem] font-medium",
                 isPatch
-                  ? "bg-ink text-paper-3"
+                  ? "bg-[repeating-linear-gradient(135deg,var(--mark)_0_4px,var(--mark-soft)_4px_7px)] text-mark-ink"
                   : checked
-                  ? "bg-ink text-paper-3"
+                  ? "bg-mark text-mark-ink"
                   : isRest
-                  ? "border-2 border-dashed border-know/50 bg-know-soft text-know"
+                  ? "border border-dashed border-know/60 text-know"
                   : studied
-                    ? "bg-mark-soft text-ink"
-                    : "bg-paper-2 text-ink-3",
-                isToday && !checked && "ring-2 ring-ink",
+                    ? "bg-paper-2 text-ink shadow-[inset_0_-3px_0_var(--mark)]"
+                    : future
+                      ? "text-ink-3/70"
+                      : "bg-paper-2 text-ink-3",
+                isToday && !checked && "ring-[1.5px] ring-ink ring-inset text-ink",
               )}
             >
               {isPatch ? "补" : checked ? "✓" : isExam ? "考" : isRest ? "休" : Number(d.slice(8))}
@@ -369,5 +373,26 @@ export function ScoreLine({ scores, labels, testid }: { scores: number[]; labels
         </>
       )}
     </svg>
+  );
+}
+
+/**
+ * 12.0 · 荧光笔进度条：下沉纸色的槽，荧光黄从左往右填；满了以后右端多一道墨色的收笔。
+ * 宽度变化走 transform（scaleX），不触发布局。
+ */
+export function Meter({ value, className, label }: { value: number; className?: string; label?: string }) {
+  const v = Math.max(0, Math.min(1, value || 0));
+  return (
+    <div
+      className={cn("relative h-2.5 overflow-hidden rounded-[3px] bg-paper-2", className)}
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(v * 100)}
+      aria-label={label}
+    >
+      <div className="absolute inset-0 origin-left bg-mark transition-transform duration-700 ease-[var(--ease-spring)]" style={{ transform: `scaleX(${v})` }} />
+      {v >= 1 && <div className="absolute inset-y-0 right-0 w-1 bg-ink" />}
+    </div>
   );
 }

@@ -28,7 +28,7 @@ import {
 } from "@/components/app/icons";
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
-import { Ring, WeekStrip } from "@/components/app/charts";
+import { Meter, Ring, WeekStrip } from "@/components/app/charts";
 import { Logo, Panel, PanelTitle, Spinner } from "@/components/app/shell";
 import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 import { INSTALL_SNOOZE_DAYS, installVisible } from "@/lib/ux";
@@ -255,114 +255,115 @@ function Today() {
 
   return (
     <div data-testid="today">
-      <div className="flex items-end justify-between gap-3 pb-4 pt-6 md:pt-8">
-        <div>
-          <div className="text-[0.8125rem] font-medium text-ink-3" data-testid="today-date">
+      <header className="flex items-end justify-between gap-3 pb-6 pt-7 md:pt-10">
+        <div className="min-w-0">
+          <div className="text-[0.8125rem] text-ink-3" data-testid="today-date">
             {dateLine}
           </div>
-          <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.015em] md:text-[2rem]">{greeting()}</h1>
+          <h1 className="mt-0.5 text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.02em]">{greeting()}</h1>
         </div>
         <div
-          className={cn(
-            "flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold",
-            s > 0 ? "bg-mark-soft text-ink" : "hidden",
-          )}
+          className={cn("flex items-baseline gap-1 pb-1 text-ink", s > 0 ? "" : "hidden")}
           data-testid="streak"
           data-streak={s}
+          aria-label={`连续 ${s} 天`}
         >
-          <Flame className={cn("size-4", s > 0 && "fill-current")} />
-          <span className="tnum">{s}</span>天
+          <Flame className={cn("size-[15px] translate-y-[2px] text-ink-2", s > 0 && "fill-mark")} />
+          <span className="tnum font-serif text-[1.875rem] leading-none">{s}</span>
+          <span className="text-[0.8125rem] text-ink-3">天</span>
         </div>
-      </div>
+      </header>
 
-      <div className="grid gap-4 md:grid-cols-[1.3fr_1fr] md:gap-5">
-        <div className="min-w-0 space-y-4 md:space-y-5">
+      <div className="grid gap-8">
+        <div className="min-w-0 space-y-8">
           {/* 主卡片：现在该干嘛（11.2 · 第一屏只有这一张；断签提醒并进主卡，不再是单独的红色横幅） */}
           {overFirst ? (
             <ExamOverCard advice={overFirst} index={index} st={st} day={day} streak={s} />
           ) : (
-          <section className="hero-gradient relative overflow-hidden rounded-2xl p-6 text-white" data-testid="hero" data-mode={sum.recovering ? "recover" : sum.paused ? "pause" : sum.examMode ? "exam" : "normal"}>
-            <div className="pointer-events-none absolute -bottom-24 -left-16 size-64 rounded-full bg-white/[0.07]" />
+          <section className="hero-gradient relative overflow-hidden rounded-2xl px-5 pb-5 pt-4" data-testid="hero" data-mode={sum.recovering ? "recover" : sum.paused ? "pause" : sum.examMode ? "exam" : "normal"}>
             {lateOn && <LateStrip sum={sum} streak={s} />}
-            <div className="relative flex items-center justify-between gap-4">
+            <div className="flex items-end justify-between gap-4">
               <div className="min-w-0">
                 {sum.timeMode ? (
                   <>
-                    <div className="text-[0.8125rem] font-semibold text-white/80">今日学习</div>
+                    <div className="text-[0.8125rem] text-ink-3">今日学习</div>
                     <div className="mt-1 flex items-baseline gap-1.5" data-testid="hero-time" data-min={minutes}>
-                      <span className="tnum font-display text-[3.25rem] font-semibold leading-none tracking-[-0.015em]">{minutes}</span>
-                      <span className="tnum text-xl font-semibold text-white/75">/ {sum.goalMin} 分钟</span>
+                      <span className="tnum font-serif text-[4.5rem] leading-[0.82]">{minutes}</span>
+                      <span className="tnum font-serif text-[1.625rem] leading-none text-ink-3">/ {sum.goalMin} 分钟</span>
                     </div>
                   </>
                 ) : reviewDay ? (
                   <>
-                    <div className="text-[0.8125rem] font-semibold text-white/80" data-testid="hero-label">
+                    <div className="text-[0.8125rem] text-ink-3" data-testid="hero-label">
                       {sum.recovering ? "恢复期 · 今天复习" : sum.paused ? "休息中 · 只做维持复习" : sum.examDay ? "今天考试 · 考前热身" : "考前模式 · 只复习"}
                     </div>
                     {sum.reviewed + sum.due === 0 && !sum.recovering ? (
-                      <div className="mt-1 font-display text-[2.125rem] font-semibold leading-tight tracking-[-0.015em]" data-testid="hero-review" data-done={0} data-total={0}>
+                      <div className="mt-2 text-[1.875rem] font-semibold leading-tight tracking-[-0.02em]" data-testid="hero-review" data-done={0} data-total={0}>
                         {sum.paused ? "休息中" : plan.daysLeft === 0 ? "今天考试，加油" : "明天考试"}
                       </div>
                     ) : (
                       <div className="mt-1 flex items-baseline gap-1.5" data-testid="hero-review" data-done={sum.reviewed} data-total={sum.reviewed + sum.due}>
-                        <span className="tnum font-display text-[3.25rem] font-semibold leading-none tracking-[-0.015em]">{sum.reviewed}</span>
-                        <span className="tnum text-xl font-semibold text-white/75">/ {sum.reviewed + sum.due}</span>
+                        <span className="tnum font-serif text-[4.5rem] leading-[0.82]">{sum.reviewed}</span>
+                        <span className="tnum font-serif text-[1.625rem] leading-none text-ink-3">/ {sum.reviewed + sum.due}</span>
                       </div>
                     )}
                   </>
                 ) : (
                   <>
-                    <div className="text-[0.8125rem] font-semibold text-white/80">今日新词</div>
+                    <div className="text-[0.8125rem] text-ink-3">今日新词</div>
                     <div className="mt-1 flex items-baseline gap-1.5">
-                      <span className="tnum font-display text-[3.25rem] font-semibold leading-none tracking-[-0.015em]" data-testid="learned">
+                      <span className="tnum font-serif text-[4.5rem] leading-[0.82]" data-testid="learned">
                         {sum.learned}
                       </span>
-                      <span className="tnum text-xl font-semibold text-white/75">/ {sum.goal}</span>
+                      <span className="tnum font-serif text-[1.625rem] leading-none text-ink-3">/ {sum.goal}</span>
                     </div>
                   </>
                 )}
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[0.8125rem] text-white/85">
-                  {(sum.timeMode || reviewDay) && (
-                    <span data-testid={reviewDay && !sum.timeMode ? "learned" : undefined}>
-                      {sum.timeMode ? `新词 ${sum.learned}` : reviewDay ? (sum.recovering ? (sum.goal ? `新词 ${sum.learned}/${sum.goal}` : "新词暂停") : sum.learned ? `额外新词 ${sum.learned}` : "不排新词") : ""}
-                    </span>
-                  )}
-                  <span data-testid="due-count">待复习 {sum.due}</span>
-                  {!reviewDay && <span>已复习 {sum.reviewed}</span>}
-                  {sum.deferred > 0 && (
-                    <span className="rounded-lg bg-white/18 px-2 text-xs font-semibold" data-testid="deferred">
-                      {sum.recovering ? `顺延 ${sum.deferred}` : sum.examMode || sum.paused ? `其余 ${sum.deferred} 个不急` : `已达上限 · 顺延 ${sum.deferred}`}
-                    </span>
-                  )}
-                </div>
               </div>
               {examIdle || (sum.paused && sum.reviewed + sum.due === 0) ? (
-                <span className="grid size-24 shrink-0 place-items-center rounded-full bg-white/14 ring-1 ring-white/25" data-testid="hero-ring-idle">
-                  {sum.paused ? <Coffee className="size-9" /> : <GraduationCap className="size-10" />}
+                <span className="mb-1 grid size-12 shrink-0 place-items-center rounded-xl bg-paper-2 text-ink-2" data-testid="hero-ring-idle">
+                  {sum.paused ? <Coffee className="size-6" /> : <GraduationCap className="size-6" />}
                 </span>
               ) : (
-                <Ring value={reviewDay && !sum.timeMode ? (sum.reviewed + sum.due ? sum.reviewed / (sum.reviewed + sum.due) : 1) : pct} size={96} stroke={10} className="shrink-0 text-white" track="rgba(255,255,255,0.22)">
-                  <span className="text-[0.8125rem] font-semibold" data-testid="hero-pct">{Math.round((reviewDay && !sum.timeMode ? (sum.reviewed + sum.due ? sum.reviewed / (sum.reviewed + sum.due) : 1) : pct) * 100)}%</span>
-                </Ring>
+                <span className="tnum mb-1 shrink-0 text-[0.875rem] font-medium text-ink-2" data-testid="hero-pct">
+                  {Math.round((reviewDay && !sum.timeMode ? (sum.reviewed + sum.due ? sum.reviewed / (sum.reviewed + sum.due) : 1) : pct) * 100)}%
+                </span>
               )}
             </div>
-            <div className={cn("relative mt-5 grid gap-2.5", (sum.recovering && !sum.goal) || noSecond ? "grid-cols-1" : "grid-cols-[1.4fr_1fr]")} data-testid="hero-actions" data-next={canCheck ? "checkin" : reviewFirst ? "review" : "new"}>
+            {!(examIdle || (sum.paused && sum.reviewed + sum.due === 0)) && (
+              <Meter value={reviewDay && !sum.timeMode ? (sum.reviewed + sum.due ? sum.reviewed / (sum.reviewed + sum.due) : 1) : pct} className="mt-4" />
+            )}
+            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[0.8125rem] text-ink-2">
+              {(sum.timeMode || reviewDay) && (
+                <span data-testid={reviewDay && !sum.timeMode ? "learned" : undefined}>
+                  {sum.timeMode ? `新词 ${sum.learned}` : reviewDay ? (sum.recovering ? (sum.goal ? `新词 ${sum.learned}/${sum.goal}` : "新词暂停") : sum.learned ? `额外新词 ${sum.learned}` : "不排新词") : ""}
+                </span>
+              )}
+              <span data-testid="due-count">待复习 {sum.due}</span>
+              {!reviewDay && <span>已复习 {sum.reviewed}</span>}
+              {sum.deferred > 0 && (
+                <span className="rounded-[3px] bg-paper-2 px-1.5 text-[0.75rem] font-medium text-ink-2" data-testid="deferred">
+                  {sum.recovering ? `顺延 ${sum.deferred}` : sum.examMode || sum.paused ? `其余 ${sum.deferred} 个不急` : `已达上限 · 顺延 ${sum.deferred}`}
+                </span>
+              )}
+            </div>
+            <div className={cn("mt-5 grid gap-2", (sum.recovering && !sum.goal) || noSecond ? "grid-cols-1" : "grid-cols-[1.5fr_1fr]")} data-testid="hero-actions" data-next={canCheck ? "checkin" : reviewFirst ? "review" : "new"}>
               {canCheck ? (
                 <button
                   type="button"
                   onClick={doCheckIn}
                   data-testid="checkin"
-                  className="flex h-13 items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-base font-semibold text-[oklch(0.5_0.19_30)] transition active:scale-[0.98]"
+                  className="press flex h-12 items-center justify-center gap-2 rounded-lg bg-mark text-base font-semibold text-mark-ink"
                 >
-                  <CalendarCheck className="size-5" /> 完成了，打卡
+                  <CalendarCheck className="size-[18px]" /> 完成了，打卡
                 </button>
               ) : sum.examDay && examFree && !reviewFirst ? (
-                <div className="flex h-13 items-center justify-center gap-2 rounded-2xl bg-white/16 py-3.5 text-[0.9375rem] font-semibold ring-1 ring-white/25" data-testid="exam-day-rest">
+                <div className="flex h-12 items-center justify-center gap-2 rounded-lg bg-paper-2 text-[0.9375rem] font-medium text-ink-2" data-testid="exam-day-rest">
                   <GraduationCap className="size-4" /> 今天不用再背了
                 </div>
               ) : sum.recovering && sum.due === 0 && !(sum.goal > 0 && sum.remainingGoal > 0) ? (
-                <div className="flex h-13 items-center justify-center gap-2 rounded-2xl bg-white/16 py-3.5 text-[0.9375rem] font-semibold ring-1 ring-white/25" data-testid="recover-today-done">
-                  <Check className="size-4" strokeWidth={3} /> 今天的积压清完了
+                <div className="flex h-12 items-center justify-center gap-2 rounded-lg bg-know-soft text-[0.9375rem] font-medium text-know" data-testid="recover-today-done">
+                  <Check className="size-4" strokeWidth={2.4} /> 今天的积压清完了
                 </div>
               ) : (
                 <Link
@@ -372,11 +373,11 @@ function Today() {
                   disabled={!reviewFirst && sum.newLeft === 0}
                   data-testid={reviewFirst ? "start-review" : "start-learn"}
                   className={cn(
-                    "flex h-13 items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-base font-semibold text-[oklch(0.5_0.19_30)] transition active:scale-[0.98]",
-                    !reviewFirst && sum.newLeft === 0 && "pointer-events-none opacity-60",
+                    "press flex h-12 items-center justify-center gap-2 rounded-lg bg-ink text-base font-semibold text-paper-3",
+                    !reviewFirst && sum.newLeft === 0 && "pointer-events-none opacity-45",
                   )}
                 >
-                  {reviewFirst ? <Repeat2 className="size-4" /> : <Play className="size-4 fill-current" />}
+                  {reviewFirst ? <Repeat2 className="size-[18px]" /> : <Play className="size-4 fill-current" />}
                   {reviewFirst ? `复习 ${sum.due}` : learnLabel}
                 </Link>
               )}
@@ -390,8 +391,8 @@ function Today() {
                     onClick={guardNew(sum.due === 0)}
                     data-testid={sum.due > 0 ? "start-review" : "start-learn"}
                     className={cn(
-                      "flex items-center justify-center gap-1.5 rounded-2xl bg-white/16 py-3.5 text-[0.9375rem] font-semibold text-white ring-1 ring-white/25 transition active:scale-[0.98]",
-                      sum.due === 0 && sum.newLeft === 0 && "pointer-events-none opacity-60",
+                      "press flex h-12 items-center justify-center gap-1.5 rounded-lg bg-paper-2 text-[0.9375rem] font-medium text-ink hover:bg-rule",
+                      sum.due === 0 && sum.newLeft === 0 && "pointer-events-none opacity-45",
                     )}
                   >
                     {sum.due > 0 ? `复习 ${sum.due}` : sum.newLeft === 0 ? "词书已学完" : extraNew ? "额外学新词" : "再学一组"}
@@ -404,30 +405,30 @@ function Today() {
                     disabled={reviewFirst && sum.newLeft === 0}
                     data-testid={reviewFirst ? "start-learn" : "start-review"}
                     className={cn(
-                      "flex items-center justify-center gap-1.5 rounded-2xl bg-white/16 py-3.5 text-[0.9375rem] font-semibold text-white ring-1 ring-white/25 transition active:scale-[0.98]",
-                      (reviewFirst ? sum.newLeft === 0 : sum.due === 0) && "opacity-70",
+                      "press flex h-12 items-center justify-center gap-1.5 rounded-lg bg-paper-2 text-[0.9375rem] font-medium text-ink hover:bg-rule",
+                      (reviewFirst ? sum.newLeft === 0 : sum.due === 0) && "text-ink-3",
                       reviewFirst && sum.newLeft === 0 && "pointer-events-none",
                     )}
                   >
-                    {reviewFirst ? <Play className="size-4 fill-current" /> : <Repeat2 className="size-4" />}
+                    {reviewFirst ? <Play className="size-3.5 fill-current" /> : <Repeat2 className="size-4" />}
                     {reviewFirst ? learnLabel : `复习 ${sum.due}`}
                   </Link>
                 ))}
             </div>
             {extraAsk && (
-              <div className="relative mt-3 rounded-2xl bg-ink/18 p-3 text-[0.8125rem]" data-testid="extra-new-confirm">
-                <p className="leading-snug text-white/90">{sum.examMode ? "考前不排新词，现在背的新词考场上多半还记不牢。" : "休息期间不排新词。"}确定额外学 10 个新词吗？</p>
-                <div className="mt-2.5 grid grid-cols-2 gap-2">
-                  <button type="button" data-testid="extra-new-cancel" onClick={() => setExtraAsk(false)} className="h-10 rounded-xl bg-white/16 font-semibold ring-1 ring-white/25">
+              <div className="rise mt-3 rounded-xl bg-paper-2 p-3.5 text-[0.8125rem]" data-testid="extra-new-confirm">
+                <p className="leading-relaxed text-ink-2">{sum.examMode ? "考前不排新词，现在背的新词考场上多半还记不牢。" : "休息期间不排新词。"}确定额外学 10 个新词吗？</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" data-testid="extra-new-cancel" onClick={() => setExtraAsk(false)} className="press h-10 rounded-lg font-medium text-ink-2 ring-1 ring-rule-strong ring-inset">
                     算了
                   </button>
-                  <Link to="/study" search={{ mode: "new" }} data-testid="extra-new-go" className="flex h-10 items-center justify-center rounded-xl bg-white font-semibold text-[oklch(0.5_0.19_30)]">
+                  <Link to="/study" search={{ mode: "new" }} data-testid="extra-new-go" className="press flex h-10 items-center justify-center rounded-lg bg-ink font-semibold text-paper-3">
                     学 10 个新词
                   </Link>
                 </div>
               </div>
             )}
-            <p className="relative mt-3 text-center text-[0.7812rem] font-medium text-white/85" data-testid="hero-now">
+            <p className="mt-3 text-[0.8125rem] leading-snug text-ink-3" data-testid="hero-now">
               {sum.checked
                 ? extraNew ? "今天已打卡 ✓" : "今天已打卡 ✓ 想多学可以再来一组"
                 : sum.ready
@@ -451,7 +452,7 @@ function Today() {
                           : "今天没有要做的了"}
             </p>
             {nightOwl && !sum.ready && !sum.checked && leftParts.length > 0 && etaMin > 10 && (
-              <p className="relative mt-1 text-center text-xs text-white/75" data-testid="hero-night">
+              <p className="mt-1 text-[0.75rem] text-ink-3" data-testid="hero-night">
                 太晚了，先做 10 分钟，剩下的明天再说
               </p>
             )}
@@ -464,8 +465,8 @@ function Today() {
           <Panel data-testid="checkin-panel">
             <PanelTitle
               right={
-                <Link to="/stats" className="flex items-center text-[0.8125rem] text-ink-3 hover:text-ink">
-                  打卡日历 <ChevronRight className="size-4" />
+                <Link to="/stats" className="press -my-2 flex items-center gap-0.5 rounded-md py-2 text-[0.8125rem] text-ink-3 hover:text-ink">
+                  打卡日历 <ChevronRight className="size-3.5" />
                 </Link>
               }
             >
@@ -473,56 +474,54 @@ function Today() {
             </PanelTitle>
             <WeekStrip checkins={st.checkins} logs={st.log} today={day} rest={rest} patched={st.patched} pause={st.pause} skip={(d) => skipKind(st, d)} />
             {restToday && !sum.checked && (
-              <div className="mt-3 flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-2.5 text-[0.8125rem] font-medium text-know" data-testid="rest-today">
+              <div className="mt-4 flex items-center gap-2 text-[0.8125rem] text-know" data-testid="rest-today">
                 <Coffee className="size-4 shrink-0" /> 今天是休息日，不打卡也不断连续；学了照样可以打卡
               </div>
             )}
             <div className={cn("mt-4", overFirst && !sum.checked && "hidden")}>
               {sum.checked ? (
-                <div className={cn("flex items-center gap-3 rounded-2xl bg-mark-soft p-3.5", justChecked && "checkin-burst")} data-testid="checked-in">
-                  <div className={cn("grid size-10 shrink-0 place-items-center rounded-full bg-ink text-paper-3", justChecked && "pop")}>
-                    <Check className="size-5" strokeWidth={3} />
+                <div className={cn("flex items-center gap-3 rounded-xl bg-paper-3 p-3.5 ring-1 ring-rule ring-inset", justChecked && "checkin-burst")} data-testid="checked-in">
+                  <div className={cn("grid size-10 shrink-0 place-items-center rounded-lg bg-mark text-mark-ink", justChecked && "pop")}>
+                    <Check className="size-5" strokeWidth={2.4} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[0.9375rem] font-semibold">{justChecked ? "打卡成功 🎉" : "今日已打卡"}</div>
-                    <div className="text-[0.8125rem] text-ink-3">连续 {s} 天 · 累计 {st.checkins.length} 天</div>
+                    <div className="text-[0.9375rem] font-semibold"><span className={cn(justChecked && "hl-swipe")}>{justChecked ? "打卡成功" : "今日已打卡"}</span></div>
+                    <div className="tnum text-[0.8125rem] text-ink-3">连续 {s} 天 · 累计 {st.checkins.length} 天</div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShare(true)}
                     data-testid="open-share"
-                    className="flex items-center gap-1.5 rounded-lg bg-paper-3 px-3.5 py-2 text-[0.8125rem] font-semibold"
+                    className="press flex h-10 items-center gap-1.5 rounded-lg px-3 text-[0.8125rem] font-medium text-ink ring-1 ring-rule-strong ring-inset hover:bg-paper-2"
                   >
                     <Share2 className="size-4" /> 分享图
                   </button>
                 </div>
               ) : idleEve || movedExam ? (
-                <div className="flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-3 text-[0.8125rem] font-semibold text-know" data-testid="checkin-idle-eve" data-kind={idleEve ? "eve" : "exam"}>
+                <div className="flex items-center gap-2.5 rounded-xl bg-know-soft px-3.5 py-3 text-[0.8125rem] font-medium leading-snug text-know" data-testid="checkin-idle-eve" data-kind={idleEve ? "eve" : "exam"}>
                   <GraduationCap className="size-5 shrink-0" /> {idleEve ? "考前一天，今天没有要做的" : "今天是原定的考试日"}：不打卡也不断签，连续 {s} 天保留
                 </div>
               ) : sum.ready ? (
-                <div className="flex items-center gap-2 rounded-2xl bg-know-soft px-3 py-3 text-[0.8125rem] font-semibold text-know" data-testid="checkin-ready">
+                <div className="flex items-center gap-2.5 rounded-xl bg-know-soft px-3.5 py-3 text-[0.8125rem] font-medium text-know" data-testid="checkin-ready">
                   <CalendarCheck className="size-5 shrink-0" /> 今天的任务完成了，在上面打卡
                 </div>
               ) : sum.timeMode ? (
                 <div className="text-[0.8125rem]" data-testid="checkin-todo" data-mode="time">
-                  <div className="flex items-center gap-3 rounded-2xl bg-paper-2 px-3 py-3">
-                    <AlarmClock className="size-5 shrink-0 text-ink" />
+                  <div className="flex items-center gap-3 py-1">
+                    <AlarmClock className="size-5 shrink-0 text-ink-2" />
                     <div className="min-w-0 flex-1">
-                      <div className="flex justify-between font-semibold">
+                      <div className="flex justify-between font-medium">
                         <span>学满 {sum.goalMin} 分钟就能打卡</span>
                         <span className="tnum text-ink-3">
                           {minutes}/{sum.goalMin}
                         </span>
                       </div>
-                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-paper">
-                        <div className="h-full rounded-full bg-ink" style={{ width: `${timePct * 100}%` }} />
-                      </div>
+                      <Meter value={timePct} className="mt-2 h-1.5" />
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2.5 text-[0.8125rem]" data-testid="checkin-todo" data-mode="words">
+                <div className="grid grid-cols-2 gap-3" data-testid="checkin-todo" data-mode="words">
                   {/* 11.2 · 什么都没做的项目不打勾 */}
                   {sum.goal === 0 ? (
                     <Todo done={false} muted label={sum.recovering ? "恢复期不学新词" : sum.paused ? "休息中不排新词" : sum.examMode ? "考前不排新词" : "今天不学新词"} />
@@ -534,14 +533,14 @@ function Today() {
               )}
             </div>
             {lost > 0 && !sum.checked && (
-              <p className="mt-3 border-t border-rule pt-3 text-xs leading-snug text-ink-3" data-testid="streak-lost" data-n={lost}>
+              <p className="mt-4 text-[0.8125rem] leading-relaxed text-ink-3" data-testid="streak-lost" data-n={lost}>
                 昨天没完成任务，连续 {lost} 天断了。今天学完重新开始{(st.makeup ?? 0) === 0 ? "；每连续 7 天得 1 张补卡，下次漏了能补" : ""}。
               </p>
             )}
             {showHabit && (
-              <div className="mt-3 flex items-center gap-2 border-t border-rule pt-3 text-xs text-ink-3" data-testid="habit-row">
-                <span className="flex items-center gap-1 rounded-lg bg-vague-soft px-2.5 py-1 font-semibold text-vague" data-testid="makeup-count" data-n={st.makeup ?? 0}>
-                  <Ticket className="size-3.5" /> 补卡 {st.makeup ?? 0}/{MAKEUP_MAX}
+              <div className="mt-4 flex items-center gap-3 text-[0.8125rem] text-ink-3" data-testid="habit-row">
+                <span className="tnum flex shrink-0 items-center gap-1.5 font-medium text-ink-2" data-testid="makeup-count" data-n={st.makeup ?? 0}>
+                  <Ticket className="size-4" /> 补卡 {st.makeup ?? 0}/{MAKEUP_MAX}
                 </span>
                 <span className="min-w-0 flex-1 truncate">
                   每连续 {MAKEUP_EVERY} 天得 1 张{rest >= 0 ? ` · 周${WEEKDAY_CN[rest]}休息` : ""}
@@ -551,7 +550,7 @@ function Today() {
           </Panel>
         </div>
 
-        <div className="min-w-0 space-y-4 md:space-y-5">
+        <div className="min-w-0 space-y-8">
           {!examOver && (
             <ExamCard
               day={day}
@@ -576,54 +575,43 @@ function Today() {
 
 
           {/* 更多练习：碎片时间、小游戏、今日一词（11.1 · 从首页主体收进来） */}
-          <section data-testid="more-practice">
-            <h2 className="mb-2 px-1 text-[0.8125rem] font-semibold text-ink-3">更多练习</h2>
-            <div className="grid grid-cols-2 gap-2" data-testid="snack">
-              <SnackTile to="/tape" testid="tape-entry" icon={<Headphones className="size-[18px]" />} tone="bg-mark-soft text-ink" title="磁带模式" sub="通勤免手听" />
-              {/* 11.2 · 没有到期复习时不放一个点了没用的速刷入口 */}
-              {sum.due > 0 && !overFirst && (
-                <SnackTile
-                  to="/study"
-                  search={{ mode: "speed" }}
-                  testid="speed-entry"
-                  icon={<Zap className="size-[18px]" />}
-                  tone="bg-know-soft text-know"
-                  title="速刷"
-                  sub={<span data-testid="speed-sub">{`左右滑清 ${sum.due} 词`}</span>}
-                />
-              )}
-              <SnackTile to="/match" testid="match-entry" icon={<Puzzle className="size-[18px]" />} tone="bg-vague-soft text-vague" title="配对消消乐" sub={st.gameBest?.match ? `最高 ${st.gameBest.match} 分` : "60 秒连连看"} />
-              <SnackTile to="/judge" testid="judge-entry" icon={<Scale className="size-[18px]" />} tone="bg-forget-soft text-forget" title="判断对错" sub={st.gameBest?.judge ? `最高 ${st.gameBest.judge} 分` : "滑一下判对错"} />
-              {quizOpen && advice?.kind !== "quiz" && (
-                <SnackTile to="/quiz" testid="quiz-entry" icon={<ClipboardCheck className="size-[18px]" />} tone="bg-mark-soft text-ink" title="今日小测" sub="20 题 · 限时 5 分钟" />
-              )}
-              <button
-                type="button"
-                onClick={() => setSheet(true)}
-                data-testid="wod"
-                data-wide={wodWide ? 1 : 0}
-                className={cn("flex min-w-0 items-center gap-2.5 rounded-2xl border border-rule bg-paper-3 p-3 text-left transition hover:border-ink", wodWide && "col-span-2", !wodWide && "gap-1.5 pr-2")}
+          <section data-testid="more-practice" className="border-t border-rule pt-5">
+            {/* 今日一词：一个词典词条，衬线词头 */}
+            <button
+              type="button"
+              onClick={() => setSheet(true)}
+              data-testid="wod"
+              data-wide={wodWide ? 1 : 0}
+              className="press group mb-6 flex w-full min-w-0 items-end gap-3 text-left"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.8125rem] text-ink-3">今日一词</span>
+                <span className="word-head mt-1 block truncate text-[2.375rem] leading-[1.05]" data-testid="wod-word">{wod.w}</span>
+                <span className="mt-1 block truncate text-[0.875rem] text-ink-2">{shortMeaning(wod, 1)}</span>
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="播放发音"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  speak(wod.w, st.settings.accent);
+                }}
+                className="press mb-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 ring-1 ring-rule-strong ring-inset hover:bg-paper-2 hover:text-ink"
               >
-                {/* 11.5 · 半宽时不放「一词」方块，把位置让给单词（9 个字母的词也放得下） */}
-                {wodWide && <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-paper-2 text-[0.6875rem] font-semibold text-ink-3">一词</span>}
-                <span className="min-w-0 flex-1">
-                  {!wodWide && <span className="block text-[0.625rem] font-semibold leading-none text-ink-3">今日一词</span>}
-                  <span className={cn("block truncate font-display font-semibold leading-tight", wodWide ? "text-[0.9375rem]" : "mt-1 text-sm")} data-testid="wod-word">{wod.w}</span>
-                  <span className="mt-0.5 block truncate text-xs text-ink-3">{shortMeaning(wod, 1)}</span>
-                </span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  aria-label="播放发音"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    speak(wod.w, st.settings.accent);
-                  }}
-                  className="grid size-8 shrink-0 place-items-center rounded-full bg-paper-2 text-ink-3 hover:text-ink"
-                >
-                  <Volume2 className="size-4" />
-                </span>
-              </button>
+                <Volume2 className="size-[18px]" />
+              </span>
+            </button>
+            <h2 className="section-rule mb-1 text-[1.0625rem] font-semibold tracking-[-0.01em]">更多练习</h2>
+            <div className="flex flex-col" data-testid="snack">
+              <SnackTile to="/tape" testid="tape-entry" icon={<Headphones />} title="磁带模式" sub="通勤免手听" />
+              {/* 没有到期复习时不放一个点了没用的速刷入口 */}
+              {sum.due > 0 && !overFirst && (
+                <SnackTile to="/study" search={{ mode: "speed" }} testid="speed-entry" icon={<Zap />} title="速刷" sub={<span data-testid="speed-sub">{`左右滑清 ${sum.due} 词`}</span>} />
+              )}
+              <SnackTile to="/match" testid="match-entry" icon={<Puzzle />} title="配对消消乐" sub={st.gameBest?.match ? `最高 ${st.gameBest.match} 分` : "60 秒连连看"} />
+              <SnackTile to="/judge" testid="judge-entry" icon={<Scale />} title="判断对错" sub={st.gameBest?.judge ? `最高 ${st.gameBest.judge} 分` : "滑一下判对错"} />
+              {quizOpen && advice?.kind !== "quiz" && <SnackTile to="/quiz" testid="quiz-entry" icon={<ClipboardCheck />} title="今日小测" sub="20 题 · 限时 5 分钟" />}
             </div>
           </section>
         </div>
@@ -1398,12 +1386,12 @@ function LateStrip({ sum, streak }: { sum: ReturnType<typeof summarize>; streak:
     if (sum.due > 0) todo.push(`复习还差 ${sum.due}`);
   }
   return (
-    <div className="late-pulse relative -mx-2 -mt-2 mb-4 flex items-center gap-2.5 rounded-2xl bg-ink/18 px-3 py-2.5" data-testid="late-warning" role="alert">
+    <div className="late-pulse late-banner -mx-5 -mt-4 mb-4 flex items-center gap-3 px-5 py-3" data-testid="late-warning" role="alert">
       <AlarmClock className="size-5 shrink-0" />
       <div className="min-w-0 flex-1 leading-snug">
-        <div className="text-sm font-semibold">连续 {streak} 天要断了</div>
-        <div className="text-xs text-white/85" data-testid="late-sub">
-          离今天结束还有 <b className="tnum">{h > 0 ? `${h} 小时 ` : ""}{m} 分</b>
+        <div className="text-[0.9375rem] font-semibold">连续 {streak} 天要断了</div>
+        <div className="text-[0.75rem] opacity-90" data-testid="late-sub">
+          离今天结束还有 <b className="tnum font-semibold">{h > 0 ? `${h} 小时 ` : ""}{m} 分</b>
           {todo.length ? ` · ${todo.join(" · ")}` : ""}
         </div>
       </div>
@@ -1416,20 +1404,19 @@ function InstallCard({ day, installed, snooze }: { day: string; installed?: bool
   const canPrompt = useInstallPrompt();
   if (!installVisible({ canPrompt, standalone: isStandalone(), installed, snoozeUntil: snooze, today: day })) return null;
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-rule bg-paper-3 p-4" data-testid="install-card">
-      <div className="pointer-events-none absolute -right-12 -top-16 size-32 rounded-full bg-mark-soft" />
-      <div className="relative flex items-center gap-3.5">
-        <Logo className="size-12 shrink-0 drop-shadow-[0_6px_12px_rgba(200,60,30,0.3)]" />
+    <section className="border-t border-rule pt-5" data-testid="install-card">
+      <div className="flex items-start gap-3.5">
+        <Logo className="size-11 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="text-[0.9375rem] font-semibold leading-tight">添加到桌面</div>
-          <div className="mt-0.5 text-xs leading-snug text-ink-3" data-testid="install-warn">从桌面图标全屏打开，没网也能背。记录只存在这台手机上，删掉图标会连记录一起删，记得定期导出备份</div>
+          <div className="mt-1 text-[0.8125rem] leading-relaxed text-ink-3" data-testid="install-warn">从桌面图标全屏打开，没网也能背。记录只存在这台手机上，删掉图标会连记录一起删，记得定期导出备份</div>
         </div>
         <button
           type="button"
           aria-label="暂不添加"
           data-testid="install-dismiss"
           onClick={() => snoozeInstall(addDays(day, INSTALL_SNOOZE_DAYS))}
-          className="grid size-8 shrink-0 place-items-center self-start rounded-full text-ink-3 hover:bg-paper-2"
+          className="press -mr-2 -mt-2 grid size-10 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink"
         >
           <X className="size-4" />
         </button>
@@ -1442,7 +1429,7 @@ function InstallCard({ day, installed, snooze }: { day: string; installed?: bool
           if (r === "accepted") toast.success("已添加到桌面", { description: "删掉图标会连记录一起删，记得在「我的 → 数据与备份」定期导出", duration: 4000 });
           else if (r === "dismissed") snoozeInstall(addDays(day, INSTALL_SNOOZE_DAYS));
         }}
-        className="relative mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-sm font-semibold text-paper-3 shadow-primary/20 transition active:scale-[0.98]"
+        className="press mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3"
       >
         安装到手机桌面
       </button>
@@ -1450,43 +1437,54 @@ function InstallCard({ day, installed, snooze }: { day: string; installed?: bool
   );
 }
 
-function SnackTile({ to, search, testid, icon, tone, title, sub, dim }: { to: "/tape" | "/study" | "/match" | "/judge" | "/quiz"; search?: { mode: "speed" }; testid: string; icon: React.ReactNode; tone: string; title: string; sub: React.ReactNode; dim?: boolean }) {
+/** 12.0 · 练习入口：一行字，像目录里的一条——不再是彩色图标方块 */
+function SnackTile({ to, search, testid, icon, title, sub, dim }: { to: "/tape" | "/study" | "/match" | "/judge" | "/quiz"; search?: { mode: "speed" }; testid: string; icon: React.ReactNode; tone?: string; title: string; sub: React.ReactNode; dim?: boolean }) {
   return (
     <Link
       to={to}
       search={search as never}
       data-testid={testid}
-      className={cn("flex min-w-0 items-center gap-2.5 rounded-2xl border border-rule bg-paper-3 p-3 transition hover:border-ink active:scale-[0.99]", dim && "opacity-70")}
+      className={cn("press group flex min-h-14 min-w-0 items-center gap-3 border-b border-rule py-3 last:border-b-0 hover:bg-paper-2/60", dim && "opacity-60")}
     >
-      <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl", tone)}>{icon}</span>
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-semibold leading-tight">{title}</span>
-        <span className="mt-0.5 block truncate text-xs text-ink-3">{sub}</span>
+      <span className="grid size-8 shrink-0 place-items-center text-ink-2 [&_svg]:size-[20px]">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[0.9375rem] font-medium leading-tight">{title}</span>
+        <span className="mt-0.5 block truncate text-[0.8125rem] text-ink-3">{sub}</span>
       </span>
+      <ChevronRight className="size-4 shrink-0 text-ink-3 transition-transform duration-300 ease-[var(--ease-spring)] group-hover:translate-x-0.5" />
     </Link>
   );
 }
 
+/** 12.0 · 提醒：左边一条 3px 的竖线标出语气，不用彩色图标底 */
 function Notice({ icon, tone, title, sub, action, testid }: { icon: React.ReactNode; tone: string; title: string; sub: string; action: React.ReactNode; testid?: string }) {
+  const bar = /forget/.test(tone) ? "bg-forget" : /know/.test(tone) ? "bg-know" : /vague/.test(tone) ? "bg-vague" : "bg-mark";
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-rule bg-paper-3 p-3.5 pr-4" data-testid={testid}>
-      <span className={cn("grid size-10 shrink-0 place-items-center rounded-2xl", tone)}>{icon}</span>
+    <div className="relative flex items-center gap-3 rounded-xl bg-paper-3 py-3.5 pl-4 pr-3.5 ring-1 ring-rule ring-inset" data-testid={testid}>
+      <span className={cn("absolute inset-y-3 left-0 w-[3px] rounded-r-[2px]", bar)} aria-hidden />
+      <span className="grid size-8 shrink-0 place-items-center text-ink-2 [&_svg]:size-5">{icon}</span>
       <div className="min-w-0 flex-1">
         <div className="text-[0.9375rem] font-semibold leading-tight">{title}</div>
-        <div className="mt-0.5 text-xs leading-snug text-ink-3">{sub}</div>
+        <div className="mt-1 text-[0.8125rem] leading-snug text-ink-3">{sub}</div>
       </div>
       {action}
     </div>
   );
 }
 
+/** 12.0 · 今日待办：方框打勾，完成的划上荧光笔 */
 function Todo({ done, label, muted }: { done: boolean; label: string; muted?: boolean }) {
   return (
-    <div className={cn("flex items-center gap-2 rounded-2xl px-3 py-3 font-medium", done ? "bg-know-soft text-know" : "bg-paper-2 text-ink-3")} data-done={done ? 1 : 0}>
-      <span className={cn("grid size-5 shrink-0 place-items-center rounded-full", done ? "bg-know text-white" : muted ? "border-2 border-dashed border-muted-foreground/25" : "border-2 border-muted-foreground/30")}>
-        {done && <Check className="size-3" strokeWidth={3} />}
+    <div className={cn("flex items-center gap-2.5 py-1.5 text-[0.875rem]", done ? "text-ink" : muted ? "text-ink-3" : "text-ink-2")} data-done={done ? 1 : 0}>
+      <span
+        className={cn(
+          "grid size-[18px] shrink-0 place-items-center rounded-[4px]",
+          done ? "bg-ink text-paper-3" : muted ? "border border-dashed border-rule-strong" : "border-[1.5px] border-ink-3",
+        )}
+      >
+        {done && <Check className="size-3" strokeWidth={2.6} />}
       </span>
-      {label}
+      <span className={cn(done && "hl")}>{label}</span>
     </div>
   );
 }
