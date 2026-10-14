@@ -12,7 +12,7 @@ import { getWordsSync } from "@/lib/data";
 import { today } from "@/lib/clock";
 import { toast } from "@/lib/toast";
 import { applyUpdate, useSwUpdate } from "@/lib/sw";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw } from "@/components/app/icons";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 import { requestPersist } from "@/lib/persist";

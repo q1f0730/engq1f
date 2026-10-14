@@ -1,4 +1,4 @@
-import { Check, Download, Share2 } from "lucide-react";
+import { Check, Download, Share2 } from "@/components/app/icons";
 import { useEffect, useState } from "react";
 import { toast } from "@/lib/toast";
 import { SHARE_TPLS, canShareFile, drawShareCard, shareImage, type ShareInfo, type ShareTpl } from "@/lib/share";

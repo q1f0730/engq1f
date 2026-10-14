@@ -725,7 +725,7 @@ export function applyTheme(t: Theme) {
   el.classList.add(r);
   if (hc) el.classList.add("contrast");
   el.setAttribute("data-theme", want);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", hc ? "#ffffff" : r === "dark" ? "#16171d" : "#faf7f2");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", hc ? "#ffffff" : r === "dark" ? "#121211" : "#f4f3ef");
 }
 
 /** 字号与动画：写到 <html> 的 data 属性上，CSS 据此缩放 / 关动画 */

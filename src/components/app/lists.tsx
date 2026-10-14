@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronRight, Link2, ListPlus, Pencil, Play, Plus, Star, Trash2 } from "lucide-react";
+import { Check, ChevronRight, Link2, ListPlus, Pencil, Play, Plus, Star, Trash2 } from "@/components/app/icons";
 import { lazy, Suspense, useState } from "react";
 import { toast } from "@/lib/toast";
 import { today } from "@/lib/clock";

@@ -1,6 +1,6 @@
 import { finePointer } from "@/lib/pointer";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Accessibility, Database, Scale, BellRing, CalendarDays, Check, ChevronDown, Contrast, MonitorDown, SlidersHorizontal, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
+import { Accessibility, Database, Scale, BellRing, CalendarDays, Check, ChevronDown, Contrast, MonitorDown, SlidersHorizontal, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "@/components/app/icons";
 import { useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { Logo, PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";

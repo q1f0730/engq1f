@@ -20,7 +20,7 @@ import {
   Stethoscope,
   Trash2,
   Users,
-} from "lucide-react";
+} from "@/components/app/icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { PageHeader, Panel, PanelTitle, Spinner } from "@/components/app/shell";

@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@/components/app/icons";
 import { useMemo, useState } from "react";
 import { toast } from "@/lib/toast";
 import { PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";

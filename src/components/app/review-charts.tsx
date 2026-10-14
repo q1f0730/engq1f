@@ -1,5 +1,5 @@
 /** v6 · 统计与复盘的图表与小组件 */
-import { BookOpen, Brain, CalendarRange, ChevronLeft, ChevronRight, Flag, Flame, Library, Mountain, Star, Swords, Trophy } from "lucide-react";
+import { BookOpen, Brain, CalendarRange, ChevronLeft, ChevronRight, Flag, Flame, Library, Mountain, Star, Swords, Trophy } from "@/components/app/icons";
 import type { ReactNode } from "react";
 import { diffDays, type DayLog } from "@/lib/srs";
 import { BADGES, badgeProgress, entryDay, monthGrid, type BadgeCtx, type Bucket, type ForecastDay, type RetentionDay, type RevEntry } from "@/lib/stats";

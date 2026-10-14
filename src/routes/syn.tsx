@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Search, X } from "lucide-react";
+import { ChevronLeft, Search, X } from "@/components/app/icons";
 import { useDeferredValue, useMemo, useState } from "react";
 import { PageHeader, Spinner } from "@/components/app/shell";
 import { WordSheet } from "@/components/app/word-bits";

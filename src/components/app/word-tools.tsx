@@ -1,4 +1,4 @@
-import { ArrowUpDown, CheckSquare, ChevronDown, Download, FileSpreadsheet, GraduationCap, Layers, ListMinus, ListPlus, Printer, RotateCcw, Star, Swords, X } from "lucide-react";
+import { ArrowUpDown, CheckSquare, ChevronDown, Download, FileSpreadsheet, GraduationCap, Layers, ListMinus, ListPlus, Printer, RotateCcw, Star, Swords, X } from "@/components/app/icons";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "@/lib/toast";

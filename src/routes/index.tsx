@@ -25,7 +25,7 @@ import {
   Volume2,
   X,
   Zap,
-} from "lucide-react";
+} from "@/components/app/icons";
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { Ring, WeekStrip } from "@/components/app/charts";

@@ -1,6 +1,6 @@
 import { LeaveSheet, useLeaveGuard } from "@/components/app/leave";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Puzzle, Timer, X } from "lucide-react";
+import { Puzzle, Timer, X } from "@/components/app/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GameIntro, GameResult } from "@/components/app/game-bits";
 import { Spinner } from "@/components/app/shell";

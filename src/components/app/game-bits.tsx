@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { RotateCcw, Sparkles, Star, Trophy, X } from "lucide-react";
+import { RotateCcw, Sparkles, Star, Trophy, X } from "@/components/app/icons";
 import type { ReactNode } from "react";
 import { toast } from "@/lib/toast";
 import { shortMeaning, type WordIndex } from "@/lib/data";

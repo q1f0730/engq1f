@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from "react";
-import { ChevronLeft, ListPlus, Play, Star, Swords, Undo2, Volume2 } from "lucide-react";
+import { ChevronLeft, ListPlus, Play, Star, Swords, Undo2, Volume2 } from "@/components/app/icons";
 import { confusables } from "@/lib/confusables";
 import { sayEnglish, speak } from "@/lib/audio";
 import { useExamples } from "@/lib/examples";

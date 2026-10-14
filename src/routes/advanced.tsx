@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "@/components/app/icons";
 import { useState } from "react";
 import { PageHeader } from "@/components/app/shell";
 import { ShortcutsSheet } from "@/components/app/shortcuts";

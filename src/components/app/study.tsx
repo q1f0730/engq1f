@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, CalendarClock, Check, CircleHelp, ClipboardCheck, Dumbbell, Flame, HardDriveDownload, Keyboard, Maximize, Minimize, RotateCcw, Star, Swords, Undo2, Volume2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarClock, Check, CircleHelp, ClipboardCheck, Dumbbell, Flame, HardDriveDownload, Keyboard, Maximize, Minimize, RotateCcw, Star, Swords, Undo2, Volume2, X } from "@/components/app/icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { speak } from "@/lib/audio";

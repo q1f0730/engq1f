@@ -1,7 +1,7 @@
 import { LeaveSheet, useLeaveGuard } from "@/components/app/leave";
 import { finePointer } from "@/lib/pointer";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, Scale, Volume2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Scale, Volume2, X } from "@/components/app/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GameIntro, GameResult } from "@/components/app/game-bits";
 import { Spinner } from "@/components/app/shell";

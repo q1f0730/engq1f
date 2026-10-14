@@ -1,4 +1,4 @@
-import { CircleHelp, Eye, Swords, Undo2, Volume2, X } from "lucide-react";
+import { CircleHelp, Eye, Swords, Undo2, Volume2, X } from "@/components/app/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { speak } from "@/lib/audio";
 import { shortMeaning, type WordIndex } from "@/lib/data";

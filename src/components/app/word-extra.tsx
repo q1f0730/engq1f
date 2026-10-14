@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "@/components/app/icons";
 import { getWordsSync, shortMeaning, type Word } from "@/lib/data";
 import { POS_CN, familyOf, synonymsOf } from "@/lib/groups";
 

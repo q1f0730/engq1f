@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, CalendarDays, Check, FileUp, Gauge, RotateCcw, ShieldCheck, WifiOff, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, FileUp, Gauge, RotateCcw, ShieldCheck, WifiOff, Zap } from "@/components/app/icons";
 import { Suspense, lazy, useRef, useState } from "react";
 import { rewindToFirst, useBackClose } from "@/lib/back-stack";
 import { Logo } from "@/components/app/shell";

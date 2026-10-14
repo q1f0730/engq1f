@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronLeft, GraduationCap, Headphones, Play, Search, Shuffle, SlidersHorizontal, Star, X } from "lucide-react";
+import { Check, ChevronLeft, GraduationCap, Headphones, Play, Search, Shuffle, SlidersHorizontal, Star, X } from "@/components/app/icons";
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Segmented, Spinner } from "@/components/app/shell";
 import { StateBadge, WordSheet } from "@/components/app/word-bits";

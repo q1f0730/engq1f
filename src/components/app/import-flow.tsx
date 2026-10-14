@@ -1,5 +1,5 @@
 /** v11 · 导入备份：加密备份先输口令；本机已有记录时选「合并」或「覆盖」；动手前先给本机存一份快照 */
-import { Eye, EyeOff, GitMerge, Lock, Replace, TriangleAlert } from "lucide-react";
+import { Eye, EyeOff, GitMerge, Lock, Replace, TriangleAlert } from "@/components/app/icons";
 import { useEffect, useState } from "react";
 import { toast } from "@/lib/toast";
 import { today } from "@/lib/clock";

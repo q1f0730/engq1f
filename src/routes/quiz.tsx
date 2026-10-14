@@ -1,6 +1,6 @@
 import { LeaveSheet, useLeaveGuard } from "@/components/app/leave";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, ChevronDown, ClipboardCheck, RotateCcw, Star, Timer, Trophy, X } from "lucide-react";
+import { Check, ChevronDown, ClipboardCheck, RotateCcw, Star, Timer, Trophy, X } from "@/components/app/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { Spinner } from "@/components/app/shell";

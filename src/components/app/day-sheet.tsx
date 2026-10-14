@@ -1,4 +1,4 @@
-import { CalendarCheck, Coffee, Ticket } from "lucide-react";
+import { CalendarCheck, Coffee, Ticket } from "@/components/app/icons";
 import { useMemo } from "react";
 import { shortMeaning, type WordIndex } from "@/lib/data";
 import { fmtMinutes } from "@/lib/format";

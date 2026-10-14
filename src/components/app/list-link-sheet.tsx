@@ -1,4 +1,4 @@
-import { Copy, Share2 } from "lucide-react";
+import { Copy, Share2 } from "@/components/app/icons";
 import { useEffect, useState } from "react";
 import { toast } from "@/lib/toast";
 import type { WordList } from "@/lib/lists";

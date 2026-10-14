@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ListPlus, Link2Off, Link2 } from "lucide-react";
+import { ListPlus, Link2Off, Link2 } from "@/components/app/icons";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "@/lib/toast";
 import { PageHeader, Panel, Spinner } from "@/components/app/shell";

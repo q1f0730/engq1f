@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Check, Gauge, Timer, X } from "lucide-react";
+import { Check, Gauge, Timer, X } from "@/components/app/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "@/lib/toast";
 import { Spinner } from "@/components/app/shell";

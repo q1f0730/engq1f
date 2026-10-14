@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Headphones, Pause, Play, Repeat, SkipBack, SkipForward, Timer, X } from "lucide-react";
+import { Headphones, Pause, Play, Repeat, SkipBack, SkipForward, Timer, X } from "@/components/app/icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { Segmented, Spinner } from "@/components/app/shell";

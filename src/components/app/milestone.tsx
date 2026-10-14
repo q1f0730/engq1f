@@ -1,4 +1,4 @@
-import { Flame } from "lucide-react";
+import { Flame } from "@/components/app/icons";
 import { useEffect } from "react";
 import { MILESTONE_TEXT, dismissCelebration, useCelebration } from "@/lib/celebrate";
 import { vibrate } from "@/lib/haptics";

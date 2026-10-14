@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ClipboardCheck, Clock3, Download, Flame, GraduationCap, Repeat2, Skull, Sparkles, Target } from "lucide-react";
+import { ClipboardCheck, Clock3, Download, Flame, GraduationCap, Repeat2, Skull, Sparkles, Target } from "@/components/app/icons";
 import { useState } from "react";
 import { Bars, Curve, Heatmap, ScoreLine } from "@/components/app/charts";
 import { BadgeGrid, Forecast30, HourBars, IntervalBars, MonthCalendar, RetentionLine, RevList } from "@/components/app/review-charts";
