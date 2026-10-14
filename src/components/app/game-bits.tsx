@@ -19,6 +19,7 @@ export function GameIntro({
   onStart,
   onQuit,
   startLabel,
+  specimen,
 }: {
   testid: string;
   icon?: ReactNode;
@@ -31,43 +32,52 @@ export function GameIntro({
   onStart: () => void;
   onQuit: () => void;
   startLabel: string;
+  /** 12.0 · 每个游戏自己的「样张」：用真实的界面零件摆一题示范，开始页一眼就能看出是哪个游戏 */
+  specimen?: ReactNode;
 }) {
   return (
-    <div className="flex flex-1 flex-col" data-testid={testid}>
+    <div className="flex flex-1 flex-col overflow-y-auto" data-testid={testid}>
       <TopBar title={title}>
         <button type="button" onClick={onQuit} aria-label="退出" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
           <X className="size-[22px]" />
         </button>
       </TopBar>
-      <div className="flex flex-1 flex-col justify-end pb-6">
-        <h1 className="rise text-[2.5rem] font-semibold leading-[1.08] tracking-[-0.03em]" style={{ "--i": 0 } as React.CSSProperties}>
-          {big}
-        </h1>
-        <p className="rise mt-4 max-w-[26em] text-[0.9375rem] leading-relaxed text-ink-2" style={{ "--i": 1 } as React.CSSProperties}>
-          {desc}
-        </p>
-        <ul className="rise mt-6 flex flex-wrap gap-x-1 gap-y-1.5 border-t border-rule pt-4 text-[0.8125rem] text-ink-3" style={{ "--i": 2 } as React.CSSProperties}>
-          {tags.map((t, k) => (
-            <li key={t} className="flex items-center gap-1">
-              {k > 0 && <span className="text-rule-strong" aria-hidden>/</span>}
-              {t}
-            </li>
-          ))}
-        </ul>
-        {best > 0 && (
-          <div className="rise mt-4 flex items-center gap-2 text-[0.875rem] text-ink-2" data-testid="game-best" style={{ "--i": 3 } as React.CSSProperties}>
-            <Trophy className="size-4" /> {bestLabel} <span className="tnum hl font-semibold text-ink">{best}</span>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={onStart}
-          data-testid="game-start"
-          className="press mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-[1.0625rem] font-semibold text-paper-3 hover:bg-ink-2"
-        >
-          {startLabel}
-        </button>
-      </div>
+      {specimen && (
+        <figure className="rise mt-2" style={{ "--i": 0 } as React.CSSProperties} aria-hidden>
+          {specimen}
+          <figcaption className="mt-2 text-[0.6875rem] text-ink-3">示范</figcaption>
+        </figure>
+      )}
+      <div className="flex-1" />
+      <h1 className="rise mt-8 text-[2.125rem] font-semibold leading-[1.1] tracking-[-0.03em]" style={{ "--i": 1 } as React.CSSProperties}>
+        {big}
+      </h1>
+      <p className="rise mt-3 max-w-[26em] text-[0.9375rem] leading-relaxed text-ink-2" style={{ "--i": 2 } as React.CSSProperties}>
+        {desc}
+      </p>
+      {/* 规则：一行一条，像说明书里的要点 */}
+      <ul className="rise mt-5 grid grid-cols-2 gap-x-5 border-t border-rule text-[0.8125rem] text-ink-2" style={{ "--i": 3 } as React.CSSProperties}>
+        {tags.map((t) => (
+          <li key={t} className="flex min-h-9 items-center gap-2 border-b border-rule">
+            <span className="size-1.5 shrink-0 rounded-[1px] bg-ink-3" aria-hidden />
+            {t}
+          </li>
+        ))}
+      </ul>
+      {best > 0 && (
+        <div className="rise mt-4 flex items-baseline gap-2 text-[0.875rem] text-ink-2" data-testid="game-best" style={{ "--i": 4 } as React.CSSProperties}>
+          {bestLabel}
+          <span className="tnum hl font-serif text-[1.5rem] leading-none text-ink">{best}</span>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onStart}
+        data-testid="game-start"
+        className="press mb-4 mt-6 flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-ink text-[1.0625rem] font-semibold text-paper-3 hover:bg-ink-2"
+      >
+        {startLabel}
+      </button>
     </div>
   );
 }
@@ -115,37 +125,45 @@ export function GameResult({
           <X className="size-[22px]" />
         </Link>
       </TopBar>
-      <div className="flex flex-col items-start pt-6">
-        <div className="text-[0.8125rem] text-ink-3">得分</div>
-        <div className="mt-1 flex items-baseline gap-1.5">
-          <span className={cn("tnum font-serif text-[5.5rem] leading-[0.85]", record && "hl-swipe")} data-testid="game-score">
-            {score}
-          </span>
-          <span className="text-base text-ink-3">{unit}</span>
+      <section className="mt-4 border-t-2 border-ink pt-4">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <div className="text-[0.75rem] text-ink-3">得分</div>
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className={cn("tnum font-serif text-[5.5rem] leading-[0.82] tracking-[-0.04em]", record && "hl-swipe")} data-testid="game-score">
+                {score}
+              </span>
+              <span className="text-base text-ink-3">{unit}</span>
+            </div>
+          </div>
+          <div className="pb-2 text-right" data-testid="game-record" data-record={record ? 1 : 0}>
+            {record ? (
+              <span className="font-serif text-[1.375rem] italic text-ink">
+                <span className="hl">新纪录</span>
+              </span>
+            ) : (
+              <span className="tnum text-[0.875rem] text-ink-3">
+                最高 <span className="font-serif text-[1.25rem] text-ink-2">{best}</span>
+              </span>
+            )}
+          </div>
         </div>
-        <div className="mt-3 text-[0.9375rem] font-medium" data-testid="game-record" data-record={record ? 1 : 0}>
-          {record ? (
-            <span className="flex items-center gap-1.5 text-ink">
-              <Sparkles className="size-4" /> 新纪录
-            </span>
-          ) : (
-            <span className="tnum text-ink-3">最高 {best}</span>
-          )}
-        </div>
-        {note && <div className="mt-1 text-[0.8125rem] text-ink-3">{note}</div>}
-      </div>
-      <div className="mt-7 grid grid-cols-3 divide-x divide-rule border-y border-rule py-4">
+        {note && <div className="mt-2 text-[0.8125rem] text-ink-3">{note}</div>}
+      </section>
+      <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule py-3.5">
         {stats.map((s) => (
           <div key={s.label} className="min-w-0 px-3 first:pl-0" data-testid={s.testid}>
-            <div className="tnum truncate font-serif text-[1.75rem] leading-none">{s.value}</div>
-            <div className="mt-1.5 text-[0.75rem] text-ink-3">{s.label}</div>
+            <dt className="text-[0.75rem] text-ink-3">{s.label}</dt>
+            <dd className="tnum mt-1 truncate font-serif text-[1.625rem] leading-none">{s.value}</dd>
           </div>
         ))}
-      </div>
+      </dl>
       {missed.length > 0 && (
-        <div className="mt-7" data-testid="game-missed">
-          <div className="flex items-center justify-between gap-3 pb-2">
-            <span className="text-[0.9375rem] font-semibold">出错的词 <span className="tnum font-normal text-ink-3">{missed.length}</span></span>
+        <section className="mt-8" data-testid="game-missed">
+          <div className="flex items-end justify-between gap-3 border-b border-ink pb-2">
+            <span className="text-[0.9375rem] font-semibold">
+              出错的词 <span className="tnum ml-1 font-serif text-[1.125rem] font-normal text-ink-3">{missed.length}</span>
+            </span>
             <button
               type="button"
               data-testid="game-star-all"
@@ -159,22 +177,21 @@ export function GameResult({
               <Star className="size-3.5" /> {notStarred.length ? "全部加入生词本" : "已在生词本"}
             </button>
           </div>
-          <div className="divide-y divide-rule border-y border-rule">
+          <ul>
             {missed.map((w) => {
               const word = index.map.get(w);
               return (
-                <div key={w} className="flex items-center gap-3 py-2.5">
-                  <span className="h-4 w-[3px] shrink-0 rounded-[1px] bg-forget" aria-hidden />
-                  <span className="word-head w-32 shrink-0 truncate text-[1.25rem] leading-tight">{w}</span>
-                  <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-3">{word ? shortMeaning(word, 1) : ""}</span>
-                </div>
+                <li key={w} className="grid min-h-12 grid-cols-[minmax(0,9rem)_minmax(0,1fr)] items-baseline gap-3 border-b border-rule py-2.5">
+                  <span className="word-head truncate text-[1.3125rem] leading-tight">{w}</span>
+                  <span className="min-w-0 truncate text-[0.8125rem] text-ink-2">{word ? shortMeaning(word, 1) : ""}</span>
+                </li>
               );
             })}
-          </div>
-        </div>
+          </ul>
+        </section>
       )}
       <div className="mt-8 flex gap-2">
-        <button type="button" onClick={onAgain} data-testid="game-again" className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-paper-2 font-medium hover:bg-rule">
+        <button type="button" onClick={onAgain} data-testid="game-again" className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2">
           <RotateCcw className="size-4" /> 再来一局
         </button>
         <Link to="/" data-testid="game-home" className="press flex h-12 flex-1 items-center justify-center rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2">
