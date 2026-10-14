@@ -1,0 +1,73 @@
+# 13.0.0 · 站点 1：gz58y2647ucx.meoo.run（Meoo 静态部署 + Meoo Cloud / Supabase）。推送到 main 自动构建并发布。
+# 和站点 2（watercoloreyes.cn，Cloudflare Pages + D1，由 Cloudflare 的 Git 集成自己构建）是两套独立的账号和数据。详见 docs/cloud.md。
+#
+# 仓库 Settings → Secrets and variables → Actions → Secrets 里要有：
+#   MEOO_AK            Meoo API Key（meoo.com → 账号 → API Key；只放在 Secret 里，不进仓库、不打印）
+#   SUPABASE_URL       Meoo Cloud 地址（`meoo cloud status --json` 的 sbInfo.publicUrl，或本地 .env）
+#   SUPABASE_ANON_KEY  anon key（公开的、RLS 把关；但同样放 Secret，免得被 fork 拿去乱用）
+# 可选 Variables：MEOO_PROJECT_URL_ID（默认 gz58y2647ucx）
+name: Deploy to Meoo (gz58y2647ucx.meoo.run)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meoo-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      MEOO_PROJECT_URL_ID: ${{ vars.MEOO_PROJECT_URL_ID || 'gz58y2647ucx' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build (BACKEND=supabase)
+        run: |
+          test -n "$SUPABASE_URL" && test -n "$SUPABASE_ANON_KEY" || { echo "::error::SUPABASE_URL / SUPABASE_ANON_KEY secrets are missing"; exit 1; }
+          pnpm build
+        env:
+          BACKEND: supabase
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Install Meoo CLI
+        run: npm install -g @aliyun-meoo/cli@latest
+
+      # 项目绑定按目录读 .env 里的 MEOO_PROJECT_URL_ID（.env 不进仓库，这里现写一个只含项目 id 的）
+      - name: Bind the Meoo project
+        run: echo "MEOO_PROJECT_URL_ID=$MEOO_PROJECT_URL_ID" > .env
+
+      - name: Log in (non-interactive API key)
+        run: meoo login --ak "$MEOO_AK" > /dev/null
+        env:
+          MEOO_AK: ${{ secrets.MEOO_AK }}
+
+      # 发布上面构建好的 dist/（BACKEND=supabase）：--skip-build 用本地产物、--skip-push 不推源码到秒悟沙箱、--force 跳过确认
+      - name: Deploy
+        run: meoo deploy --skip-build --skip-push --force --json
+
+      - name: Log out
+        if: always()
+        run: meoo logout || true

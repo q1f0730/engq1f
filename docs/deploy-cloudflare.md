@@ -1,72 +1,88 @@
-# 部署到 Cloudflare Pages（或任何静态托管）
+# 站点 2：watercoloreyes.cn（Cloudflare Pages + Pages Functions + D1）
 
-产物是纯静态文件：`pnpm build` → `dist/`。不需要服务器、不需要重写规则：
-- `vite.config.ts` 里 `base: "./"`，所有资源都是相对路径，放在根目录或任意子路径（`https://x.pages.dev/`、`https://user.github.io/repo/`）都能用；
-- 路由是 hash 路由（`#/study`、`#/me`），刷新任何页面都只请求 `index.html`，不需要 SPA fallback；
-- service worker（`dist/sw.js`）用相对作用域注册，离线可用。
+13.0.0 起这是一个**独立的站点**：自己的账号、自己的数据（Cloudflare D1），和站点 1（gz58y2647ucx.meoo.run，Meoo Cloud）**不互通**。两个站点的总览见 `docs/cloud.md`。
 
-## 现状：watercoloreyes.cn 已在 Cloudflare
-- 他的域名 **watercoloreyes.cn 已经托管在 Cloudflare**（DNS + Pages，响应头 `server: cloudflare`），绑在 Cloudflare Pages 项目上。
-- **watercoloreyes.cn（CF Pages）和 gz58y2647ucx.meoo.run（Meoo 静态部署）共用同一个 Meoo Cloud**：同一套账号、同一份进度，在一个域名上注册，另一个域名直接登录。云端细节见 `docs/cloud.md`。
-- 区别只在前端怎么连：meoo.run 直连云端；watercoloreyes.cn 走同域 `/sb-api` 代理（下面说为什么）。
+| | |
+|---|---|
+| 前端 | `BACKEND=cloudflare pnpm build` → `dist/`（产物里没有任何 Supabase 地址 / key，也没有 supabase-js） |
+| API | 同域 `/api/*` = `functions/api/[[route]].ts` → `server/api.ts`（Pages Functions，Workers 运行时） |
+| 数据 | D1，绑定名 `DB`，表结构 `migrations/d1/*.sql`（users / sessions / cards / profile / auth_attempts / reset_codes） |
+| 机密 | `JWT_SECRET`（必填）；`RESEND_API_KEY`、`MAIL_FROM`（可选，找回密码发码） |
+| 配置 | `wrangler.toml`（`pages_build_output_dir = "dist"` + D1 绑定，`database_id` 是占位，要换） |
 
-## 为什么 Pages 要走 /sb-api 代理
-Meoo Cloud 的网关按浏览器请求的 `Origin` 放行，只认 `https://gz58y2647ucx.meoo.run`：从 `https://watercoloreyes.cn` 或 `*.pages.dev` 直连 `SUPABASE_URL`，所有接口都回 403（2026-10-14 实测）。`Origin` 是浏览器加的，前端改不了。
-所以仓库里带了一个 Pages Function `functions/sb-api/[[path]].js`：浏览器请求同域的 `/sb-api/auth/v1/…`、`/sb-api/rest/v1/…`，它转发到 Meoo Cloud，并把 `Origin` 换成 meoo.run 域名；只转发 `auth / rest / storage / functions / realtime` 这几个前缀，其它路径 404，不会变成开放代理；请求体和响应体原样转发，响应 `cache-control: no-store`。
-（Pages 会自动部署仓库根目录的 `functions/`；`wrangler pages deploy dist` 在仓库根目录运行时也会带上它。）
+## 账号与同步怎么做的
+- **注册 / 登录**：邮箱 + 密码。没有邮件服务，所以注册即登录，不发验证码。
+- **密码**：PBKDF2-SHA256（WebCrypto），每个用户 16 字节随机盐，100000 次迭代 —— 这是 Workers 的 WebCrypto 允许的上限（更高会直接报错）；迭代次数按用户记在 `users.pw_iter`，以后平台放开可以在登录时升级。比较是常数时间的；邮箱不存在也照样算一遍哈希。
+- **会话**：HS256 JWT（`JWT_SECRET` 签名，30 天），里面的 `jti` 记在 D1 的 `sessions` 表里，每次请求都核对：退出登录 = 吊销这一个，重设密码 = 吊销这个用户的所有会话。前端存在 `localStorage["cet4v-auth"]`，放在 `Authorization: Bearer` 头里（不用 cookie，没有 CSRF）。
+- **限流**（D1 里的滑动窗口，`auth_attempts`）：登录失败每个邮箱 15 分钟 5 次、每个 IP 30 次，到了以后连正确的密码也回 `429` + `Retry-After`，页面显示「N 分钟后再试」；注册每个 IP 每小时 10 次；找回码每个邮箱 15 分钟 3 次。
+- **等价于 RLS**：每条读写 `cards` / `profile` 的 SQL 都是 `WHERE user_id = ?`，这个值只来自验证过的会话，请求体里的 `user_id` 一律不看。
+- **推送是服务端裁决的**（`server/merge.ts` 的 `PUSH_SQL`，和 Meoo 的 `vocab_push_cards` 同一个意思）：同一个词 ts 更晚的赢；ts 相同时墓碑（`card = NULL`）赢；旧设备晚到的写入不会把删掉的词写回来。前端的合并 / 墓碑逻辑（`src/lib/cloud-merge.ts`）两个站点共用、没改。
+- **输入校验**：邮箱格式 / ≤ 254、密码 6–128 位、词 1–64 个字符、ts 是非负安全整数、单张卡片 JSON ≤ 4KB、一批 ≤ 500 行、请求体 ≤ 1.5MB、profile.meta ≤ 1MB。
+- **忘记密码**：没设 `RESEND_API_KEY` 时 `/api/auth/forgot` 回 `501 no_mail`，`/api/auth/config` 回 `resetCode: false`，「账号」页的「忘记密码？」只显示一段说明（这个站点还没接邮件服务），不显示验证码流程。设了 `RESEND_API_KEY`（+ `MAIL_FROM`，发件域名要先在 Resend 验证）就会通过 Resend API 发 6 位找回码（15 分钟有效，最多试 5 次，只存哈希），界面自动出现「发送找回验证码 → 输入验证码 + 新密码」。
 
-## Pages 的环境变量
-在 Pages 项目 → Settings → Environment variables，**Production 和 Preview 都加**：
+## 上线步骤（他要在 Cloudflare 上做的）
+watercoloreyes.cn 已经在 Cloudflare DNS 上，现在挂着一个旧版本的 Pages 项目。下面假设沿用那个 Pages 项目；如果它是「Direct Upload」类型（不能连 Git），就新建一个连 Git 的项目，最后把自定义域名挪过去。
 
-| 变量 | 用在 | 值 | 说明 |
-|---|---|---|---|
-| `CET4V_CLOUD` | 构建 | `1` | 开云同步、走同域 `/sb-api` |
-| `SUPABASE_ANON_KEY` | 构建 | anon key | `meoo cloud status --json` 的 `sbInfo.anonKey`。公开的 key，RLS 把关；**不要**放 service role key |
-| `SB_UPSTREAM` | 运行时（Functions） | `https://<实例>.database.meoo.xyz` | `sbInfo.publicUrl` |
-| `SB_ORIGIN` | 运行时（Functions） | `https://gz58y2647ucx.meoo.run` | Meoo 网关认的来源 |
-| `NODE_VERSION` | 构建 | `22` | |
+### 1. 建 D1 数据库并应用迁移（本机，一次）
+```bash
+pnpm install
+npx wrangler login                                   # 浏览器里授权 Cloudflare 账号
+npx wrangler d1 create cet4-vocab                    # 打印 database_id
+# 把 wrangler.toml 里 database_id = "00000000-…" 换成上面打印的值，提交到仓库（database_id 不是机密）
+npx wrangler d1 migrations apply cet4-vocab --remote # 建表（以后新增 migrations/d1/*.sql 再跑一次）
+```
+也可以在 Dashboard → Storage & Databases → D1 → Create 建库，再用上面最后一条命令建表。
 
-**不要在 Pages 上设 `SUPABASE_URL`**：设了前端就会编进直连地址，绕过代理，然后被网关 403。
-（`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` 也认，同理。）变量在**构建时**编进 JS，改了要重新构建（`SB_UPSTREAM` / `SB_ORIGIN` 是运行时的，改了重新部署即可）。
-不设 `CET4V_CLOUD` / `SUPABASE_ANON_KEY` = 纯本机版（「账号」页显示「云同步还没开通」），代理闲着不用。
-
-其它静态托管（没有 Functions 的）：要么设 `SUPABASE_URL` 直连（前提是 Meoo 放行了那个域名），要么在托管那边配一个等价的反向代理到 `/sb-api`，同样把 `Origin` 换成 meoo.run 域名。
-
-## Cloudflare Pages（连 Git 仓库）
-Workers & Pages → Create → Pages → Connect to Git，选仓库后：
-
+### 2. Pages 项目连 Git（Workers & Pages → Create → Pages → Connect to Git）
 | 设置 | 值 |
 |---|---|
+| Production branch | `main` |
 | Framework preset | None |
-| Build command | `pnpm build` |
+| Build command | `BACKEND=cloudflare pnpm build` |
 | Build output directory | `dist` |
-| Root directory | `/`（仓库根目录就是本应用时；否则填应用所在子目录，`functions/` 要在这个目录下） |
-| Environment variables | 见上表 |
+| Root directory | `/`（`functions/`、`server/`、`wrangler.toml` 都要在这个目录下） |
+| Build 环境变量 | `NODE_VERSION` = `22`（可选，Pages 构建镜像 v3 默认就是 22）。`BACKEND` 写在构建命令里了，不依赖面板设置 |
 
-Pages 看到 `pnpm-lock.yaml` 会自动用 pnpm 安装。`public/_headers` 会被 Pages 读取：`sw.js` 和 `version.json` 不缓存（新版能及时提示刷新），`assets/*` 长期缓存。`_headers` 里**没有 CSP**（13.0.0 核对过，`index.html` 里也没有）；以后要加的话，`connect-src` 至少要有 `'self'`（同域 `/sb-api`）、`https://*.database.meoo.xyz`（直连构建）、`https://dict.youdao.com`（发音）、`https://api.dictionaryapi.dev`（在线例句），`media-src` 要有 `https://dict.youdao.com`，否则云同步 / 发音会被拦。
-自定义域名：Pages 项目 → Custom domains → `watercoloreyes.cn`（已在 Cloudflare 的域名会自动加 DNS 记录）。
+- Pages 看到 `pnpm-lock.yaml` 会用 pnpm 安装（lockfile v9）。
+- 仓库里有带 `pages_build_output_dir` 的 `wrangler.toml` 时，**Pages 以它为准**：D1 绑定 `DB` 从 `wrangler.toml` 来（所以第 1 步要把真实的 `database_id` 提交进去），面板里的绑定变成只读。
+- 不想把 `database_id` 放进仓库的话：删掉 `wrangler.toml` 里的 `[[d1_databases]]` 段，改在 Pages 项目 → Settings → Bindings → D1 database 加 `DB` → `cet4-vocab`（Production 和 Preview 都加）。
+
+### 3. 机密（Pages 项目 → Settings → Variables and Secrets，类型选 Secret，Production 和 Preview 都加）
+| 名字 | 值 |
+|---|---|
+| `JWT_SECRET` | 至少 32 个字符的随机串，例如 `openssl rand -base64 48` 的输出。**少了它所有账号接口回 500 `server_config`** |
+| `RESEND_API_KEY` | 可选。不设 = 忘记密码是说明页 |
+| `MAIL_FROM` | 可选，例如 `四级单词打卡 <noreply@watercoloreyes.cn>`（域名要在 Resend 验证过） |
+
+也可以用命令行：`npx wrangler pages secret put JWT_SECRET --project-name <Pages 项目名>`。
+换了 `JWT_SECRET` = 所有人都要重新登录（旧 JWT 验不过），数据不受影响。
+
+### 4. 自定义域名
+Pages 项目 → Custom domains → Set up a custom domain → `watercoloreyes.cn`（域名已经在 Cloudflare，会自动改 DNS 记录）。如果它还绑在旧的 Pages 项目上，先在旧项目里删掉这个自定义域名，再在新项目里加。
+
+### 5. 之后
+push 到 `main` → Cloudflare 自动构建、部署（动态部署）；其它分支 → Preview 部署（同一个 D1，除非给 Preview 绑另一个库）。
 
 ### 上线后检查
-1. `https://watercoloreyes.cn/sb-api/auth/v1/health` 返回 GoTrue 的 JSON（不是 403 / 503）。503 = `SB_UPSTREAM` / `SB_ORIGIN` 没设。
-2. 在「账号」页用测试邮箱注册 → 收到 6 位验证码 → 登录；再到 gz58y2647ucx.meoo.run 用同一账号登录，进度一致。
+1. `https://watercoloreyes.cn/api/auth/config` 返回 `{"resetCode":false,"backend":"cloudflare"}`（500 `server_config` = `JWT_SECRET` 没设 / 太短，或 D1 没绑）。
+2. 「我的 → 登录 / 注册」：注册一个测试邮箱 → 马上是已登录；学 2 个词，换一个浏览器登录，进度一致。
+3. `npx wrangler d1 execute cet4-vocab --remote --command "select count(*) from users"` 能看到用户数。
+4. 在 gz58y2647ucx.meoo.run 用同一个邮箱登录**登不上**（那是另一套账号），这是预期的。
 
-## 可选：GitHub Action + wrangler
-`.github/workflows/cloudflare-pages.yml`，**只在手动触发（workflow_dispatch）时运行**，不会随 push 自动发布。
-
-1. Cloudflare 里先建一个 Pages 项目（Direct Upload 类型即可），记下项目名。
-2. 仓库 Settings → Secrets and variables → Actions：
-   - Secrets：`CLOUDFLARE_API_TOKEN`（权限 Account · Cloudflare Pages · Edit）、`CLOUDFLARE_ACCOUNT_ID`
-   - Variables：`CF_PAGES_PROJECT`（项目名）、`SUPABASE_ANON_KEY`（有它 workflow 就带 `CET4V_CLOUD=1` 构建；不设 `SUPABASE_URL`）
-   - Pages 项目本身的环境变量里设好 `SB_UPSTREAM`、`SB_ORIGIN`（给 `functions/sb-api`）
-3. Actions → Deploy to Cloudflare Pages → Run workflow。它会 `pnpm install --frozen-lockfile` → `pnpm test` → `pnpm build` → `wrangler pages deploy dist --project-name=$CF_PAGES_PROJECT --branch=main`。
-
-本地手动发（装了 wrangler 并 `wrangler login` 之后）：
+## 本地开发 / 测试（真实的 Cloudflare 语义：workerd + 本地 D1）
 ```bash
-pnpm build
-npx wrangler pages deploy dist --project-name=<项目名>
+cp .dev.vars.example .dev.vars       # 填 JWT_SECRET（.dev.vars 已 gitignore）
+BACKEND=cloudflare pnpm build
+npx wrangler d1 migrations apply cet4-vocab --local
+npx wrangler pages dev dist --d1 DB=00000000-0000-0000-0000-000000000000   # http://127.0.0.1:8788
 ```
+- 单元测试：`src/lib/cf-backend.test.ts`（裁决规则、迁移 + `PUSH_SQL` 跑在 SQLite 上、整个 API 跑在 node:sqlite 做的 D1 替身上、前端适配层打同一个 API）。
+- e2e：评审工作区的 `ONLY=cf` 套件对着 `wrangler pages dev` 跑（注册、登录、密码错、限流、上传、第二个浏览器、墓碑、B 读不到 A、退出、游客离线）。
 
-## 其它静态托管
-- **GitHub Pages**：`.github/workflows/pages.yml`（push 到 main 自动发布），云同步变量放在仓库 Variables 的 `SUPABASE_URL` / `SUPABASE_ANON_KEY`。注意 GitHub Pages 没有 Functions，`*.github.io` 直连会被 Meoo 网关 403，云同步在那里用不了，除非 Meoo 放行这个域名。
-- **Meoo 静态部署**：见 `docs/cloud.md`（`meoo deploy --skip-build --skip-push --force`）。
-- **Netlify / Vercel / 任意 Nginx**：构建命令 `pnpm build`、发布目录 `dist`，同样的环境变量；不需要重写规则。
+## 备用：GitHub Action + wrangler（手动触发）
+`.github/workflows/cloudflare-pages.yml`，只在 Actions → Run workflow 时运行：`pnpm test` → `BACKEND=cloudflare pnpm build` → `wrangler d1 migrations apply cet4-vocab --remote` → `wrangler pages deploy dist`。要 `CLOUDFLARE_API_TOKEN`（Pages Edit + D1 Edit）、`CLOUDFLARE_ACCOUNT_ID` 两个 Secret 和 `CF_PAGES_PROJECT` 变量。和 Git 集成二选一，别两个都开。
+
+## 其它
+- `public/_headers`：`sw.js` / `version.json` 不缓存，`assets/*` 长期缓存；没有 CSP。以后要加 CSP，`connect-src` 至少要 `'self'`（`/api`）、`https://dict.youdao.com`、`https://api.dictionaryapi.dev`，`media-src` 要 `https://dict.youdao.com`。
+- service worker 不缓存 `/api/*`；Pages 会把 `/index.html` 308 到 `/`，离线打开时 SW 用缓存里的 `./`（或把重定向过的 index.html 复制成干净的响应），13.0.0 修过、e2e 覆盖。
+- 13.0.0 之前的 `/sb-api` 同域代理（把 Cloudflare 的流量转到 Meoo Cloud）已经删掉：两个站点不再共用数据。

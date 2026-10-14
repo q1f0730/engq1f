@@ -7,5 +7,5 @@
 # 带哈希的构建产物可以长期缓存
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
-# 13.0 · 这里没有 CSP。要加的话 connect-src 必须放行 'self'（/sb-api 代理）和 https://*.database.meoo.xyz（Meoo Cloud 直连），
+# 13.0 · 这里没有 CSP。要加的话 connect-src 必须放行 'self'（Cloudflare 站点的 /api），
 # 外加 https://dict.youdao.com（发音，media-src 也要）和 https://api.dictionaryapi.dev（在线例句），见 docs/deploy-cloudflare.md

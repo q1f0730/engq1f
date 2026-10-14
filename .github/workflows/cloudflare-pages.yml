@@ -1,10 +1,10 @@
-# 可选：用 wrangler 把构建好的 dist 发到 Cloudflare Pages（只在手动触发时运行，不会随 push 自动发布）
+# 备用：用 wrangler 把 BACKEND=cloudflare 的构建 + functions/ 直接发到 Cloudflare Pages（只在手动触发时运行）。
+# 推荐的方式是 Cloudflare Pages 的 Git 集成（push 到 main 由 Cloudflare 自己构建），见 docs/deploy-cloudflare.md；两者选一个。
 # 需要的仓库设置（Settings → Secrets and variables → Actions）：
-#   Secrets:   CLOUDFLARE_API_TOKEN（权限：Account · Cloudflare Pages · Edit）、CLOUDFLARE_ACCOUNT_ID
-#   Variables: CF_PAGES_PROJECT（Pages 项目名，例如 cet4-vocab）、SUPABASE_ANON_KEY（可不设 = 纯本机版）
-#   Pages 项目自己的环境变量（运行时，给 functions/sb-api 代理）：SB_UPSTREAM、SB_ORIGIN
-#   不设 SUPABASE_URL：Meoo 网关只认 meoo.run 来源，前端要走同域 /sb-api 代理
-# 详见 docs/deploy-cloudflare.md
+#   Secrets:   CLOUDFLARE_API_TOKEN（权限：Account · Cloudflare Pages · Edit + D1 · Edit）、CLOUDFLARE_ACCOUNT_ID
+#   Variables: CF_PAGES_PROJECT（Pages 项目名，例如 cet4-vocab）
+#   Pages 项目自己的 Secret（运行时，functions/ 读）：JWT_SECRET；可选 RESEND_API_KEY、MAIL_FROM
+#   wrangler.toml 里的 database_id 要先换成真实的（wrangler d1 create 打印的）
 name: Deploy to Cloudflare Pages
 
 on:
@@ -34,12 +34,17 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Build
+      - name: Build (BACKEND=cloudflare)
         run: pnpm build
         env:
-          # 云同步走同域 /sb-api（functions/sb-api 代理）；有 key 才开
-          CET4V_CLOUD: ${{ vars.SUPABASE_ANON_KEY != '' && '1' || '0' }}
-          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          BACKEND: cloudflare
+
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply cet4-vocab --remote
 
       - name: Deploy (wrangler pages deploy)
         uses: cloudflare/wrangler-action@v3
