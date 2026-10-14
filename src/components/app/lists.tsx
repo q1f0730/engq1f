@@ -208,40 +208,33 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
   const [renaming, setRenaming] = useState(false);
   const [sharing, setSharing] = useState(false);
   const starWords = Object.keys(st.star).filter((w) => !list.words.includes(w) && index.map.has(w));
-  const iconBtn = "press grid size-10 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink";
+  const tool = "press inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-[0.8125rem] font-medium text-ink-2 hover:bg-paper-2 hover:text-ink";
+  const remove = () => {
+    const snap = snapshot();
+    deleteList(list.id);
+    navigate({ to: "/words", search: { tab: "lists" }, replace: true });
+    toast(`已删除「${list.name}」`, { description: "单词和学习记录都还在", action: { label: "撤销", onClick: () => restoreSnapshot(snap) } });
+  };
   return (
     <section className="mb-3 border-b border-rule pb-4" data-testid="list-panel">
-      <div className="flex items-end gap-1">
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[1.5rem] font-semibold leading-tight tracking-[-0.02em]" data-testid="list-name">
-            {list.name}
-          </h2>
-          <div className="mt-1 text-[0.75rem] text-ink-3" data-testid="list-meta">
-            {p.total} 词 · 未学 {p.unlearned} · 学习中 {p.learning} · 已掌握 {p.mastered}
-          </div>
-        </div>
+      {/* 12.0 · 词单页的书名页：大标题 + 一行统计；三个操作是标题下面一排安静的文字工具，不是三个图标方块 */}
+      <h2 className="truncate text-[1.5rem] font-semibold leading-tight tracking-[-0.02em]" data-testid="list-name">
+        {list.name}
+      </h2>
+      <p className="tnum mt-1 text-[0.75rem] text-ink-3" data-testid="list-meta">
+        {p.total} 词 · 未学 {p.unlearned} · 学习中 {p.learning} · 已掌握 {p.mastered}
+      </p>
+      <div className="-ml-2 mt-2 flex flex-wrap items-center" role="toolbar" aria-label="词单操作">
         {list.words.length > 0 && (
-          <button type="button" aria-label="分享词单链接" title="分享链接" data-testid="list-share" onClick={() => setSharing(true)} className={iconBtn}>
-            <Link2 className="size-[18px]" />
+          <button type="button" aria-label="分享词单链接" data-testid="list-share" onClick={() => setSharing(true)} className={tool}>
+            <Link2 className="size-4" /> 分享
           </button>
         )}
-        <button type="button" aria-label="重命名词单" title="重命名" data-testid="list-rename" onClick={() => setRenaming(true)} className={iconBtn}>
-          <Pencil className="size-[18px]" />
+        <button type="button" aria-label="重命名词单" data-testid="list-rename" onClick={() => setRenaming(true)} className={tool}>
+          <Pencil className="size-4" /> 重命名
         </button>
-        <button
-          type="button"
-          aria-label="删除词单"
-          title="删除词单"
-          data-testid="list-delete"
-          onClick={() => {
-            const snap = snapshot();
-            deleteList(list.id);
-            navigate({ to: "/words", search: { tab: "lists" }, replace: true });
-            toast(`已删除「${list.name}」`, { description: "单词和学习记录都还在", action: { label: "撤销", onClick: () => restoreSnapshot(snap) } });
-          }}
-          className={cn(iconBtn, "hover:text-forget")}
-        >
-          <Trash2 className="size-[18px]" />
+        <button type="button" aria-label="删除词单" data-testid="list-delete" onClick={remove} className={cn(tool, "hover:text-forget")}>
+          <Trash2 className="size-4" /> 删除
         </button>
       </div>
       {p.total > 0 && <ProgressBar p={p} className="mt-3" />}

@@ -4,6 +4,18 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useBackClose } from "@/lib/back-stack";
 
+/** 遮罩：暖墨色半透明，淡入 */
+const SCRIM =
+  "fixed inset-0 z-50 bg-[oklch(0.18_0.01_95/0.5)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-300 data-[state=closed]:animate-out data-[state=closed]:fade-out-0";
+/** 纸面本身：双层边框、最高 88% 屏高、内部自己滚动 */
+const PANEL = "float-shell fixed z-50 flex max-h-[88dvh] w-full flex-col overflow-hidden text-ink outline-none";
+/** 手机：贴底，上沿 20px 圆角，弹簧滑入 */
+const PHONE =
+  "inset-x-0 bottom-0 rounded-t-4xl pb-safe data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-16 data-[state=open]:duration-500 data-[state=open]:ease-[var(--ease-spring)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-10 data-[state=closed]:duration-200";
+/** 平板 / 桌面：居中的一张卡，轻微放大进场 */
+const DESK =
+  "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:max-h-[84dvh] md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-4xl md:pb-0 md:data-[state=open]:zoom-in-[0.97] md:data-[state=open]:slide-in-from-bottom-0";
+
 /**
  * 12.0 · 浮层：手机从底部弹出（弹簧），桌面居中。
  * 纸色 + 双层边框（float-shell），上沿 20px 圆角；标题左对齐、正文字号，关闭键是一个安静的方块。
@@ -33,17 +45,8 @@ export function BottomSheet({
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>
-        <D.Overlay className="fixed inset-0 z-50 bg-[oklch(0.18_0.01_95/0.5)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-300 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-        <D.Content
-          aria-describedby={undefined}
-          data-testid={testid}
-          className={cn(
-            "float-shell fixed z-50 flex max-h-[88dvh] w-full flex-col overflow-hidden text-ink outline-none",
-            "inset-x-0 bottom-0 rounded-t-4xl pb-safe data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-16 data-[state=open]:duration-500 data-[state=open]:ease-[var(--ease-spring)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-10 data-[state=closed]:duration-200",
-            "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:max-h-[84dvh] md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-4xl md:pb-0 md:data-[state=open]:zoom-in-[0.97] md:data-[state=open]:slide-in-from-bottom-0",
-            className,
-          )}
-        >
+        <D.Overlay className={SCRIM} />
+        <D.Content aria-describedby={undefined} data-testid={testid} className={cn(PANEL, PHONE, DESK, className)}>
           <Grabber />
           <SheetHead title={title} hidden={hideTitle} />
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-1">{children}</div>

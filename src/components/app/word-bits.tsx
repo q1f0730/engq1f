@@ -66,37 +66,45 @@ export function SpeakButton({ word, accent, className, label }: { word: string; 
 }
 
 export function Meanings({ word, size = "md" }: { word: Word; size?: "md" | "lg" }) {
+  const lg = size === "lg";
+  // 12.0 · 词典的义项排法：左边一栏斜体词性（同一词性只写一次），右边释义；义项之间没有分隔线，只有行距
   return (
-    <ul className="space-y-2.5" data-testid="meanings">
+    <dl className={cn("grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2.5 leading-relaxed text-ink", lg ? "text-[1.0625rem]" : "text-[0.9375rem]")} data-testid="meanings">
       {word.t.map(([pos, m], k) => (
-        <li key={k} className={cn("flex items-baseline gap-2.5 leading-relaxed text-ink", size === "lg" ? "text-[1.0625rem]" : "text-[0.9375rem]")}>
-          {/* 12.0 · 词性：词典的斜体衬线，不是灰色小药丸 */}
-          {pos && (
-            <span className={cn("pos min-w-[1.9em] shrink-0 text-ink-3", size === "lg" ? "text-[1.1875rem]" : "text-[1.0625rem]")}>
-              {posLabel(pos)}
-            </span>
-          )}
-          <span className="min-w-0">{m}</span>
-        </li>
+        <div key={k} className="contents">
+          <dt className={cn("pos min-w-[1.9em] text-ink-3", lg ? "text-[1.1875rem]" : "text-[1.0625rem]")}>{pos ? posLabel(pos) : ""}</dt>
+          <dd className="min-w-0">{m}</dd>
+        </div>
       ))}
-    </ul>
+    </dl>
+  );
+}
+
+/** 小节标题：一行小字 + 一条延伸到右边的细线（短语、例句、形近词共用） */
+function Rubric({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-2.5 flex items-center gap-3 text-[0.8125rem] text-ink-3">
+      <span className="shrink-0">{children}</span>
+      <span aria-hidden className="h-px flex-1 bg-rule" />
+    </div>
   );
 }
 
 export function Phrases({ word, max = 6 }: { word: Word; max?: number }) {
   if (!word.ph?.length) return null;
+  // 12.0 · 短语两栏：英文在左（墨色），中文在右（弱墨），宽屏时两组并排
   return (
-    <div>
-      <div className="section-rule mb-2.5 text-[0.8125rem] text-ink-3">常用短语</div>
-      <ul className="space-y-2">
+    <section>
+      <Rubric>常用短语</Rubric>
+      <dl className="grid gap-x-6 gap-y-2 text-[0.875rem] leading-snug sm:grid-cols-2">
         {word.ph.slice(0, max).map(([a, b]) => (
-          <li key={a} className="flex flex-wrap items-baseline gap-x-2.5 text-sm leading-snug">
-            <span className="font-medium text-ink">{a}</span>
-            <span className="text-ink-3">{b}</span>
-          </li>
+          <div key={a} className="min-w-0">
+            <dt className="font-medium text-ink">{a}</dt>
+            <dd className="mt-0.5 text-ink-3">{b}</dd>
+          </div>
         ))}
-      </ul>
-    </div>
+      </dl>
+    </section>
   );
 }
 
@@ -118,32 +126,34 @@ function highlight(sentence: string, word: string) {
 export function Examples({ word, enabled = true }: { word: Word; enabled?: boolean }) {
   const list = useExamples(word.w, enabled);
   if (!list.length) return null;
+  const say = (e: React.MouseEvent, s: string) => {
+    e.stopPropagation();
+    void sayEnglish(s, getState().settings.accent);
+  };
+  // 12.0 · 例句：播放键在左边当「行首符号」，句子是衬线正文，词头在句中被荧光笔划过
   return (
-    <div data-testid="examples">
-      <div className="section-rule mb-2.5 text-[0.8125rem] text-ink-3">例句</div>
-      <ul className="space-y-3">
+    <section data-testid="examples">
+      <Rubric>例句</Rubric>
+      <ol className="space-y-3">
         {list.map((s) => (
-          <li key={s} className="flex items-start gap-2.5">
-            <span className="min-w-0 flex-1 font-serif text-[1.0625rem] leading-[1.5] text-ink" data-testid="example">
-              {highlight(s, word.w)}
-            </span>
+          <li key={s} className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-2">
             <button
               type="button"
               aria-label="朗读例句"
               title="朗读例句"
               data-testid="example-play"
-              onClick={(e) => {
-                e.stopPropagation();
-                void sayEnglish(s, getState().settings.accent);
-              }}
-              className="press -mt-1 grid size-9 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-mark hover:text-mark-ink"
+              onClick={(e) => say(e, s)}
+              className="press -mt-1 grid size-9 place-items-center rounded-full text-ink-2 ring-1 ring-inset ring-rule hover:bg-mark hover:text-mark-ink hover:ring-transparent"
             >
               <Play className="ml-px size-3.5 fill-current" />
             </button>
+            <p className="font-serif text-[1.0625rem] leading-[1.5] text-ink" data-testid="example">
+              {highlight(s, word.w)}
+            </p>
           </li>
         ))}
-      </ul>
-    </div>
+      </ol>
+    </section>
   );
 }
 
@@ -163,9 +173,9 @@ export function Confusables({
   const list = confusables(index, word);
   if (!list.length) return null;
   return (
-    <div data-testid="confusables">
-      <div className="section-rule mb-1.5 text-[0.8125rem] text-ink-3">形近词 · 别认混</div>
-      <ul className="divide-y divide-rule">
+    <section data-testid="confusables">
+      <Rubric>形近词 · 别认混</Rubric>
+      <ul className="-mt-1 divide-y divide-rule">
         {list.map((c) => (
           <li key={c.w}>
             <button
@@ -186,7 +196,7 @@ export function Confusables({
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   );
 }
 
