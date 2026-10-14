@@ -8,13 +8,14 @@ export function NameField({ initial = "", placeholder, action, onSubmit, testid 
   useEffect(() => setV(initial), [initial]);
   return (
     <form
-      className="flex gap-2"
+      className="flex items-end gap-3"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit(v);
         setV("");
       }}
     >
+      {/* 12.0 · 输入框是一条墨色下划线，确认键在右边 */}
       <input
         ref={ref}
         value={v}
@@ -23,9 +24,9 @@ export function NameField({ initial = "", placeholder, action, onSubmit, testid 
         placeholder={placeholder}
         data-testid={`${testid}-name`}
         enterKeyHint="done"
-        className="h-11 min-w-0 flex-1 rounded-2xl border border-rule bg-paper px-4 text-[0.9375rem] outline-none transition placeholder:text-ink-3 focus:border-ink focus:ring-4 focus:ring-ink"
+        className="h-11 min-w-0 flex-1 border-b-[1.5px] border-ink bg-transparent text-[1rem] outline-none transition-colors placeholder:text-[0.875rem] placeholder:text-ink-3 focus:border-b-2"
       />
-      <button type="submit" data-testid={`${testid}-ok`} className="press h-11 shrink-0 rounded-lg bg-ink px-4 text-sm font-semibold text-paper-3 hover:bg-ink-2">
+      <button type="submit" data-testid={`${testid}-ok`} className="press h-11 shrink-0 rounded-lg bg-ink px-4 text-[0.875rem] font-semibold text-paper-3 hover:bg-ink-2">
         {action}
       </button>
     </form>

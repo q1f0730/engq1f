@@ -42,17 +42,20 @@ function NewGate({ index, t }: { index: NonNullable<ReturnType<typeof useWords>[
   const recovering = !!st.recover && day >= st.recover.from && day <= st.recover.until && !st.recover.mix;
   if (!recovering) return <Study key={`new-${t ?? 0}`} index={index} mode="new" />;
   return (
-    <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center px-6 text-center" data-testid="new-paused">
-      <div className="text-xl font-semibold">恢复期 · 新词暂停</div>
-      <p className="mt-2 text-sm leading-relaxed text-ink-3">这几天先把积压清掉，清完了新词自动恢复。</p>
+    <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col justify-center px-6" data-testid="new-paused">
+      <div className="text-[0.75rem] tracking-[0.2em] text-ink-3">恢复期</div>
+      <div className="mt-2 border-b-2 border-ink pb-3 text-[1.5rem] font-semibold tracking-[-0.02em]">
+        <span className="hl">新词暂停</span>
+      </div>
+      <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink-2">这几天先把积压清掉，清完了新词自动恢复。</p>
       <Link to="/study" search={{ mode: "review" }} replace data-testid="new-paused-review" className="press mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2">
         去复习
       </Link>
       {confirm ? (
-        <div className="mt-3 w-full rounded-2xl bg-paper-2 p-3 text-[0.8125rem]">
-          <p className="text-ink-3">结束恢复计划？没清完的积压会按正常复习安排。</p>
-          <div className="mt-2.5 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setConfirm(false)} className="h-10 rounded-xl bg-paper-3 font-semibold">
+        <div className="mt-4 border-l-2 border-vague py-1 pl-3 text-[0.8125rem]">
+          <p className="text-ink-2">结束恢复计划？没清完的积压会按正常复习安排。</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setConfirm(false)} className="press h-10 rounded-lg font-semibold ring-1 ring-rule-strong ring-inset hover:bg-paper-2">
               继续恢复
             </button>
             <button
@@ -62,18 +65,18 @@ function NewGate({ index, t }: { index: NonNullable<ReturnType<typeof useWords>[
                 endRecover();
                 toast.success("恢复计划结束，新词恢复");
               }}
-              className="h-10 rounded-xl bg-ink font-semibold text-paper-3"
+              className="press h-10 rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
             >
               结束，学新词
             </button>
           </div>
         </div>
       ) : (
-        <button type="button" data-testid="new-paused-end" onClick={() => setConfirm(true)} className="mt-2 h-11 text-sm font-semibold text-ink-3">
+        <button type="button" data-testid="new-paused-end" onClick={() => setConfirm(true)} className="press mt-2 h-11 text-[0.875rem] font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink">
           提前恢复新词
         </button>
       )}
-      <Link to="/" replace className="mt-1 text-[0.8125rem] text-ink-3 underline-offset-2 hover:underline">
+      <Link to="/" replace className="mt-1 text-center text-[0.8125rem] text-ink-3 underline-offset-2 hover:underline">
         回首页
       </Link>
     </div>

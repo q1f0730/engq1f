@@ -99,25 +99,31 @@ export function LeaveSheet({
   const open = blocker.status === "blocked";
   return (
     <BottomSheet open={open} onOpenChange={(v) => !v && blocker.reset?.()} title={title} testid="leave-confirm" noHistory>
-      <p className="text-sm text-ink-3">{desc}</p>
-      {extra && (
+      <p className="text-[0.875rem] leading-relaxed text-ink-2">{desc}</p>
+      {/* 12.0 · 三种出路竖排：主动作（交卷 / 继续）是墨色，离开是砖红字的细线按钮，放最下面离拇指最远 */}
+      <div className="mt-5 flex flex-col gap-2">
+        {extra && (
+          <button
+            type="button"
+            data-testid={extra.testid}
+            onClick={() => {
+              blocker.reset?.();
+              extra.onClick();
+            }}
+            className="press h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
+          >
+            {extra.label}
+          </button>
+        )}
         <button
           type="button"
-          data-testid={extra.testid}
-          onClick={() => {
-            blocker.reset?.();
-            extra.onClick();
-          }}
-          className="press mt-5 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
+          data-testid="leave-stay"
+          onClick={() => blocker.reset?.()}
+          className={extra ? "press h-12 rounded-lg font-semibold ring-1 ring-rule-strong ring-inset hover:bg-paper-2" : "press h-12 rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"}
         >
-          {extra.label}
-        </button>
-      )}
-      <div className={extra ? "mt-2 grid grid-cols-2 gap-2" : "mt-5 grid grid-cols-2 gap-2"}>
-        <button type="button" data-testid="leave-stay" onClick={() => blocker.reset?.()} className={extra ? "h-12 rounded-lg bg-paper-2 font-semibold" : "press h-12 rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"}>
           {stay}
         </button>
-        <button type="button" data-testid="leave-go" onClick={() => blocker.proceed?.()} className="h-12 rounded-lg bg-paper-2 font-semibold text-destructive">
+        <button type="button" data-testid="leave-go" onClick={() => blocker.proceed?.()} className="press h-12 rounded-lg font-semibold text-forget hover:bg-forget-soft">
           {leave}
         </button>
       </div>
