@@ -57,33 +57,41 @@ export function LoadFailed({ onRetry, message }: { onRetry: () => void; message?
     return () => window.clearInterval(id);
   }, [wait, n, onRetry]);
   return (
-    <div className="grid min-h-[70dvh] place-items-center p-6" data-testid="load-failed" data-auto={wait ?? 0}>
-      <div className="w-full max-w-sm text-center">
-        <h1 className="text-xl font-semibold">网络不好，页面没加载出来</h1>
-        <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink-3" data-testid="load-failed-body">
-          学习记录都在，没有受影响。
-          {wait !== undefined ? <span data-testid="load-countdown">{left} 秒后自动重试</span> : "连上网后会自动重试，也可以点下面的重试。"}
-        </p>
-        <button
-          type="button"
-          data-testid="load-retry"
-          onClick={() => {
-            try {
-              sessionStorage.removeItem(RETRY_KEY);
-            } catch {
-              /* 照样重试 */
-            }
-            onRetry();
-          }}
-          className="press mt-5 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
-        >
-          现在重试
-        </button>
-        <button type="button" onClick={() => (location.hash = "#/")} className="mt-2 h-11 w-full rounded-2xl text-sm font-semibold text-ink-3">
-          回首页
-        </button>
-        {message && <TechDetail testid="load-failed-msg" message={message} />}
+    <div className="mx-auto flex min-h-[70dvh] max-w-sm flex-col justify-center p-6" data-testid="load-failed" data-auto={wait ?? 0}>
+      {/* 12.0 · 出错页也是纸和墨：一行大字说发生了什么，一行说记录没事，主按钮在下 */}
+      <div className="font-serif text-[3rem] italic leading-none text-rule-strong" aria-hidden>
+        …
       </div>
+      <h1 className="mt-4 text-[1.375rem] font-semibold tracking-[-0.02em]">网络不好，页面没加载出来</h1>
+      <p className="mt-2 border-l-2 border-know pl-3 text-[0.9375rem] leading-relaxed text-ink-2" data-testid="load-failed-body">
+        学习记录都在，没有受影响。
+        {wait !== undefined ? (
+          <span data-testid="load-countdown">
+            <b className="tnum font-serif text-[1.125rem] font-normal text-ink">{left}</b> 秒后自动重试
+          </span>
+        ) : (
+          "连上网后会自动重试，也可以点下面的重试。"
+        )}
+      </p>
+      <button
+        type="button"
+        data-testid="load-retry"
+        onClick={() => {
+          try {
+            sessionStorage.removeItem(RETRY_KEY);
+          } catch {
+            /* 照样重试 */
+          }
+          onRetry();
+        }}
+        className="press mt-6 h-12 w-full rounded-lg bg-ink font-semibold text-paper-3 hover:bg-ink-2"
+      >
+        现在重试
+      </button>
+      <button type="button" onClick={() => (location.hash = "#/")} className="press mt-2 h-11 w-full rounded-lg text-[0.875rem] font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink">
+        回首页
+      </button>
+      {message && <TechDetail testid="load-failed-msg" message={message} />}
     </div>
   );
 }
@@ -100,9 +108,9 @@ export function clearRetry() {
 /** 11.3 · 技术报错收进「详细信息」里，反馈问题时再展开 */
 function TechDetail({ message, testid }: { message: string; testid: string }) {
   return (
-    <details className="mt-3 text-left text-xs text-ink-3">
-      <summary className="cursor-pointer select-none text-center font-semibold">详细信息</summary>
-      <p className="mt-1.5 break-all text-[0.6875rem] leading-snug text-ink-3" data-testid={testid}>
+    <details className="mt-4 border-t border-rule pt-2 text-left text-[0.75rem] text-ink-3">
+      <summary className="cursor-pointer select-none font-medium">详细信息</summary>
+      <p className="mt-1.5 break-all font-mono text-[0.6875rem] leading-snug text-ink-3" data-testid={testid}>
         {message}
       </p>
     </details>
@@ -196,35 +204,52 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
   };
   const newest = snaps?.[0];
   const fmt = (s: SnapMeta) => `${s.day.slice(5).replace("-", "/")} ${new Date(s.at).toTimeString().slice(0, 5)} · ${s.words} 词`;
+  const row = "press flex min-h-14 w-full items-center gap-3 border-b border-rule py-3 text-left disabled:opacity-50";
   return (
-    <div className="grid min-h-dvh place-items-center p-6" data-testid="rescue">
-      <div className="w-full max-w-sm">
-        <h1 className="text-xl font-semibold">{boot ? "学习记录读不出来" : "出了点问题"}</h1>
-        <p className="mt-2 text-[0.9375rem] leading-relaxed" data-testid="rescue-body">
-          {boot ? "存在这台设备上的记录格式坏了，app 读不懂它。" : "有一部分记录 app 读不懂，页面打不开。"}
-          {snaps === null
-            ? "你的记录没有被删掉。"
-            : newest
-              ? "你的记录没有被删掉：可以先导出原始数据留底，再回滚到最近一次自动快照。"
-              : "你的记录没有被删掉：先导出原始数据留底。以后在「我的 → 数据与备份 → 从文件恢复」导入这个文件，能读的部分（单词记录、打卡）都会救回来。"}
-        </p>
-        {/* 11.3 · 技术细节收进「详细信息」，给反馈问题用 */}
-        <TechDetail testid="rescue-msg" message={message} />
-        <div className="mt-5 space-y-2">
-          {(snaps === null || newest) && (
-            <button
-              type="button"
-              data-testid="rescue-rollback"
-              disabled={busy || !newest}
-              onClick={() => newest && go(newest.id)}
-              className="press w-full rounded-lg bg-ink px-4 py-3 text-left font-semibold text-paper-3 disabled:opacity-50 hover:bg-ink-2"
-            >
-              回滚到最近快照
-              <span className="block text-xs font-normal opacity-85">{snaps === null ? "查找快照…" : newest ? fmt(newest) : ""}</span>
-            </button>
-          )}
-          <button type="button" data-testid="rescue-export" onClick={exportRaw} className={snaps !== null && !newest ? "press w-full rounded-lg bg-ink px-4 py-3 font-semibold text-paper-3 hover:bg-ink-2" : "w-full rounded-lg bg-paper-2 px-4 py-3 font-semibold"}>
-            导出原始数据
+    <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center p-6" data-testid="rescue">
+      <div className="font-serif text-[3rem] italic leading-none text-rule-strong" aria-hidden>
+        !
+      </div>
+      <h1 className="mt-3 text-[1.5rem] font-semibold tracking-[-0.02em]">{boot ? "学习记录读不出来" : "出了点问题"}</h1>
+      <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink-2" data-testid="rescue-body">
+        {boot ? "存在这台设备上的记录格式坏了，app 读不懂它。" : "有一部分记录 app 读不懂，页面打不开。"}
+        {snaps === null
+          ? "你的记录没有被删掉。"
+          : newest
+            ? "你的记录没有被删掉：可以先导出原始数据留底，再回滚到最近一次自动快照。"
+            : "你的记录没有被删掉：先导出原始数据留底。以后在「我的 → 数据与备份 → 从文件恢复」导入这个文件，能读的部分（单词记录、打卡）都会救回来。"}
+      </p>
+      {/* 11.3 · 技术细节收进「详细信息」，给反馈问题用 */}
+      <TechDetail testid="rescue-msg" message={message} />
+      {/* 12.0 · 几条出路排成一张带编号的清单；最该做的那条是墨色主按钮 */}
+      <div className="mt-5">
+        {(snaps === null || newest) && (
+          <button
+            type="button"
+            data-testid="rescue-rollback"
+            disabled={busy || !newest}
+            onClick={() => newest && go(newest.id)}
+            className="press mb-3 w-full rounded-lg bg-ink px-4 py-3 text-left font-semibold text-paper-3 hover:bg-ink-2 disabled:opacity-50"
+          >
+            回滚到最近快照
+            <span className="tnum block text-[0.75rem] font-normal opacity-85">{snaps === null ? "查找快照…" : newest ? fmt(newest) : ""}</span>
+          </button>
+        )}
+        <div className="border-t border-ink">
+          <button
+            type="button"
+            data-testid="rescue-export"
+            onClick={exportRaw}
+            className={snaps !== null && !newest ? "press my-3 w-full rounded-lg bg-ink px-4 py-3 font-semibold text-paper-3 hover:bg-ink-2" : row}
+          >
+            {snaps !== null && !newest ? (
+              "导出原始数据"
+            ) : (
+              <>
+                <span className="tnum w-5 font-serif text-[1rem] text-ink-3">1</span>
+                <span className="font-semibold">导出原始数据</span>
+              </>
+            )}
           </button>
           {boot && (
             <button
@@ -241,39 +266,41 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
                 }
                 setTimeout(() => location.reload(), 600);
               }}
-              className="w-full rounded-lg bg-paper-2 px-4 py-3 font-semibold"
+              className={row}
             >
-              下载原始数据，然后从头开始
+              <span className="tnum w-5 font-serif text-[1rem] text-ink-3">2</span>
+              <span className="font-semibold">下载原始数据，然后从头开始</span>
             </button>
           )}
-          <button type="button" data-testid="rescue-reload" onClick={() => location.reload()} className="w-full rounded-2xl px-4 py-3 text-sm font-semibold text-ink-3">
-            重新加载
+          <button type="button" data-testid="rescue-reload" onClick={() => location.reload()} className={row}>
+            <span className="tnum w-5 font-serif text-[1rem] text-ink-3">{boot ? 3 : 2}</span>
+            <span className="text-ink-2">重新加载</span>
           </button>
         </div>
-        {snaps && snaps.length > 1 && (
-          <div className="mt-3">
-            <button type="button" onClick={() => setMore(!more)} className="text-[0.8125rem] font-semibold text-ink" data-testid="rescue-more">
-              {more ? "收起" : `更早的快照（${snaps.length - 1}）`}
-            </button>
-            {more && (
-              <ul className="mt-2 space-y-1.5">
-                {snaps.slice(1).map((s) => (
-                  <li key={s.id}>
-                    <button type="button" disabled={busy} onClick={() => go(s.id)} className="w-full rounded-xl bg-paper-2 px-3 py-2 text-left text-[0.8125rem]">
-                      回滚到 {fmt(s)}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-        {err && (
-          <p className="mt-3 text-[0.8125rem] font-semibold text-forget" role="alert">
-            {err}
-          </p>
-        )}
       </div>
+      {snaps && snaps.length > 1 && (
+        <div className="mt-4">
+          <button type="button" onClick={() => setMore(!more)} className="press h-10 text-[0.8125rem] font-medium text-ink underline decoration-rule-strong underline-offset-4" data-testid="rescue-more">
+            {more ? "收起" : `更早的快照（${snaps.length - 1}）`}
+          </button>
+          {more && (
+            <ul className="mt-1 border-t border-rule">
+              {snaps.slice(1).map((s) => (
+                <li key={s.id} className="border-b border-rule">
+                  <button type="button" disabled={busy} onClick={() => go(s.id)} className="press tnum flex min-h-11 w-full items-center text-left text-[0.8125rem] hover:bg-paper-2/60">
+                    回滚到 {fmt(s)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {err && (
+        <p className="mt-3 border-l-2 border-forget pl-3 text-[0.8125rem] font-semibold text-forget" role="alert">
+          {err}
+        </p>
+      )}
     </div>
   );
 }
