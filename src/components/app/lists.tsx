@@ -9,6 +9,7 @@ import { addToList, createList, deleteList, getState, removeFromList, renameList
 import { cn } from "@/lib/utils";
 import { BottomSheet } from "./sheet";
 import { NameField } from "./name-field";
+import { Tag, actClass } from "./kit";
 
 const ListLinkSheet = lazy(() => import("./list-link-sheet"));
 
@@ -29,7 +30,7 @@ export function ListPicker({ open, onOpenChange, words, onDone }: { open: boolea
   };
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title={single ? `把 ${words[0]} 加入词单` : `${words.length} 个词加入词单`} testid="list-picker">
-      <div className="space-y-3 pt-1">
+      <div className="pt-1">
         {lists.length < LIST_MAX && (
           <NameField
             placeholder="新建词单，比如：阅读真题生词"
@@ -48,13 +49,13 @@ export function ListPicker({ open, onOpenChange, words, onDone }: { open: boolea
           />
         )}
         {lists.length === 0 ? (
-          <p className="py-4 text-center text-[0.8125rem] text-ink-3">还没有词单，起个名字新建一个</p>
+          <p className="py-6 text-center text-[0.8125rem] text-ink-3">还没有词单，起个名字新建一个</p>
         ) : (
-          <ul className="space-y-1.5">
+          <ul className="mt-4 border-t border-rule">
             {lists.map((l) => {
               const inIt = single && l.words.includes(words[0]);
               return (
-                <li key={l.id}>
+                <li key={l.id} className="border-b border-rule">
                   <button
                     type="button"
                     data-testid="picker-list"
@@ -64,22 +65,18 @@ export function ListPicker({ open, onOpenChange, words, onDone }: { open: boolea
                       if (inIt) removeFromList(l.id, words);
                       else addToList(l.id, words);
                     }}
-                    className={cn(
-                      "press flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left",
-                      inIt ? "bg-mark-soft" : "bg-paper-2 hover:bg-paper-2",
-                    )}
+                    className="press flex min-h-14 w-full items-center gap-3 py-2.5 text-left hover:bg-paper-2/60"
                   >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[0.9375rem] font-semibold">{l.name}</span>
-                      <span className="block text-xs text-ink-3">{l.words.length} 词</span>
-                    </span>
-                    {single ? (
-                      <span className={cn("grid size-6 shrink-0 place-items-center rounded-full border-2", inIt ? "border-ink bg-ink text-paper-3" : "border-rule")}>
+                    {single && (
+                      <span className={cn("grid size-5 shrink-0 place-items-center rounded-[3px]", inIt ? "bg-ink text-paper-3" : "border-[1.5px] border-rule-strong")}>
                         {inIt && <Check className="size-3.5" strokeWidth={3} />}
                       </span>
-                    ) : (
-                      <Plus className="size-5 shrink-0 text-ink" />
                     )}
+                    <span className="min-w-0 flex-1">
+                      <span className={cn("block truncate text-[0.9375rem]", inIt ? "font-semibold" : "font-medium")}>{l.name}</span>
+                    </span>
+                    <span className="tnum shrink-0 font-serif text-[1.125rem] text-ink-3">{l.words.length}</span>
+                    {!single && <Plus className="size-5 shrink-0 text-ink" />}
                   </button>
                 </li>
               );
@@ -101,7 +98,55 @@ export function ListsOverview({ index }: { index: WordIndex }) {
   const [withStar, setWithStar] = useState(false);
   const navigate = useNavigate();
   return (
-    <div data-testid="lists-overview">
+    <div data-testid="lists-overview" className="pt-2">
+      {lists.length === 0 ? (
+        <div className="border-y border-rule px-6 py-12 text-center" data-testid="lists-empty">
+          <div className="font-serif text-[2.5rem] italic leading-none text-rule-strong" aria-hidden>
+            ¶
+          </div>
+          <p className="mt-3 text-[0.8125rem] leading-relaxed text-ink-3">
+            还没有自建词单。
+            <br />
+            在词库<b className="font-semibold text-ink">长按单词</b>多选，或在单词详情里点「加入词单」。
+          </p>
+        </div>
+      ) : (
+        /* 词单 = 书的目录：名字、到期数、三段进度细线 */
+        <ul className="border-t border-ink">
+          {lists.map((l, k) => {
+            const p = listProgress(index, st, l, day);
+            return (
+              <li key={l.id} className="border-b border-rule">
+                <Link
+                  to="/words"
+                  search={{ tab: "list", list: l.id }}
+                  replace
+                  data-testid="list-card"
+                  className="press group grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-baseline gap-x-2 py-3.5 hover:bg-paper-2/60"
+                >
+                  <span className="tnum font-serif text-[1.125rem] leading-none text-ink-3">{String(k + 1).padStart(2, "0")}</span>
+                  <span className="min-w-0">
+                    <span className="flex items-baseline gap-2">
+                      <span className="min-w-0 truncate text-[1rem] font-semibold" data-testid="list-card-name">
+                        {l.name}
+                      </span>
+                      {p.due > 0 && <Tag tone="forget">到期 {p.due}</Tag>}
+                    </span>
+                    <span className="mt-0.5 block text-[0.75rem] text-ink-3" data-testid="list-card-meta">
+                      {p.total} 词 · 未学 {p.unlearned} · 学习中 {p.learning} · 已掌握 {p.mastered}
+                    </span>
+                    <ProgressBar p={p} className="mt-2" />
+                  </span>
+                  <span aria-hidden className="self-center font-serif text-[1.375rem] leading-none text-ink-3 transition-transform group-hover:translate-x-0.5">
+                    ›
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
       <button
         type="button"
         data-testid="list-new"
@@ -110,56 +155,17 @@ export function ListsOverview({ index }: { index: WordIndex }) {
           setWithStar(false);
           setCreating(true);
         }}
-        className="press flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-ink bg-mark-soft px-4 py-3.5 text-left disabled:opacity-50"
+        className="press mt-4 flex min-h-14 w-full items-center gap-3 rounded-lg border border-dashed border-rule-strong px-4 py-3 text-left hover:border-ink disabled:opacity-45"
       >
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-ink text-paper-3">
-          <ListPlus className="size-5" />
-        </span>
+        <Plus className="size-5 shrink-0" />
         <span className="min-w-0 flex-1">
           <span className="block text-[0.9375rem] font-semibold">新建词单</span>
-          <span className="block text-xs text-ink-3">{lists.length >= LIST_MAX ? `最多 ${LIST_MAX} 个词单` : "按章节、真题、话题自己归类"}</span>
+          <span className="block text-[0.75rem] text-ink-3">{lists.length >= LIST_MAX ? `最多 ${LIST_MAX} 个词单` : "按章节、真题、话题自己归类"}</span>
         </span>
       </button>
 
-      {lists.length === 0 ? (
-        <div className="px-6 py-12 text-center text-[0.8125rem] leading-relaxed text-ink-3" data-testid="lists-empty">
-          还没有自建词单。
-          <br />
-          在词库<b className="text-ink">长按单词</b>多选，或在单词详情里点「加入词单」。
-        </div>
-      ) : (
-        <ul className="mt-3 space-y-2.5">
-          {lists.map((l) => {
-            const p = listProgress(index, st, l, day);
-            return (
-              <li key={l.id}>
-                <Link
-                  to="/words"
-                  search={{ tab: "list", list: l.id }}
-                  replace
-                  data-testid="list-card"
-                  className="block rounded-xl ring-1 ring-rule ring-inset bg-paper-3 px-4 py-3.5 transition hover:bg-paper-2 active:scale-[0.995]"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate text-base font-semibold" data-testid="list-card-name">
-                      {l.name}
-                    </span>
-                    {p.due > 0 && <span className="shrink-0 rounded-[3px] bg-forget-soft px-2 py-0.5 text-[0.6875rem] font-semibold text-forget">到期 {p.due}</span>}
-                    <ChevronRight className="size-4 shrink-0 text-ink-3" />
-                  </div>
-                  <div className="mt-0.5 text-xs text-ink-3" data-testid="list-card-meta">
-                    {p.total} 词 · 未学 {p.unlearned} · 学习中 {p.learning} · 已掌握 {p.mastered}
-                  </div>
-                  <ProgressBar p={p} className="mt-2.5" />
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
       <BottomSheet open={creating} onOpenChange={setCreating} title="新建词单" testid="list-create">
-        <div className="space-y-3 pt-1">
+        <div className="pt-1">
           <NameField
             placeholder="词单名，比如：Unit 3 / 听力高频"
             action="创建"
@@ -171,9 +177,8 @@ export function ListsOverview({ index }: { index: WordIndex }) {
             }}
           />
           {starN > 0 && (
-            <label className="flex items-center gap-3 rounded-2xl bg-paper-2 px-3.5 py-3 text-sm">
-              <input type="checkbox" checked={withStar} onChange={(e) => setWithStar(e.target.checked)} data-testid="create-with-star" className="size-4 accent-[var(--primary)]" />
-              <Star className="size-4 fill-vague text-vague" />
+            <label className="mt-4 flex min-h-11 items-center gap-3 border-t border-rule pt-3 text-[0.875rem]">
+              <input type="checkbox" checked={withStar} onChange={(e) => setWithStar(e.target.checked)} data-testid="create-with-star" className="size-4 accent-[var(--ink)]" />
               <span className="flex-1">同时导入生词本的 {starN} 个词</span>
             </label>
           )}
@@ -186,9 +191,9 @@ export function ListsOverview({ index }: { index: WordIndex }) {
 function ProgressBar({ p, className }: { p: { total: number; learning: number; mastered: number }; className?: string }) {
   const t = Math.max(1, p.total);
   return (
-    <div className={cn("flex h-1.5 overflow-hidden rounded-[2px] bg-rule", className)}>
-      <div className="h-full bg-know" style={{ width: `${(p.mastered / t) * 100}%` }} />
-      <div className="h-full bg-vague" style={{ width: `${(p.learning / t) * 100}%` }} />
+    <div className={cn("flex h-[3px] gap-px overflow-hidden bg-rule", className)}>
+      <div className="h-full bg-ink" style={{ width: `${(p.mastered / t) * 100}%` }} />
+      <div className="h-full bg-mark" style={{ width: `${(p.learning / t) * 100}%` }} />
     </div>
   );
 }
@@ -203,24 +208,25 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
   const [renaming, setRenaming] = useState(false);
   const [sharing, setSharing] = useState(false);
   const starWords = Object.keys(st.star).filter((w) => !list.words.includes(w) && index.map.has(w));
+  const iconBtn = "press grid size-10 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink";
   return (
-    <div className="mb-3 rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="list-panel">
-      <div className="flex items-start gap-2">
+    <section className="mb-3 border-b border-rule pb-4" data-testid="list-panel">
+      <div className="flex items-end gap-1">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold tracking-[-0.015em]" data-testid="list-name">
+          <h2 className="truncate text-[1.5rem] font-semibold leading-tight tracking-[-0.02em]" data-testid="list-name">
             {list.name}
           </h2>
-          <div className="text-xs text-ink-3" data-testid="list-meta">
+          <div className="mt-1 text-[0.75rem] text-ink-3" data-testid="list-meta">
             {p.total} 词 · 未学 {p.unlearned} · 学习中 {p.learning} · 已掌握 {p.mastered}
           </div>
         </div>
         {list.words.length > 0 && (
-          <button type="button" aria-label="分享词单链接" title="分享链接" data-testid="list-share" onClick={() => setSharing(true)} className="grid size-9 shrink-0 place-items-center rounded-full bg-paper-2 text-ink-3 hover:text-ink">
-            <Link2 className="size-4" />
+          <button type="button" aria-label="分享词单链接" title="分享链接" data-testid="list-share" onClick={() => setSharing(true)} className={iconBtn}>
+            <Link2 className="size-[18px]" />
           </button>
         )}
-        <button type="button" aria-label="重命名词单" title="重命名" data-testid="list-rename" onClick={() => setRenaming(true)} className="grid size-9 shrink-0 place-items-center rounded-full bg-paper-2 text-ink-3 hover:text-ink">
-          <Pencil className="size-4" />
+        <button type="button" aria-label="重命名词单" title="重命名" data-testid="list-rename" onClick={() => setRenaming(true)} className={iconBtn}>
+          <Pencil className="size-[18px]" />
         </button>
         <button
           type="button"
@@ -233,26 +239,19 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
             navigate({ to: "/words", search: { tab: "lists" }, replace: true });
             toast(`已删除「${list.name}」`, { description: "单词和学习记录都还在", action: { label: "撤销", onClick: () => restoreSnapshot(snap) } });
           }}
-          className="grid size-9 shrink-0 place-items-center rounded-full bg-paper-2 text-ink-3 hover:text-forget"
+          className={cn(iconBtn, "hover:text-forget")}
         >
-          <Trash2 className="size-4" />
+          <Trash2 className="size-[18px]" />
         </button>
       </div>
-      {p.total > 0 && <ProgressBar p={p} className="mt-3 h-2" />}
-      <div className="mt-3 flex gap-2">
+      {p.total > 0 && <ProgressBar p={p} className="mt-3" />}
+      <div className="mt-4 flex flex-wrap gap-2">
         {g.step !== "done" ? (
-          <Link
-            to="/study"
-            search={{ mode: "list", list: list.id }}
-            data-testid="list-study"
-            data-step={g.step}
-            className="press flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 hover:bg-ink-2"
-          >
-            <Play className="size-4 shrink-0 fill-current" />
+          <Link to="/study" search={{ mode: "list", list: list.id }} data-testid="list-study" data-step={g.step} className={actClass("primary", true) + " h-12 text-[0.9375rem]"}>
             <span className="truncate">{listStepLabel(g)}</span>
           </Link>
         ) : (
-          <div className="flex h-12 flex-1 items-center justify-center rounded-lg bg-paper-2 text-sm font-semibold text-ink-3" data-testid="list-study-done">
+          <div className="flex h-12 flex-1 items-center justify-center border-y border-rule text-[0.875rem] font-medium text-ink-3" data-testid="list-study-done">
             {p.total ? "这个词单全部斩完了" : "词单还是空的"}
           </div>
         )}
@@ -264,9 +263,9 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
               addToList(list.id, starWords);
               toast.success(`已导入生词本 ${starWords.length} 词`);
             }}
-            className="flex h-12 shrink-0 items-center gap-1.5 rounded-2xl bg-vague-soft px-3.5 text-[0.8125rem] font-semibold text-vague"
+            className={actClass("secondary") + " h-12 text-[0.8125rem]"}
           >
-            <Star className="size-4 fill-current" /> 导入生词本 {starWords.length}
+            <Star className="size-4" /> 导入生词本 {starWords.length}
           </button>
         )}
       </div>
@@ -289,6 +288,6 @@ export function ListPanel({ index, list }: { index: WordIndex; list: WordList })
           />
         </div>
       </BottomSheet>
-    </div>
+    </section>
   );
 }
