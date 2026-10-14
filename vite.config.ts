@@ -84,15 +84,25 @@ function welcomePreload(): Plugin {
  */
 /**
  * 13.0 · 云同步配置（见 docs/cloud.md、docs/deploy-cloudflare.md）：构建时读环境变量（.env 文件或托管平台的环境变量都行）
- *  - SUPABASE_URL + SUPABASE_ANON_KEY（或 VITE_ 前缀的同名变量）都在 → 默认开云同步；
- *  - CET4V_CLOUD=0 → 强制关（纯本机版）；CET4V_CLOUD=1 且只有 key 没有 URL → 用同域 /sb-api 代理（Meoo 静态部署）。
+ * 13.0.0 · 两个独立站点，构建时用 BACKEND 选后端（账号、数据互不相通）：
+ *  - BACKEND=supabase（默认）：SUPABASE_URL + SUPABASE_ANON_KEY（或 VITE_ 前缀）都在 → 开云同步，直连 Meoo Cloud（gz58y2647ucx.meoo.run）；
+ *    CET4V_CLOUD=1 且只有 key 没有 URL → 同域 /sb-api（Meoo 自带的代理）。
+ *  - BACKEND=cloudflare：同域 /api（functions/ + D1，watercoloreyes.cn）。不编进任何 Supabase 地址 / key，产物里也没有 supabase-js。
+ *  - CET4V_CLOUD=0 → 强制关（纯本机版）。
  * anon key 本来就是公开的（RLS 把关），service role key 永远不进前端。
  */
 const env = loadEnv(process.env.NODE_ENV === "production" ? "production" : "development", process.cwd(), "");
+const backend = (process.env.BACKEND || env.BACKEND || "supabase").toLowerCase();
+if (backend !== "supabase" && backend !== "cloudflare") throw new Error(`BACKEND must be supabase or cloudflare, got ${backend}`);
 const sbUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL || "";
 const sbKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || "";
-const cloudOn = env.CET4V_CLOUD === "0" ? false : !!sbKey && (!!sbUrl || env.CET4V_CLOUD === "1");
-const cloud = { on: cloudOn, url: cloudOn ? sbUrl : "", key: cloudOn ? sbKey : "" };
+const cloud =
+  backend === "cloudflare"
+    ? { on: env.CET4V_CLOUD !== "0", backend, url: "", key: "" }
+    : (() => {
+        const on = env.CET4V_CLOUD === "0" ? false : !!sbKey && (!!sbUrl || env.CET4V_CLOUD === "1");
+        return { on, backend, url: on ? sbUrl : "", key: on ? sbKey : "" };
+      })();
 
 export default defineConfig({
   plugins: [

@@ -1,15 +1,16 @@
 /**
- * 13.0 · 账号与云同步（Meoo Cloud = Supabase）。按需加载：打开「账号」页或本机已登录时才引入。
+ * 13.0 · 账号与云同步。按需加载：打开「账号」页或本机已登录时才引入。
+ * 13.0.0 · 背后是哪个后端由适配层决定（backend/：supabase = Meoo Cloud，cloudflare = Pages Functions + D1），这里只管合并和何时同步。
  *
  *  - 没登录：一切照旧，localStorage 是唯一的数据源，离线可用。
  *  - 第一次登录：拉云端 → mergeCloud（每个词按最后作答时间，更晚的赢；其余记录取并集）→ 写回本机 → 把本机更新的上传。
  *  - 之后：本机每次改动 4 秒后增量上传；回到前台、联网时拉一次。失败不影响本机学习，下次再试。
  *  - 退出登录：本机记录保留（还是你的），只是不再同步。
  */
-import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { AUTH_KEY, cloudConfig } from "./cloud-config";
 import { changedRows, localRows, mergeCloud, metaOf, rowSig, type CardRow, type CloudSnapshot } from "./cloud-merge";
 import { applyMerged, getState, subscribeState } from "./store";
+import { loadBackend, type Backend, type BackendFeatures, type SessionUser } from "./backend";
 
 export type SyncPhase = "off" | "signed-out" | "idle" | "syncing" | "error" | "offline";
 
@@ -35,20 +36,15 @@ export function subscribeCloud(f: () => void) {
   return () => void subs.delete(f);
 }
 
-let client: SupabaseClient | null = null;
+/** 13.0.0 · 后端适配层（supabase / cloudflare，构建时选，懒加载） */
+const be = (): Promise<Backend> => loadBackend();
 
-export async function sb(): Promise<SupabaseClient> {
-  if (client) return client;
-  const cfg = cloudConfig();
-  if (!cfg) throw new Error("云同步还没开通");
-  const { createClient } = await import("@supabase/supabase-js");
-  client = createClient(cfg.url, cfg.anonKey, {
-    auth: { storageKey: AUTH_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
-  });
-  return client;
+/** 这个站点的账号能力：注册要不要验证码、能不能发找回码 */
+export async function features(): Promise<BackendFeatures> {
+  return (await be()).features();
 }
 
-/** 把 Supabase 的英文错误换成一句中文 */
+/** 把后端的英文错误换成一句中文（cloudflare 后端自己已经给了中文） */
 export function cnError(e: unknown): string {
   const m = String((e as { message?: string })?.message ?? e ?? "");
   if (/invalid login credentials/i.test(m)) return "邮箱或密码不对";
@@ -62,67 +58,48 @@ export function cnError(e: unknown): string {
   return m || "出错了，稍后再试";
 }
 
+const isUnauthorized = (e: unknown) => (e as { code?: string })?.code === "unauthorized";
+
 // ---------------------------------------------------------------- 账号
 
-export async function currentUser(): Promise<User | null> {
-  const c = await sb();
-  const { data } = await c.auth.getSession();
-  return data.session?.user ?? null;
+export async function currentUser(): Promise<SessionUser | null> {
+  return (await be()).session();
 }
 
-/** 注册第一步：邮箱 + 密码 → 发验证码到邮箱 */
-export async function signUp(email: string, password: string) {
-  const c = await sb();
-  const { error } = await c.auth.signUp({ email, password });
-  if (error) throw error;
+/** 注册：supabase 先发验证码到邮箱（needsCode）；cloudflare 注册即登录 */
+export async function signUp(email: string, password: string): Promise<{ needsCode: boolean }> {
+  const b = await be();
+  const r = await b.signUp(email, password);
+  if (!r.needsCode) await afterSignIn(await b.session());
+  return r;
 }
 
 /** 注册第二步：邮件里的 6 位验证码 */
 export async function verifySignup(email: string, token: string) {
-  const c = await sb();
-  const { error } = await c.auth.verifyOtp({ email, token, type: "signup" });
-  if (error) throw error;
-  const { data, error: e2 } = await c.auth.getUser();
-  if (e2 || !data.user) throw e2 ?? new Error("登录状态还没同步，请重试");
-  await afterSignIn(data.user);
+  await afterSignIn(await (await be()).verifySignup(email, token));
 }
 
 export async function signIn(email: string, password: string) {
-  const c = await sb();
-  const { data, error } = await c.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  await afterSignIn(data.user);
+  await afterSignIn(await (await be()).signIn(email, password));
 }
 
 export async function resend(email: string) {
-  const c = await sb();
-  const { error } = await c.auth.resend({ type: "signup", email });
-  if (error) throw error;
+  await (await be()).resend(email);
 }
 
 /** 忘记密码：发 6 位找回码（不用链接） */
 export async function sendRecovery(email: string) {
-  const c = await sb();
-  const { error } = await c.auth.resetPasswordForEmail(email);
-  if (error) throw error;
+  await (await be()).sendRecovery(email);
 }
 
 export async function resetPassword(email: string, token: string, password: string) {
-  const c = await sb();
-  const { error } = await c.auth.verifyOtp({ email, token, type: "recovery" });
-  if (error) throw error;
-  const { data, error: e2 } = await c.auth.getUser();
-  if (e2 || !data.user) throw e2 ?? new Error("登录状态还没同步，请重试");
-  const { error: e3 } = await c.auth.updateUser({ password });
-  if (e3) throw e3;
-  await afterSignIn(data.user);
+  await afterSignIn(await (await be()).resetPassword(email, token, password));
 }
 
 export async function signOut() {
   stopAuto();
   try {
-    const c = await sb();
-    await c.auth.signOut();
+    await (await be()).signOut();
   } catch {
     /* 离线也让本机退出 */
   }
@@ -135,7 +112,7 @@ export async function signOut() {
   set({ phase: "signed-out", email: undefined, at: undefined, last: undefined, message: undefined });
 }
 
-async function afterSignIn(user: User | null) {
+async function afterSignIn(user: SessionUser | null) {
   if (!user) return;
   set({ phase: "idle", email: user.email ?? undefined });
   await syncNow();
@@ -164,32 +141,19 @@ function saveSynced(uid: string, m: Map<string, string>) {
   }
 }
 
-const PAGE = 1000;
-
-async function pullAll(c: SupabaseClient, uid: string): Promise<CloudSnapshot> {
-  const { data: prof, error } = await c.from("vocab_profile").select("seed, meta").eq("user_id", uid).maybeSingle();
-  if (error) throw error;
-  const cards: CardRow[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data, error: e2 } = await c.from("vocab_cards").select("word, card, ts").eq("user_id", uid).range(from, from + PAGE - 1);
-    if (e2) throw e2;
-    for (const r of (data ?? []) as { word: string; card: CardRow["card"]; ts: number | string }[]) cards.push({ word: r.word, card: r.card, ts: Number(r.ts) });
-    if (!data || data.length < PAGE) break;
-  }
-  return { seed: prof ? Number(prof.seed) : null, meta: (prof?.meta as CloudSnapshot["meta"]) ?? null, cards };
+async function pullAll(b: Backend, uid: string): Promise<CloudSnapshot> {
+  const prof = await b.getProfile(uid);
+  const cards: CardRow[] = await b.pullCards(uid);
+  return { seed: prof ? prof.seed : null, meta: prof?.meta ?? null, cards };
 }
 
-async function pushRows(c: SupabaseClient, rows: CardRow[]) {
-  for (let i = 0; i < rows.length; i += 500) {
-    const { error } = await c.rpc("vocab_push_cards", { rows: rows.slice(i, i + 500) });
-    if (error) throw error;
-  }
+async function pushRows(b: Backend, rows: CardRow[]) {
+  if (rows.length) await b.pushCards(rows);
 }
 
-async function pushProfile(c: SupabaseClient, uid: string) {
+async function pushProfile(b: Backend, uid: string) {
   const st = getState();
-  const { error } = await c.from("vocab_profile").upsert({ user_id: uid, seed: st.seed, meta: metaOf(st), updated_at: new Date().toISOString() });
-  if (error) throw error;
+  await b.putProfile(uid, { seed: st.seed, meta: metaOf(st) });
 }
 
 let running: Promise<void> | null = null;
@@ -202,8 +166,8 @@ export function syncNow(): Promise<void> {
       set({ phase: "offline", message: "离线中：联网后自动同步" });
       return;
     }
-    const c = await sb();
-    const user = await currentUser();
+    const c = await be();
+    const user = await c.session();
     if (!user) {
       set({ phase: "signed-out" });
       return;
@@ -219,7 +183,9 @@ export function syncNow(): Promise<void> {
       saveSynced(user.id, synced);
       set({ phase: "idle", at: Date.now(), last: { pulled: m.pulled, pushed: m.push.length, conflicts: m.conflicts, deleted: m.deleted } });
     } catch (e) {
-      set({ phase: "error", message: cnError(e) });
+      // 会话被服务端吊销 / 过期（cloudflare 后端已经清掉本机会话）：回到登录
+      if (isUnauthorized(e)) set({ phase: "signed-out", email: undefined, message: cnError(e) });
+      else set({ phase: "error", message: cnError(e) });
       throw e;
     }
   })().finally(() => {
@@ -231,8 +197,8 @@ export function syncNow(): Promise<void> {
 /** 增量：只推本机改过的卡片 + profile */
 async function pushChanges() {
   if (running) return;
-  const c = await sb();
-  const user = await currentUser();
+  const c = await be();
+  const user = await c.session();
   if (!user) return;
   const synced = loadSynced(user.id);
   const rows = changedRows(getState(), synced);
@@ -245,7 +211,8 @@ async function pushChanges() {
     saveSynced(user.id, synced);
     set({ phase: "idle", at: Date.now(), last: { pulled: 0, pushed: rows.length, conflicts: 0 } });
   } catch (e) {
-    set({ phase: navigator.onLine === false ? "offline" : "error", message: cnError(e) });
+    if (isUnauthorized(e)) set({ phase: "signed-out", email: undefined, message: cnError(e) });
+    else set({ phase: navigator.onLine === false ? "offline" : "error", message: cnError(e) });
   }
 }
 

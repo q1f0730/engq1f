@@ -5,6 +5,7 @@ import { toast } from "@/lib/toast";
 import { cloudConfig, hasSession } from "@/lib/cloud-config";
 import {
   cnError,
+  features,
   getCloudStatus,
   resend,
   resetPassword,
@@ -18,6 +19,7 @@ import {
   verifySignup,
 } from "@/lib/cloud";
 import { cn } from "@/lib/utils";
+import type { BackendFeatures } from "@/lib/backend/types";
 
 export const Route = createFileRoute("/account")({ component: AccountPage });
 
@@ -123,7 +125,23 @@ function SignedIn() {
   );
 }
 
+/** 13.0.0 · 这个站点的账号能力（supabase：注册验证码 + 找回码；cloudflare：注册即登录，配了邮件服务才有找回码） */
+function useFeatures(): BackendFeatures | null {
+  const [f, setF] = useState<BackendFeatures | null>(null);
+  useEffect(() => {
+    let alive = true;
+    features()
+      .then((x) => alive && setF(x))
+      .catch(() => alive && setF({ signupCode: false, resetCode: false }));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return f;
+}
+
 function AuthForms() {
+  const feats = useFeatures();
   const [step, setStep] = useState<Step>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -258,6 +276,19 @@ function AuthForms() {
       </section>
     );
 
+  if ((step === "forgot" || step === "reset") && feats && !feats.resetCode)
+    return (
+      <section data-testid="auth-forgot-off">
+        <h2 className="song text-[1.25rem]">找回密码</h2>
+        <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-2">
+          这个站点还没接邮件服务，暂时没法把找回码发到你的邮箱。记得密码的话直接登录；不记得的话，可以换个邮箱重新注册，再在「我的 → 数据与备份」里用本机的记录接着学。
+        </p>
+        <button type="button" onClick={() => go("login")} className="press mt-4 h-11 w-full text-[0.8125rem] text-ink-3">
+          ‹ 回到登录
+        </button>
+      </section>
+    );
+
   if (step === "forgot" || step === "reset")
     return (
       <section data-testid="auth-forgot">
@@ -288,7 +319,19 @@ function AuthForms() {
       {error}
       {step === "login"
         ? primary("登录", () => void run(() => signIn(email.trim(), password), "已登录，正在同步"), !emailOk || !pwOk, "auth-login-go")
-        : primary("注册并发送验证码", () => void run(async () => (await signUp(email.trim(), password), setSentAt(Date.now()), setStep("verify"))), !emailOk || !pwOk, "auth-register-go")}
+        : primary(
+            feats && !feats.signupCode ? "注册并登录" : "注册并发送验证码",
+            () =>
+              void run(async () => {
+                const r = await signUp(email.trim(), password);
+                if (r.needsCode) {
+                  setSentAt(Date.now());
+                  setStep("verify");
+                } else toast.success("注册成功，已开始同步");
+              }),
+            !emailOk || !pwOk || !feats,
+            "auth-register-go",
+          )}
       {step === "login" && (
         <button type="button" data-testid="auth-forgot-link" onClick={() => go("forgot")} className="press mt-2 h-11 w-full text-[0.8125rem] text-ink-3 hover:text-ink">
           忘记密码？
