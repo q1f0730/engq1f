@@ -1,0 +1,4 @@
+# 复制成 .dev.vars（已 gitignore）给 `wrangler pages dev` 用；线上在 Pages 项目里设成 Secret
+JWT_SECRET=replace-with-at-least-32-random-characters
+# RESEND_API_KEY=re_xxx
+# MAIL_FROM=四级单词打卡 <noreply@watercoloreyes.cn>

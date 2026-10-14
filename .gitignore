@@ -5,3 +5,5 @@ dist
 *.log
 scripts/__pycache__
 *.tsbuildinfo
+.dev.vars
+.wrangler

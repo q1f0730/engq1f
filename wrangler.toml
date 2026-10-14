@@ -1,0 +1,14 @@
+# 13.0.0 · Cloudflare Pages 站点（watercoloreyes.cn）：静态 dist/ + functions/（/api/*）+ D1。见 docs/deploy-cloudflare.md
+# 和 Meoo 站点（gz58y2647ucx.meoo.run，Meoo Cloud / Supabase）是两套独立的账号和数据。
+name = "cet4-vocab"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"                       # functions 里用 env.DB
+database_name = "cet4-vocab"
+database_id = "00000000-0000-0000-0000-000000000000"   # 占位：换成 `wrangler d1 create cet4-vocab` 打印的 database_id
+migrations_dir = "migrations/d1"
+
+# JWT_SECRET（必填，≥ 32 个字符的随机串）、RESEND_API_KEY / MAIL_FROM（可选，找回密码发码）是机密，
+# 不写在这里：Pages 项目 → Settings → Variables and Secrets（加成 Secret），本地放 .dev.vars（已 gitignore）。
