@@ -3,12 +3,13 @@ import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { defineConfig, type Plugin, type Rollup } from "vite";
+import { defineConfig, loadEnv, type Plugin, type Rollup } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string };
 // 11.3 · 词库大小在构建时写进代码：欢迎页 / 引导不用等 1.2MB 的词库下载完就能显示
-const words = JSON.parse(readFileSync(new URL("./public/data/cet4.json", import.meta.url), "utf8")) as { c?: 1 }[];
+// 13.0 · 基础词（b）默认隐藏：首屏显示的词数不算它们
+const words = (JSON.parse(readFileSync(new URL("./public/data/cet4.json", import.meta.url), "utf8")) as { c?: 1; b?: 1 }[]).filter((w) => !w.b);
 
 /**
  * 生成 service worker：预缓存构建产物（app shell）+ 词库数据。
@@ -19,18 +20,21 @@ function serviceWorker(): Plugin {
     name: "cet4v-sw",
     apply: "build",
     generateBundle(_opts, bundle) {
-      const files = Object.keys(bundle).filter((f) => !f.endsWith(".map") && f !== "sw.js");
-      const extra = ["./", "index.html", "data/cet4.json", "manifest.webmanifest", "icon.svg", "fonts/instrument-serif-latin-400-normal.woff2", "fonts/instrument-serif-latin-400-italic.woff2"];
+      const files = Object.keys(bundle).filter((f) => !f.endsWith(".map") && f !== "sw.js" && f !== "version.json");
+      const extra = ["./", "index.html", "data/cet4.json", "data/syn.json", "manifest.webmanifest", "icon.svg", "fonts/instrument-serif-latin-400-normal.woff2", "fonts/instrument-serif-latin-400-italic.woff2", "fonts/noto-serif-sc-heading-600.woff2"];
       const precache = [...new Set([...extra, ...files])];
       const hash = createHash("sha1")
         .update(files.sort().join("|"))
         .update(readFileSync("public/data/cet4.json"))
+        .update(readFileSync("public/data/syn.json"))
         .digest("hex")
         .slice(0, 10);
       const tpl = readFileSync("src/sw-template.js", "utf8")
         .replace("__VERSION__", hash)
         .replace("__PRECACHE__", JSON.stringify(precache));
       this.emitFile({ type: "asset", fileName: "sw.js", source: tpl });
+      // 13.0 · 更新提示：页面回到前台时取 version.json，比当前版本新就提示刷新
+      this.emitFile({ type: "asset", fileName: "version.json", source: JSON.stringify({ version: pkg.version, sw: hash }) });
     },
   };
 }
@@ -76,6 +80,18 @@ function welcomePreload(): Plugin {
  * - dev server 必须监听 3015 + strictPort（沙箱只开放一个代理端口）
  * - outDir 'dist' / assetsDir 'assets' — 归一化产物目录
  */
+/**
+ * 13.0 · 云同步配置（见 docs/cloud.md）：`meoo cloud pull-env` 写进 .env 的 SUPABASE_URL / SUPABASE_ANON_KEY，
+ * 加上开关 CET4V_CLOUD=1 才会编进产物；没有开关 = 纯本机版（登录入口显示「云同步还没开通」）。
+ * anon key 本来就是公开的（RLS 把关），service role key 永远不进前端。
+ */
+const env = loadEnv(process.env.NODE_ENV === "production" ? "production" : "development", process.cwd(), "");
+const cloud = {
+  on: env.CET4V_CLOUD === "1",
+  url: env.CET4V_CLOUD === "1" ? env.SUPABASE_URL || env.VITE_SUPABASE_URL || "" : "",
+  key: env.CET4V_CLOUD === "1" ? env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || "" : "",
+};
+
 export default defineConfig({
   plugins: [
     tailwindcss(),
@@ -101,6 +117,7 @@ export default defineConfig({
   base: "./",
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    __CLOUD__: JSON.stringify(cloud),
     __WORDS_ALL__: JSON.stringify(words.length),
     __WORDS_CORE__: JSON.stringify(words.filter((w) => w.c).length),
   },

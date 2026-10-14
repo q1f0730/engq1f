@@ -2,7 +2,9 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { ChevronLeft, ListPlus, Play, Star, Swords, Undo2, Volume2 } from "@/components/app/icons";
 import { confusables } from "@/lib/confusables";
 import { sayEnglish, speak } from "@/lib/audio";
-import { useExamples } from "@/lib/examples";
+import { useExampleList, type Example } from "@/lib/examples";
+import { useSynonyms } from "@/lib/syn";
+import { decompose, knows, morphLabel } from "@/lib/lexicon";
 import { getWordsSync, posLabel, shortMeaning, type Word, type WordIndex } from "@/lib/data";
 import { diffDays, isLeech, type Card } from "@/lib/srs";
 import { getState, killWord, resetWord, toggleStar, unkillWord, useApp } from "@/lib/store";
@@ -113,47 +115,137 @@ function highlight(sentence: string, word: string) {
   const re = new RegExp(`\\b(${stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[a-z]*)`, "i");
   const m = sentence.match(re);
   if (!m || m.index === undefined) return sentence;
+  return mark(sentence, m.index, m[0].length);
+}
+
+/** 荧光笔只划例句里的目标词（13.0：位置由数据给出，变形 / 不规则形式也划得准） */
+function mark(sentence: string, at: number, len: number) {
+  if (at < 0 || !len) return sentence;
   return (
     <>
-      {sentence.slice(0, m.index)}
-      <b className="hl font-normal text-ink">{m[0]}</b>
-      {sentence.slice(m.index + m[0].length)}
+      {sentence.slice(0, at)}
+      <b className="hl font-normal text-ink">{sentence.slice(at, at + len)}</b>
+      {sentence.slice(at + len)}
     </>
   );
 }
 
-/** 英文例句：在线懒加载，没有就整块不显示 */
+function SourceTag({ ex }: { ex: Example }) {
+  if (ex.kind === "authored")
+    return (
+      <span className="text-[0.6875rem] text-ink-3" data-testid="example-src" data-kind="authored" title="这句是本应用自编的">
+        自编
+      </span>
+    );
+  if (ex.kind === "tatoeba")
+    return (
+      <a
+        href={`https://tatoeba.org/sentences/show/${ex.id}`}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="text-[0.6875rem] text-ink-3 underline decoration-rule underline-offset-2 hover:text-ink"
+        data-testid="example-src"
+        data-kind="tatoeba"
+        title="Tatoeba · CC-BY 2.0 FR"
+      >
+        Tatoeba #{ex.id}
+      </a>
+    );
+  return null;
+}
+
+/** 例句：13.0 起随应用分发、每句带中文；某个词一句都没有才在线取 */
 export function Examples({ word, enabled = true }: { word: Word; enabled?: boolean }) {
-  const list = useExamples(word.w, enabled);
+  const { list } = useExampleList(word.w, enabled);
   if (!list.length) return null;
   const say = (e: React.MouseEvent, s: string) => {
     e.stopPropagation();
     void sayEnglish(s, getState().settings.accent);
   };
-  // 12.0 · 例句：播放键在左边当「行首符号」，句子是衬线正文，词头在句中被荧光笔划过
   return (
     <section data-testid="examples">
       <Rubric>例句</Rubric>
-      <ol className="space-y-3">
-        {list.map((s) => (
-          <li key={s} className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-2">
+      <ol className="space-y-3.5">
+        {list.map((ex) => (
+          <li key={ex.en} className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-2">
             <button
               type="button"
               aria-label="朗读例句"
               title="朗读例句"
               data-testid="example-play"
-              onClick={(e) => say(e, s)}
+              onClick={(e) => say(e, ex.en)}
               className="press -mt-1 grid size-9 place-items-center rounded-full text-ink-2 ring-1 ring-inset ring-rule hover:bg-mark hover:text-mark-ink hover:ring-transparent"
             >
               <Play className="ml-px size-3.5 fill-current" />
             </button>
-            <p className="font-serif text-[1.0625rem] leading-[1.5] text-ink" data-testid="example">
-              {highlight(s, word.w)}
-            </p>
+            <div className="min-w-0">
+              <p className="font-serif text-[1.0625rem] leading-[1.5] text-ink" data-testid="example">
+                {ex.at >= 0 ? mark(ex.en, ex.at, ex.len) : highlight(ex.en, word.w)}
+              </p>
+              {ex.zh && (
+                <p className="mt-0.5 text-[0.875rem] leading-relaxed text-ink-2" data-testid="example-zh">
+                  {ex.zh} <SourceTag ex={ex} />
+                </p>
+              )}
+            </div>
           </li>
         ))}
       </ol>
     </section>
+  );
+}
+
+/** 13.0 · 同义词：一行词，点一下跳到那个词（卡片背面打开详情，详情里往下翻一层） */
+export function Synonyms({ index, word, enabled = true, onOpen }: { index: WordIndex | null; word: Word; enabled?: boolean; onOpen: (w: Word) => void }) {
+  const list = useSynonyms(index, word, enabled);
+  if (!list.length) return null;
+  return (
+    <section data-testid="syn-line">
+      <Rubric>同义词</Rubric>
+      <ul className="-mt-1 flex flex-wrap gap-x-1 gap-y-0.5">
+        {list.map((c) => (
+          <li key={c.w}>
+            <button
+              type="button"
+              data-testid="syn-link"
+              data-word={c.w}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen(c);
+              }}
+              className="press flex min-h-10 items-baseline gap-1.5 rounded-[4px] px-1.5 py-1 text-left hover:bg-paper-2"
+            >
+              <span className="font-serif text-[1.125rem] leading-tight text-ink underline decoration-rule-strong decoration-1 underline-offset-4">{c.w}</span>
+              <span className="max-w-[9em] truncate text-[0.75rem] text-ink-3">{shortMeaning(c, 1).replace(/^[a-z.&/]+\s/i, "")}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** 13.0 · 构词：「由 class + room 组成」；认识的部分划荧光笔 */
+export function MorphLine({ index, word, className }: { index: WordIndex | null; word: Word; className?: string }) {
+  const cards = useApp().cards;
+  if (!index) return null;
+  const m = decompose(word.w, index);
+  if (!m) return null;
+  const look = (w: string) => index.map.get(w);
+  return (
+    <p className={cn("text-[0.8125rem] text-ink-2", className)} data-testid="morph" data-parts={m.parts.join("+")} aria-label={morphLabel(m)}>
+      由{" "}
+      {m.parts.map((p, i) => (
+        <span key={i}>
+          {i > 0 && <span className="px-1 text-ink-3">+</span>}
+          <span className={cn("font-serif text-[1rem] text-ink", m.roots.includes(p) && knows(p, cards, look) && "hl")} data-known={m.roots.includes(p) && knows(p, cards, look) ? "1" : undefined}>
+            {p}
+          </span>
+        </span>
+      ))}{" "}
+      组成
+    </p>
   );
 }
 
@@ -313,9 +405,13 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
         </header>
         <div className="fs-card mt-4">
           <Meanings word={word} />
+          <MorphLine index={getWordsSync()} word={word} className="mt-3" />
         </div>
         <div className="mt-6">
           <Phrases word={word} />
+        </div>
+        <div className="mt-6 empty:hidden">
+          <Synonyms index={getWordsSync()} word={word} enabled={open} onOpen={(c) => setTrail((t) => [...t, c])} />
         </div>
         <div className="mt-6 empty:hidden">
           <Confusables index={getWordsSync()} word={word} accent={accent} onOpen={(c) => setTrail((t) => [...t, c])} />

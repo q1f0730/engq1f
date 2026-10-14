@@ -303,7 +303,7 @@ function JudgeCard({
             </section>
           )}
         </div>
-        {!shown && <p className="relative border-t border-dashed border-rule py-3 text-center text-[0.75rem] text-ink-3">{swap ? "左滑 = 对 · 右滑 = 不对" : "右滑 = 对 · 左滑 = 不对"}</p>}
+        {!shown && <p className="relative border-t border-rule py-3 text-center text-[0.75rem] text-ink-3">{swap ? "左滑 = 对 · 右滑 = 不对" : "右滑 = 对 · 左滑 = 不对"}</p>}
         {hint !== null && (
           <div
             className={cn("pointer-events-none absolute inset-0 grid place-items-center text-[1.875rem] font-semibold ring-2 ring-inset", hint ? "bg-know-soft/85 text-know ring-know" : "bg-forget-soft/85 text-forget ring-forget")}

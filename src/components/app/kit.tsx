@@ -218,7 +218,7 @@ export function Sec({ title, aside, children, className, testid, id }: { title: 
   return (
     <section className={cn("min-w-0", className)} data-testid={testid} id={id}>
       <div className="mb-3 flex items-baseline gap-3">
-        <h2 className="section-rule min-w-0 flex-1 text-[1.0625rem] font-semibold tracking-[-0.01em]">{title}</h2>
+        <h2 className="song section-rule min-w-0 flex-1 text-[1.0625rem]">{title}</h2>
         {aside && <div className="shrink-0 text-[0.8125rem] text-ink-3">{aside}</div>}
       </div>
       {children}

@@ -75,6 +75,8 @@ self.addEventListener("fetch", (event) => {
   }
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // 其它外部资源（例句接口等）不拦截
+  // 13.0 · 版本号文件永远走网络（更新提示要看服务器上的最新版本）；同域的 /sb-api（云同步）不缓存
+  if (/\/version\.json$/.test(url.pathname) || /\/sb-api\//.test(url.pathname)) return;
   if (req.mode === "navigate") {
     event.respondWith(fetch(req).catch(() => caches.match("index.html", { ignoreSearch: true, ignoreVary: true })));
     return;

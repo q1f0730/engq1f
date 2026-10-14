@@ -58,9 +58,8 @@ export function AdvancedBody({ full, onHelp }: { full?: boolean; onHelp: () => v
             onChange={(v) => setSettings({ order: v })}
             testid="order"
             options={[
-              { value: "core", label: "核心优先" },
-              { value: "alpha", label: "字母顺序" },
-              { value: "random", label: "乱序" },
+              { value: "core", label: "核心词优先" },
+              { value: "random", label: "全部乱序" },
             ]}
           />
         </Field>
@@ -555,7 +554,7 @@ export function Fold({ title, hint, testid, children }: { title: string; hint: s
           ›
         </span>
       </button>
-      {open && <div className="rise border-t border-dashed border-rule pb-2 pl-3">{children}</div>}
+      {open && <div className="rise border-t border-rule pb-2 pl-3">{children}</div>}
     </div>
   );
 }

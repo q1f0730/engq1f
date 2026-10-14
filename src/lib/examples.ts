@@ -1,5 +1,100 @@
 import { useEffect, useState } from "react";
 
+// ---------------------------------------------------------------- 13.0 · 随应用分发的例句（带中文翻译）
+
+/** [英文, 中文, 来源, 本词在英文里的起点, 长度]；来源 "t<英文id>-<中文id>" = Tatoeba，"a" = 本应用自编 */
+export type ExampleRow = [string, string, string, number, number];
+
+export interface Example {
+  en: string;
+  zh: string;
+  /** tatoeba / authored / online（在线词典，没有翻译） */
+  kind: "tatoeba" | "authored" | "online";
+  /** Tatoeba 英文句 id（署名链接用） */
+  id?: string;
+  at: number;
+  len: number;
+}
+
+const shards = new Map<string, Record<string, ExampleRow[]>>();
+const shardLoads = new Map<string, Promise<Record<string, ExampleRow[]>>>();
+
+export const shardOf = (w: string) => {
+  const c = w.slice(0, 1).toLowerCase();
+  return c >= "a" && c <= "z" ? c : "_";
+};
+
+export function rowToExample(r: ExampleRow): Example {
+  const m = /^t(\d+)-(\d+)$/.exec(r[2]);
+  return { en: r[0], zh: r[1], kind: m ? "tatoeba" : r[2] === "a" ? "authored" : "online", id: m?.[1], at: r[3], len: r[4] };
+}
+
+function loadShard(sh: string): Promise<Record<string, ExampleRow[]>> {
+  const hit = shards.get(sh);
+  if (hit) return Promise.resolve(hit);
+  let p = shardLoads.get(sh);
+  if (!p) {
+    p = fetch(new URL(`data/ex/${sh}.json`, document.baseURI).href)
+      .then((r) => (r.ok ? (r.json() as Promise<Record<string, ExampleRow[]>>) : {}))
+      .then((d) => {
+        shards.set(sh, d);
+        return d;
+      })
+      .catch(() => {
+        shardLoads.delete(sh);
+        return {} as Record<string, ExampleRow[]>;
+      });
+    shardLoads.set(sh, p);
+  }
+  return p;
+}
+
+/** 已经下载过的分片里有没有（同步，不发请求） */
+export function bundledSync(word: string): Example[] | undefined {
+  const d = shards.get(shardOf(word));
+  return d ? (d[word] ?? []).map(rowToExample) : undefined;
+}
+
+export function bundledExamples(word: string): Promise<Example[]> {
+  return loadShard(shardOf(word)).then((d) => (d[word] ?? []).map(rowToExample));
+}
+
+/** 在线例句（旧数据源，没有中文翻译）转成同一个形状：只在随应用的例句里没有这个词时才用 */
+function onlineToExample(word: string, s: string): Example {
+  const hit = findForm(s, word);
+  return { en: s, zh: "", kind: "online", at: hit ? hit.at : -1, len: hit ? hit.form.length : 0 };
+}
+
+/**
+ * 卡片背面 / 详情的例句：先用随应用分发的（每句都有中文）；某个词一句都没有，才在线取（英文）。
+ * enabled=false 时什么都不取（卡片还没翻面）。
+ */
+export function useExampleList(word: string | undefined, enabled = true): { list: Example[]; ready: boolean } {
+  const [st, setSt] = useState<{ w?: string; list: Example[]; ready: boolean }>(() => {
+    const hit = word && enabled ? bundledSync(word) : undefined;
+    return { w: word, list: hit ?? [], ready: !!hit };
+  });
+  useEffect(() => {
+    if (!word || !enabled) {
+      setSt({ w: word, list: [], ready: false });
+      return;
+    }
+    let alive = true;
+    const hit = bundledSync(word);
+    if (hit?.length) {
+      setSt({ w: word, list: hit, ready: true });
+      return;
+    }
+    (hit ? Promise.resolve(hit) : bundledExamples(word))
+      .then((b) => (b.length ? b : fetchExamples(word).then((on) => on.map((s) => onlineToExample(word, s)))))
+      .then((list) => alive && setSt({ w: word, list, ready: true }));
+    return () => {
+      alive = false;
+    };
+  }, [word, enabled]);
+  return st.w === word ? { list: st.list, ready: st.ready } : { list: [], ready: false };
+}
+
 /**
  * 英文例句：在线时从 dictionaryapi.dev 懒加载 1-2 条，缓存在 localStorage。
  * 离线、接口没有例句或出错时返回空数组，界面静默隐藏，不阻塞任何操作。

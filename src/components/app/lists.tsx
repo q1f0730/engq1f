@@ -155,7 +155,7 @@ export function ListsOverview({ index }: { index: WordIndex }) {
           setWithStar(false);
           setCreating(true);
         }}
-        className="press mt-4 flex min-h-14 w-full items-center gap-3 rounded-lg border border-dashed border-rule-strong px-4 py-3 text-left hover:border-ink disabled:opacity-45"
+        className="press mt-4 flex min-h-14 w-full items-center gap-3 rounded-lg border border-rule-strong px-4 py-3 text-left hover:border-ink disabled:opacity-45"
       >
         <Plus className="size-5 shrink-0" />
         <span className="min-w-0 flex-1">

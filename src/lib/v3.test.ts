@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { confusables, editDistance, isInflection } from "./confusables";
 import { posOf, type Word, type WordIndex } from "./data";
 import { silentWav } from "./media-session";
-import { listenDistractors, listenOptions, samePron, reviewGroup, speedGroup, tapeList, todayNewWords, practiceGroup } from "./plan";
+import { listenDistractors, newWordsLeft, listenOptions, samePron, reviewGroup, speedGroup, tapeList, todayNewWords, practiceGroup } from "./plan";
 import { answer, createSession, newCard, pickMode, type Card } from "./srs";
 import { cleanSettings, defaultSettings, initialState, normalize, type AppState } from "./store";
 import { GAP_AFTER_CN, GAP_AFTER_EN, cnSpeech, fmtRemain, sleepLeft, speechTimeout, tapeSteps, ttsRate, wrapIndex } from "./tape";
@@ -135,11 +135,12 @@ describe("v3 · 磁带范围", () => {
   });
   it("今日新词 = first learned today (not killed); before studying → preview next daily words", () => {
     expect(todayNewWords(IDX, st, T)).toEqual({ words: ["adapt"], preview: false });
-    const fresh = state({ settings: { ...defaultSettings(), daily: 10, order: "alpha" } });
+    // 13.0 · 没有「字母顺序」了：预览是按种子乱序的前 10 个（和学新词的顺序一样），不再是 abandon 打头的一串
+    const fresh = state({ settings: { ...defaultSettings(), daily: 10, order: "random" } });
     const p = todayNewWords(IDX, fresh, T);
     expect(p.preview).toBe(true);
     expect(p.words).toHaveLength(10);
-    expect(p.words[0]).toBe("abandon");
+    expect(p.words).toEqual(newWordsLeft(IDX, fresh, T).slice(0, 10));
   });
   it("due / star / wrong / hard lists; unknown words dropped", () => {
     expect(tapeList(IDX, st, "due", T)).toEqual(["quite", "quiet"]);

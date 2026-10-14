@@ -115,7 +115,7 @@ export function PageHeader({ title, sub, right }: { title: string; sub?: ReactNo
     <div className="flex items-end justify-between gap-3 pb-6 pt-7 md:pt-10">
       <div className="min-w-0">
         {sub && <div className="mb-1 text-[0.8125rem] text-ink-3">{sub}</div>}
-        <h1 className="text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.02em]">{title}</h1>
+        <h1 className="song text-[1.75rem] leading-[1.15]">{title}</h1>
       </div>
       {right}
     </div>
@@ -134,7 +134,7 @@ export function Panel({ className, children, ...rest }: React.HTMLAttributes<HTM
 export function PanelTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
     <div className="mb-4 flex items-baseline justify-between gap-3">
-      <h2 className="text-[1.0625rem] font-semibold tracking-[-0.01em]">{children}</h2>
+      <h2 className="song text-[1.0625rem]">{children}</h2>
       {right && <div className="shrink-0 text-[0.8125rem] text-ink-3">{right}</div>}
     </div>
   );

@@ -5,7 +5,9 @@ import { today } from "@/lib/clock";
 import { Spinner } from "@/components/app/shell";
 import { Study, type StudyMode } from "@/components/app/study";
 import { useWords } from "@/lib/data";
-import { endRecover, getState, useApp } from "@/lib/store";
+import { chooseLevel, endRecover, getState, needLevelAsk, skipLevelAsk, useApp } from "@/lib/store";
+import { LEVELS, LEVEL_CN, LEVEL_HINT, type Level } from "@/lib/level";
+import { cn } from "@/lib/utils";
 
 const MODES: StudyMode[] = ["new", "review", "ahead", "practice", "star", "wrong", "mastered", "hard", "speed", "core", "list", "rank"];
 
@@ -40,7 +42,11 @@ function NewGate({ index, t }: { index: NonNullable<ReturnType<typeof useWords>[
   const [confirm, setConfirm] = useState(false);
   // 11.3 · 选了「边复习边学新词」的恢复期可以学新词
   const recovering = !!st.recover && day >= st.recover.from && day <= st.recover.until && !st.recover.mix;
-  if (!recovering) return <Study key={`new-${t ?? 0}`} index={index} mode="new" />;
+  if (!recovering) {
+    // 13.0 · 每天第一次学新词：先问今天的难度
+    if (needLevelAsk(st, day)) return <LevelPrompt day={day} />;
+    return <Study key={`new-${t ?? 0}`} index={index} mode="new" />;
+  }
   const end = () => {
     endRecover();
     toast.success("恢复计划结束，新词恢复");
@@ -80,6 +86,59 @@ function NewGate({ index, t }: { index: NonNullable<ReturnType<typeof useWords>[
           </div>
         </section>
       )}
+    </main>
+  );
+}
+
+/** 13.0 · 「今天想学什么难度？」：四档单选（默认是设置里的那档，出厂是「混合」），可以勾「不再每天询问」 */
+function LevelPrompt({ day }: { day: string }) {
+  const st = useApp();
+  const [lv, setLv] = useState<Level>(st.settings.level ?? "mix");
+  const [always, setAlways] = useState(false);
+  return (
+    <main className="mx-auto flex min-h-[80dvh] max-w-md flex-col justify-center px-6 py-8" data-testid="level-prompt">
+      <p className="text-[0.8125rem] text-ink-3">今天第一组新词</p>
+      <h1 className="song mt-1 text-[1.75rem] leading-tight">今天想学什么难度？</h1>
+      <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-2">按词长、音节、拼写、词频和构词算的难度；能拆开、组成部分你又认识的长词算简单。</p>
+      <div role="radiogroup" aria-label="今天的难度" className="mt-6 border-t border-rule">
+        {LEVELS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="radio"
+            aria-checked={lv === k}
+            data-testid={`level-${k}`}
+            onClick={() => setLv(k)}
+            className="press flex min-h-14 w-full items-center justify-between gap-3 border-b border-rule py-2.5 text-left"
+          >
+            <span className="min-w-0">
+              <span className={cn("song text-[1.0625rem]", lv === k && "hl")}>{LEVEL_CN[k]}</span>
+              <span className="mt-0.5 block text-[0.75rem] text-ink-3">{LEVEL_HINT[k]}</span>
+            </span>
+            <span className={cn("grid size-5 shrink-0 place-items-center rounded-full ring-1 ring-inset", lv === k ? "ring-ink" : "ring-rule-strong")} aria-hidden>
+              {lv === k && <span className="size-2.5 rounded-full bg-ink" />}
+            </span>
+          </button>
+        ))}
+      </div>
+      <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-2.5 text-[0.875rem] text-ink-2">
+        <input type="checkbox" data-testid="level-always" checked={always} onChange={(e) => setAlways(e.target.checked)} className="size-4 accent-[var(--ink)]" />
+        不再每天询问（以后都用这一档，「我的」里可以改）
+      </label>
+      <button type="button" data-testid="level-go" onClick={() => chooseLevel(lv, day, always)} className="btn-ink press mt-5 h-12 w-full rounded-[4px] text-[0.9375rem] font-semibold">
+        开始学习 · {LEVEL_CN[lv]}
+      </button>
+      <button
+        type="button"
+        data-testid="level-skip"
+        onClick={() => {
+          skipLevelAsk();
+          chooseLevel(st.settings.level ?? "mix", day);
+        }}
+        className="press mt-2 h-11 w-full text-[0.8125rem] text-ink-3 hover:text-ink"
+      >
+        先跳过，按「{LEVEL_CN[st.settings.level ?? "mix"]}」来
+      </button>
     </main>
   );
 }

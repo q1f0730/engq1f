@@ -8,6 +8,7 @@ import { initInstall } from "./lib/install";
 import { loadWords } from "./lib/data";
 import { registerSW } from "./lib/sw";
 import { seedHomeBase } from "./lib/back-stack";
+import { cloudConfig, hasSession } from "./lib/cloud-config";
 import "./styles.css";
 
 // 11.6 · 直接打开的不是首页：先在下面垫一条首页（返回回首页，不直接退出 app）
@@ -44,6 +45,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 
 if (import.meta.env.PROD) registerSW();
+
+// 13.0 · 本机登录过账号：恢复会话、开自动同步（supabase-js 只在这时才下载；没登录的人一个字节都不多）
+if (cloudConfig() && hasSession()) import("./lib/cloud").then((m) => m.resume()).catch(() => {});
 
 // 11.2 · 动态模块的预加载失败（发新版后旧文件没了 / 网络抖动）：Vite 会派发这个事件，
 // 交给路由的错误页（「网络不好…重试」），不再冒成未处理的异常

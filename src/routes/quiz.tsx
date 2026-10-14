@@ -252,7 +252,7 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
       </p>
       <ol className="rise mt-4 grid grid-cols-2 gap-x-5 border-t border-rule pt-3 text-[0.8125rem]" data-testid="mock-types" style={{ "--i": 2 } as React.CSSProperties}>
         {types.map((t, k) => (
-          <li key={t} className="flex min-h-8 items-baseline gap-2 border-b border-dashed border-rule py-1">
+          <li key={t} className="flex min-h-8 items-baseline gap-2 border-b border-rule py-1">
             <i className="w-4 shrink-0 font-serif text-[0.9375rem] not-italic text-ink-3" aria-hidden>
               {cn_no[k]}
             </i>

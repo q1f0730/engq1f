@@ -43,13 +43,14 @@ import {
   type Session,
   type SessionItem,
 } from "@/lib/srs";
-import { applyAnswer, checkIn, getState, markGoalMet, onExternalChange, previewKill, setBury, snapDayRule, toggleStar, useApp } from "@/lib/store";
+import { applyAnswer, checkIn, todayLevel, getState, markGoalMet, onExternalChange, previewKill, setBury, snapDayRule, toggleStar, useApp } from "@/lib/store";
 import { PostQuiz, PreviewList } from "./study-extra";
 import { postQuizWords, postSummary, retryWords } from "@/lib/learnflow";
 import { curStreak } from "@/lib/habit";
 import { celebrate } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
-import { Confusables, Examples, Meanings, Phonetic, Phrases } from "./word-bits";
+import { pickByLevel } from "@/lib/lexicon";
+import { Confusables, Examples, Meanings, MorphLine, Phonetic, Phrases, Synonyms, WordSheet } from "./word-bits";
 import { ShortcutsSheet } from "./shortcuts";
 import { LeaveSheet, exitBack, replaceStudy, useLeaveGuard } from "./leave";
 import { comeBackLine } from "@/lib/come-back";
@@ -89,7 +90,11 @@ const MODE_TITLE: Record<StudyMode, string> = {
 function buildItems(index: WordIndex, mode: StudyMode, words: string[]): SessionItem[] {
   const st = getState();
   const day = today();
-  if (mode === "new") return nextNewGroup(index, st, day);
+  // 13.0 · 按今天选的难度挑新词（混合 = 按乱序）
+  if (mode === "new") {
+    const lv = todayLevel(st, day);
+    return nextNewGroup(index, st, day, lv === "mix" ? undefined : (left, n) => pickByLevel(index, st.cards, left, lv, n));
+  }
   if (mode === "review") return reviewGroup(index, st, day);
   if (mode === "ahead") return aheadGroup(index, st, day);
   if (mode === "practice") return practiceGroup(index, st, words, day);
@@ -885,7 +890,7 @@ function SpeedCard({
   return (
     <div className="relative min-h-0 flex-1 speed-in" data-testid="speed-card">
       <div
-        className="relative h-full touch-pan-y select-none overflow-hidden rounded-2xl bg-paper-3 ring-1 ring-rule ring-inset"
+        className="index-card relative h-full touch-pan-y select-none overflow-hidden rounded-2xl bg-paper-3 ring-1 ring-rule ring-inset"
         style={dx !== null ? { transform: `translateX(${dx}px) rotate(${dx / 24}deg)` } : { transition: "transform 320ms var(--ease-spring)" }}
         onPointerDown={onDown}
         onPointerMove={onMove}
@@ -924,7 +929,7 @@ function SpeedCard({
                 <Meanings word={word} />
               </div>
             ) : (
-              <div className="flex h-14 items-center justify-between border-y border-dashed border-rule-strong text-[0.8125rem] text-ink-3">
+              <div className="flex h-14 items-center justify-between border-y border-rule-strong text-[0.8125rem] text-ink-3">
                 <span>点一下看释义</span>
                 <span>{swipeHint(swap)}</span>
               </div>
@@ -938,7 +943,7 @@ function SpeedCard({
             onKill();
           }}
           data-testid="kill"
-          className="press absolute inset-x-0 bottom-0 flex h-12 items-center justify-center gap-1.5 whitespace-nowrap border-t border-dashed border-rule text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
+          className="press absolute inset-x-0 bottom-0 flex h-12 items-center justify-center gap-1.5 whitespace-nowrap border-t border-rule text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
         >
           <Swords className="size-3.5" /> 斩 · 我本来就会
         </button>
@@ -996,27 +1001,23 @@ function IconBtn({
 }
 
 function RateBtn({ tone, label, k, hint, onClick, compact }: { tone: Grade4; label: string; k: string; hint?: string; onClick: () => void; compact?: boolean }) {
-  // 12.0 · 三个（四个）评分同样的重量：纸色块 + 细线，顶部一道语义色，文字是语义色
-  const cls = {
-    easy: "text-ink before:bg-ink",
-    know: "text-know before:bg-know",
-    vague: "text-vague before:bg-vague",
-    forget: "text-forget before:bg-forget",
-  }[tone];
+  // 13.0 · A 真词典：「认识」是细长的墨色主按钮，其余是细线框的次按钮；不再用语义色条
+  const ink = tone === "know";
+  const cls = ink ? "btn-ink text-paper-3 ring-0" : "bg-paper-3 text-ink ring-1 ring-rule-strong ring-inset hover:bg-paper-2";
   return (
     <button
       type="button"
       onClick={onClick}
       data-testid={`rate-${tone}`}
       className={cn(
-        "press relative flex h-16 flex-col items-center justify-center overflow-hidden rounded-xl bg-paper-3 font-semibold ring-1 ring-rule ring-inset hover:bg-paper-2 before:absolute before:inset-x-3 before:top-0 before:h-[3px] before:rounded-b-[2px]",
+        "press relative flex h-14 flex-col items-center justify-center overflow-hidden rounded-xl font-semibold",
         compact ? "text-[0.9375rem]" : "text-base",
         cls,
       )}
     >
       <span className="leading-tight">{label}</span>
       {hint && (
-        <span className="tnum mt-1 text-[0.6875rem] font-medium leading-none text-ink-3" data-testid={`ivl-${tone}`}>
+        <span className={cn("tnum mt-1 text-[0.6875rem] font-medium leading-none", ink ? "text-paper-3/75" : "text-ink-3")} data-testid={`ivl-${tone}`}>
           {hint}
         </span>
       )}
@@ -1065,6 +1066,8 @@ function FlipCard({
   // 11.6 · 背面右栏（横屏才单独滚动）放不下时：底部渐隐 +「上滑看更多」
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const [more, setMore] = useState(false);
+  // 13.0 · 背面点同义词：在详情弹层里打开那个词（不离开这一组）
+  const [peek, setPeek] = useState<Word | null>(null);
   const checkMore = useCallback(() => {
     const el = bodyRef.current;
     if (!el) return;
@@ -1193,14 +1196,18 @@ function FlipCard({
         {/* 11.6 · 横屏（高度 < 500）：单词在左、释义在右，释义第一行不用滚动就看得见；右栏放不下时底部渐隐 + 「上滑看更多」 */}
         <div className="back-body" data-testid="back-body" ref={bodyRef} onScroll={checkMore} data-more={more ? 1 : 0}>
           <Meanings word={word} size="lg" />
+          <MorphLine index={index} word={word} className="mt-3" />
+          <div className="mt-6 empty:hidden">
+            <Examples word={word} enabled={flipped} />
+          </div>
           <div className="mt-6 empty:hidden">
             <Phrases word={word} />
           </div>
           <div className="mt-6 empty:hidden">
-            <Confusables index={index} word={word} accent={accent} />
+            <Synonyms index={index} word={word} enabled={flipped} onOpen={setPeek} />
           </div>
           <div className="mt-6 empty:hidden">
-            <Examples word={word} enabled={flipped} />
+            <Confusables index={index} word={word} accent={accent} />
           </div>
         </div>
         {more && (
@@ -1218,7 +1225,7 @@ function FlipCard({
   const HINT_CN = { know: "认识", vague: "模糊", forget: "不认识" } as const;
 
   return (
-    <div className="relative min-h-0 flex-1 card-in">
+    <div className="paper-stack relative min-h-0 flex-1 card-in">
       <div
         className="flip-scene h-full touch-pan-y select-none"
         style={style}
@@ -1235,7 +1242,7 @@ function FlipCard({
         }}
       >
         <div className={cn("flip-inner h-full", flipped && "is-flipped")}>
-          <div className="flip-face relative h-full overflow-hidden rounded-2xl bg-paper-3 ring-1 ring-rule ring-inset" aria-hidden={flipped}>
+          <div className="flip-face index-card relative h-full overflow-hidden rounded-2xl bg-paper-3 ring-1 ring-rule ring-inset" aria-hidden={flipped}>
             <div className="relative h-full">{front}</div>
             {canKill && (
               <button
@@ -1245,7 +1252,7 @@ function FlipCard({
                   onKill();
                 }}
                 data-testid="kill"
-                className="card-kill press absolute inset-x-0 bottom-0 flex h-12 items-center justify-center gap-1.5 whitespace-nowrap border-t border-dashed border-rule text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
+                className="card-kill press absolute inset-x-0 bottom-0 flex h-12 items-center justify-center gap-1.5 whitespace-nowrap border-t border-rule text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
               >
                 <Swords className="size-3.5" /> 斩 · 我本来就会
               </button>
@@ -1263,11 +1270,12 @@ function FlipCard({
               </div>
             )}
           </div>
-          <div className="flip-face flip-back h-full overflow-hidden rounded-2xl bg-paper-3 ring-1 ring-rule ring-inset" aria-hidden={!flipped}>
+          <div className="flip-face flip-back index-card h-full overflow-hidden rounded-2xl bg-paper-3 ring-1 ring-rule ring-inset" aria-hidden={!flipped}>
             {back}
           </div>
         </div>
       </div>
+      <WordSheet word={peek} open={!!peek} onOpenChange={(v) => !v && setPeek(null)} />
     </div>
   );
 }

@@ -24,20 +24,45 @@ export const REVIEW_GROUP = 20;
 
 const orderCache = new Map<string, string[]>();
 
-/** 按词书与顺序排好的学习序列 */
+/**
+ * 13.0 · 新词乱序的排序键：用户种子 + 词书 + 单词 → 32 位哈希。
+ * 每个词的位置只取决于它自己，所以：刷新、换设备（种子随云同步）顺序不变；打开 / 关掉基础词只是插入 / 拿走那些词，
+ * 其余词的先后不动；换词书（全部 ↔ 核心）是另一套顺序。不会出现按字母排的一串。
+ */
+export const orderKey = (seed: number, book: string, w: string) => hashStr(`${seed}|${book}|${w}`);
+
+/** 按词书排好的学习序列：核心优先 = 核心词在前、其余在后，两段各自乱序；乱序 = 全部乱序 */
 export function orderedWords(index: WordIndex, s: Pick<Settings, "book" | "order">, seed: number): string[] {
-  const key = `${s.book}|${s.order}|${seed}|${index.list.length}`;
+  const key = `${s.book}|${s.order}|${seed}|${index.list.length}|${index.basic ? 1 : 0}`;
   const hit = orderCache.get(key);
   if (hit) return hit;
-  let list = index.list.filter((w) => s.book === "all" || w.c);
-  if (s.order === "alpha") list = list.slice().sort((a, b) => a.w.localeCompare(b.w, "en", { sensitivity: "base" }));
-  else if (s.order === "random") list = shuffle(list, seed);
-  else {
-    // 核心优先：核心词（原顺序）在前，其余在后
-    list = [...list.filter((w) => w.c), ...list.filter((w) => !w.c)];
-  }
-  const out = list.map((w) => w.w);
+  const list = index.list.filter((w) => s.book === "all" || w.c);
+  const k = new Map(list.map((w) => [w.w, orderKey(seed, s.book, w.w)]));
+  const core = s.order !== "random";
+  const out = list
+    .slice()
+    .sort((a, b) => (core && !!a.c !== !!b.c ? (a.c ? -1 : 1) : k.get(a.w)! - k.get(b.w)! || (a.w < b.w ? -1 : 1)))
+    .map((w) => w.w);
   orderCache.set(key, out);
+  return out;
+}
+
+/**
+ * 13.0 · 复习保持记忆算法的顺序（先到期的、间隔短的在前），只在「同一天到期、同一间隔」这一桶里打散：
+ * 不会因为 Object.keys 的插入顺序（≈ 学的顺序）一桶里按原词表排成一串。按 种子 + 日期 稳定，同一天刷新顺序不变。
+ */
+export function interleaveDue(words: string[], cards: AppState["cards"], salt: string): string[] {
+  const out: string[] = [];
+  let i = 0;
+  while (i < words.length) {
+    let j = i + 1;
+    const c = cards[words[i]];
+    while (j < words.length && cards[words[j]]?.d === c?.d && cards[words[j]]?.i === c?.i) j++;
+    const bucket = words.slice(i, j);
+    if (bucket.length > 1) bucket.sort((a, b) => hashStr(salt + a) - hashStr(salt + b) || (a < b ? -1 : 1));
+    out.push(...bucket);
+    i = j;
+  }
   return out;
 }
 
@@ -108,7 +133,9 @@ export function specialCap(st: AppState, day: string): number {
 /** 11.3 · 考前 / 休息：最容易忘的先复习（忘得多的、间隔短的、逾期久的在前） */
 export function forgetFirst(st: AppState, words: string[]): string[] {
   const c = st.cards;
-  return [...words].sort((a, b) => c[b].l - c[a].l || c[a].i - c[b].i || (c[a].d < c[b].d ? -1 : c[a].d > c[b].d ? 1 : 0) || (a < b ? -1 : 1));
+  // 13.0 · 完全一样的几个词按种子打散（不再按字母）
+  const salt = `${st.seed}|ff`;
+  return [...words].sort((a, b) => c[b].l - c[a].l || c[a].i - c[b].i || (c[a].d < c[b].d ? -1 : c[a].d > c[b].d ? 1 : 0) || hashStr(salt + a) - hashStr(salt + b) || (a < b ? -1 : 1));
 }
 
 export function summarize(index: WordIndex, st: AppState, day: string): TodaySummary {
@@ -183,13 +210,15 @@ export function adaptiveNew(due: number, daily: number): number | null {
   return n < daily ? n : null;
 }
 
-/** 下一组新词：优先补齐今日目标，达标后可以再学一组 10 个 */
-export function nextNewGroup(index: WordIndex, st: AppState, day: string): SessionItem[] {
+/**
+ * 下一组新词：优先补齐今日目标，达标后可以再学一组 10 个。
+ * 13.0 · pick = 按今天的难度挑（lexicon.pickByLevel，由学习页传进来，难度算法不进首屏）；不给 = 按乱序取前 n 个。
+ */
+export function nextNewGroup(index: WordIndex, st: AppState, day: string, pick?: (left: string[], n: number) => string[]): SessionItem[] {
   const sum = summarize(index, st, day);
   const n = sum.remainingGoal > 0 ? Math.min(GROUP_SIZE, sum.remainingGoal) : GROUP_SIZE;
-  return newWordsLeft(index, st, day)
-    .slice(0, n)
-    .map((w) => ({ w, kind: "new" as const, mode: "recall" as const }));
+  const left = newWordsLeft(index, st, day);
+  return (pick ? pick(left, n) : left.slice(0, n)).map((w) => ({ w, kind: "new" as const, mode: "recall" as const }));
 }
 
 /** 复习上限：今天还能复习多少（0 = 不限） */
@@ -243,7 +272,7 @@ function modeFor(index: WordIndex, st: AppState, w: string, day: string): Sessio
 }
 
 export function reviewGroup(index: WordIndex, st: AppState, day: string): SessionItem[] {
-  const all = dueWords(st.cards, day);
+  const all = interleaveDue(dueWords(st.cards, day), st.cards, `${st.seed}|${day}`);
   const list = specialCap(st, day) === Infinity ? all : forgetFirst(st, all);
   return list
     .slice(0, Math.min(REVIEW_GROUP, cappedDue(st, day, list.length)))

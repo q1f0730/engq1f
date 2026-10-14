@@ -35,7 +35,9 @@ import { BASE_MODES, REVIEW_MODES, TIER_LONG, TIER_SHORT, toggleMode } from "@/l
 import { MODE_LABEL } from "@/lib/exam";
 import { FIT_MIN, RETENTION_OPTIONS, balanceAll, fitInitialEase } from "@/lib/algo";
 import { addDays, diffDays, finishDate, retentionScale } from "@/lib/srs";
-import { getState, replaceCards } from "@/lib/store";
+import { getState, replaceCards, todayLevel } from "@/lib/store";
+import { LEVELS, LEVEL_CN, type Level } from "@/lib/level";
+import { cloudConfig, hasSession } from "@/lib/cloud-config";
 import { ImportFlow } from "@/components/app/import-flow";
 import { ACTIVE_PROFILE, readRegistry } from "@/lib/profiles";
 
@@ -264,6 +266,42 @@ function MePage() {
             <p className="mt-2.5 text-[0.75rem] leading-relaxed text-ink-3">
               今天要复习 {sum.due} 个{sum.deferred > 0 ? `，另有 ${sum.deferred} 个顺延` : ""}。上限只是把超出的词往后排，不会丢。
             </p>
+            {/* 13.0 · 新词难度 + 基础词 */}
+            <Label>新词难度</Label>
+            <Ticks<Level>
+              value={s.level ?? "mix"}
+              onPick={(v) => setSettings({ level: v })}
+              testid="me-level"
+              idOf={(v) => `me-level-${v}`}
+              serif={false}
+              options={LEVELS.map((v) => ({ value: v, label: LEVEL_CN[v] }))}
+            />
+            <div className="mt-1 border-b border-rule">
+              <Field label="每天第一次学新词时询问" hint={s.levelAsk === false ? `不问，每天按「${LEVEL_CN[s.level ?? "mix"]}」` : `今天：${LEVEL_CN[todayLevel(st, day)]}`} testid="me-level-ask-row">
+                <Switch checked={s.levelAsk !== false} onCheckedChange={(v) => setSettings({ levelAsk: v })} data-testid="me-level-ask" aria-label="每天询问难度" />
+              </Field>
+              <Field
+                label="包含基础词"
+                hint={s.basic ? `已包含 ${index.basicCount ?? 0} 个小学 / 初中基础词` : `已隐藏 ${index.basicCount ?? 0} 个小学 / 初中基础词（the、book、apple 这一级）`}
+                testid="me-basic-row"
+              >
+                <Switch
+                  checked={!!s.basic}
+                  onCheckedChange={(v) => {
+                    setSettings({ basic: v });
+                    toast.success(v ? "基础词已加入词库" : "基础词已隐藏", { id: "basic", description: v ? undefined : "学过的基础词照常复习，记录不会丢" });
+                  }}
+                  data-testid="me-basic"
+                  aria-label="包含基础词"
+                />
+              </Field>
+            </div>
+          </Sec>
+
+          <Sec title="账号与同步" testid="account-sec">
+            <div className="border-t border-rule">
+              <Entry to="/account" title={!cloudConfig() ? "账号（云同步还没开通）" : hasSession() ? "已登录 · 账号与同步" : "登录 / 注册"} sub={cloudConfig() ? "邮箱登录后，换手机进度也在" : "现在记录只存在这台手机上"} data-testid="me-account" />
+            </div>
           </Sec>
 
           <Sec title="提醒与外观">

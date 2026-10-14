@@ -44,7 +44,7 @@ export default function ListLinkSheet({ open, onOpenChange, list }: { open: bool
         <div className="max-h-28 select-all overflow-y-auto break-all font-mono text-[0.75rem] leading-relaxed text-ink-2" data-testid="list-link-url">
           {url || "生成中…"}
         </div>
-        <figcaption className="tnum mt-2 flex justify-between border-t border-dashed border-rule-strong pt-1.5 text-[0.6875rem] text-ink-3">
+        <figcaption className="tnum mt-2 flex justify-between border-t border-rule-strong pt-1.5 text-[0.6875rem] text-ink-3">
           <span>长按可全选</span>
           <span>{url ? `${url.length} 字符` : ""}</span>
         </figcaption>

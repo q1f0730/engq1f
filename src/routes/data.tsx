@@ -630,7 +630,7 @@ function ProfilesPanel() {
         data-testid="profile-new"
         disabled={reg.list.length >= PROFILE_MAX}
         onClick={() => setCreating(true)}
-        className="press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-rule-strong text-[0.875rem] font-medium text-ink-2 hover:border-ink hover:text-ink disabled:opacity-45"
+        className="press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-rule-strong text-[0.875rem] font-medium text-ink-2 hover:border-ink hover:text-ink disabled:opacity-45"
       >
         <Plus className="size-4" /> {reg.list.length >= PROFILE_MAX ? `最多 ${PROFILE_MAX} 个档案` : "新建档案"}
       </button>

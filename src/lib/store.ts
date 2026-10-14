@@ -11,6 +11,8 @@ import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
 import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, autoCredit, examDayOn, examGapClash, examTaken, harvestExamDays, postponedOn, parseHM, type CheckInResult, type DayRule, type GoalMode, type PatchResult } from "./habit";
 import { passedExam } from "./examdate";
 import type { ShareTpl } from "./share";
+import { setBasicMode } from "./data";
+import { LEVELS, type Level } from "./level";
 import { cleanFontSize, cleanMotion, motionReduced, type FontSize, type Motion } from "./ux";
 import { ACTIVE_PROFILE, revKeyOf, stateKeyOf } from "./profiles";
 import { isRawDump, unwrapRaw } from "./salvage";
@@ -18,7 +20,8 @@ import { cleanCards, cleanDayMap, cleanDays, cleanFlags, cleanLog, emptyReport, 
 
 export type { CleanReport };
 export type Book = "all" | "core";
-export type Order = "core" | "alpha" | "random";
+/** 13.0 · 新词一律乱序：core = 核心词在前（各自乱序），random = 全部乱序。旧存档的 alpha 读成 core */
+export type Order = "core" | "random";
 export type Theme = "system" | "light" | "dark" | "contrast";
 
 export interface Settings {
@@ -85,6 +88,12 @@ export interface Settings {
   fourKey: boolean;
   /** v10 · 初始难度拟合 */
   fitEase: boolean;
+  /** 13.0 · 包含基础词（小学 / 初中就学过的词，默认不学） */
+  basic: boolean;
+  /** 13.0 · 每天新词难度：不问的时候用它；问的时候是默认选中的那一项 */
+  level: Level;
+  /** 13.0 · 每天第一次学新词时问「今天想学什么难度？」 */
+  levelAsk: boolean;
 }
 
 export interface AppState {
@@ -155,6 +164,8 @@ export interface AppState {
   sprintSnooze?: string;
   /** 11.2 · 整份替换（清空 / 覆盖导入 / 回滚）时换一个新值：别的窗口据此知道「记录被整份换掉了」，不再往上合并 */
   epoch?: string;
+  /** 13.0 · 今天选的新词难度（每天第一次学新词时问） */
+  levelDay?: { d: string; lv: Level };
 }
 
 /** v10 · 记忆保持目标（这里自带一份，不让首屏引入整个 algo.ts） */
@@ -208,6 +219,9 @@ export const defaultSettings = (): Settings => ({
   steps: true,
   fourKey: false,
   fitEase: true,
+  basic: false,
+  level: "mix",
+  levelAsk: true,
 });
 
 /** v11 之前的默认值：存档里没有这些开关（v10 之前的存档 / 旧备份）时按旧默认补，老用户的排程不变 */
@@ -247,7 +261,10 @@ export function cleanSettings(s: Settings): Settings {
   return {
     ...s,
     book: s.book === "core" ? "core" : "all",
-    order: s.order === "alpha" || s.order === "random" ? s.order : "core",
+    order: s.order === "random" ? "random" : "core",
+    basic: s.basic === true,
+    level: LEVELS.includes(s.level) ? s.level : d.level,
+    levelAsk: typeof s.levelAsk === "boolean" ? s.levelAsk : d.levelAsk,
     daily: Number.isInteger(s.daily) && s.daily >= 1 && s.daily <= 300 ? s.daily : d.daily,
     accent: s.accent === "uk" ? "uk" : "us",
     autoplay: bool(s.autoplay, d.autoplay),
@@ -352,6 +369,7 @@ export function normalize(raw: unknown, has?: (w: string) => boolean, rep: Clean
     paceOk: optDay(r.paceOk),
     sprintSnooze: optDay(r.sprintSnooze),
     epoch: str(r.epoch),
+    levelDay: r.levelDay && typeof r.levelDay === "object" && isDay(r.levelDay.d) && LEVELS.includes(r.levelDay.lv) ? { d: r.levelDay.d, lv: r.levelDay.lv } : undefined,
   };
 }
 
@@ -425,6 +443,7 @@ function read(): AppState {
 }
 
 let state: AppState = read();
+setBasicMode(!!state.settings.basic);
 let savedRev: RevEntry[] | null = null;
 const listeners = new Set<() => void>();
 export type ExternalWhy = "sync" | "merge" | "replace";
@@ -689,6 +708,7 @@ function commit(next: AppState) {
   }
   state = next;
   persist(prev);
+  setBasicMode(!!state.settings.basic);
   applyTheme(state.settings.theme);
   applyLook(state.settings);
   listeners.forEach((l) => l());
@@ -725,7 +745,7 @@ export function applyTheme(t: Theme) {
   el.classList.add(r);
   if (hc) el.classList.add("contrast");
   el.setAttribute("data-theme", want);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", hc ? "#ffffff" : r === "dark" ? "#121211" : "#f4f3ef");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", hc ? "#ffffff" : r === "dark" ? "#14171e" : "#f7f3ea");
 }
 
 /** 字号与动画：写到 <html> 的 data 属性上，CSS 据此缩放 / 关动画 */
@@ -1133,4 +1153,55 @@ export function replaceState(next: AppState) {
 
 export function resetAll() {
   commit({ ...initialState(), epoch: newEpoch() });
+}
+
+// ---------------------------------------------------------------- 13.0 · 每日新词难度
+
+/** 关掉提示（点「先跳过」）只在这次打开里不再问；e2e 的旧用例也靠它跳过 */
+export const LEVEL_SKIP_KEY = "cet4v-level-skip";
+
+/** 今天用哪一档：今天选过 → 选的那档；没选 → 设置里的默认档 */
+export function todayLevel(st: Pick<AppState, "levelDay" | "settings">, day: string): Level {
+  return st.levelDay?.d === day ? st.levelDay.lv : st.settings.level ?? "mix";
+}
+
+/** 今天第一次学新词要不要先问难度 */
+export function needLevelAsk(st: Pick<AppState, "levelDay" | "settings">, day: string): boolean {
+  if (st.settings.levelAsk === false || st.levelDay?.d === day) return false;
+  try {
+    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(LEVEL_SKIP_KEY)) return false;
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
+
+/** 选了今天的难度；always = 「不再每天询问」：以后都用这一档（「我的」里能改回来） */
+export function chooseLevel(lv: Level, day = today(), always = false) {
+  commit({
+    ...state,
+    levelDay: { d: day, lv },
+    settings: always ? { ...state.settings, level: lv, levelAsk: false } : state.settings,
+  });
+}
+
+/** 先跳过：今天按默认档，这次打开不再问 */
+export function skipLevelAsk() {
+  try {
+    sessionStorage.setItem(LEVEL_SKIP_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+// ---------------------------------------------------------------- 13.0 · 云同步
+
+/** 云端合并后的状态写回本机：不换 epoch（别的窗口照常合并，不会被当成「整份替换」） */
+export function applyMerged(next: AppState) {
+  commit(next);
+}
+
+/** 记录有变化时通知（云同步的增量上传用） */
+export function subscribeState(fn: () => void) {
+  return subscribe(fn);
 }

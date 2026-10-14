@@ -34,3 +34,8 @@
 2. 并且它不是四级核心词（qwerty-learner CET4_T）——核心词只有在词频前 500 时才算基础词。
 
 结果：4544 个词 → 3889 个（655 个基础词隐藏，「我的 → 包含基础词」可以打开）。已经学过的基础词照常复习，不丢记录。
+
+### 字体
+| 文件 | 来源 | 许可 |
+|---|---|---|
+| `public/fonts/noto-serif-sc-heading-600.woff2` | Noto Serif SC（Google / Adobe），只切了界面标题用到的约 280 个字，600 字重（`scripts/subset-song.py`） | SIL OFL 1.1（[NotoSerifSC-OFL-1.1.txt](NotoSerifSC-OFL-1.1.txt)） |

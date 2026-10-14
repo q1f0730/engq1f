@@ -261,7 +261,7 @@ function Today() {
           <div className="text-[0.8125rem] text-ink-3" data-testid="today-date">
             {dateLine}
           </div>
-          <h1 className="mt-0.5 text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.02em]">{greeting()}</h1>
+          <h1 className="song mt-0.5 text-[1.875rem] leading-[1.15]">{greeting()}</h1>
         </div>
         <div
           className={cn("flex items-baseline gap-1 pb-1 text-ink", s > 0 ? "" : "hidden")}
@@ -281,7 +281,7 @@ function Today() {
           {overFirst ? (
             <ExamOverCard advice={overFirst} index={index} st={st} day={day} streak={s} />
           ) : (
-          <section className="hero-gradient relative overflow-hidden rounded-2xl px-5 pb-5 pt-4" data-testid="hero" data-mode={sum.recovering ? "recover" : sum.paused ? "pause" : sum.examMode ? "exam" : "normal"}>
+          <section className="hero-gradient relative overflow-hidden rounded-2xl pb-5 pl-7 pr-5 pt-4" data-testid="hero" data-mode={sum.recovering ? "recover" : sum.paused ? "pause" : sum.examMode ? "exam" : "normal"}>
             {lateOn && <LateStrip sum={sum} streak={s} />}
             <div className="flex items-end justify-between gap-4">
               <div className="min-w-0">
@@ -1518,7 +1518,7 @@ function Todo({ done, label, muted }: { done: boolean; label: string; muted?: bo
       <span
         className={cn(
           "grid size-[18px] shrink-0 place-items-center rounded-[3px]",
-          done ? "bg-ink text-paper-3" : muted ? "border border-dashed border-rule-strong" : "border-[1.5px] border-ink-3",
+          done ? "bg-ink text-paper-3" : muted ? "border border-rule-strong" : "border-[1.5px] border-ink-3",
         )}
       >
         {done && <Check className="size-3" strokeWidth={2.6} />}
