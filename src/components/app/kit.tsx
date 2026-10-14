@@ -323,3 +323,44 @@ export function SubHead({
     </header>
   );
 }
+
+/**
+ * 页内标签（统计的「概览 / 复盘 / 成就」）：一排字，选中的那个下面一道墨线 + 荧光笔。
+ * 仍是 radiogroup / radio（键盘、读屏和原来的分段控件一样）。
+ */
+export function TabLine<T extends string>({
+  value,
+  options,
+  onChange,
+  testid,
+  className,
+}: {
+  value: T;
+  options: { value: T; label: ReactNode }[];
+  onChange: (v: T) => void;
+  testid?: string;
+  className?: string;
+}) {
+  return (
+    <div role="radiogroup" data-testid={testid} className={cn("flex gap-6 border-b border-rule", className)}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "press relative -mb-px h-11 whitespace-nowrap border-b-2 text-[0.9375rem]",
+              on ? "border-ink font-semibold text-ink" : "border-transparent text-ink-3 hover:text-ink",
+            )}
+          >
+            <span className={cn(on && "hl")}>{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
