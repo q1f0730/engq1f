@@ -142,52 +142,40 @@ function JudgeGame({ index }: { index: WordIndex }) {
       )}
       {phase === "run" && cur && word && (
         <>
-          <div className="flex shrink-0 items-center gap-2 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
-              <X className="size-[22px]" />
-            </button>
-            {/* 一格一题：判断对的涂墨色，判断错的留一道砖红 */}
-            <div className="flex h-2 flex-1 gap-[2px]" aria-hidden>
-              {items.map((_, k) => (
-                <span key={k} className={cn("h-full flex-1 transition-colors duration-300", k < answers.length ? (answers[k].ok ? "bg-ink" : "bg-forget") : k === pos ? "bg-mark" : "bg-rule")} />
-              ))}
+          {/* 12.0 · 抬头：左边关闭，中间「第 N 题 / 共」+ 答对数，下面一排格子（判断对的涂墨，错的留砖红） */}
+          <header className="shrink-0 pt-3">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={quit} aria-label="退出" className="press -ml-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
+                <X className="size-[22px]" />
+              </button>
+              <span className="tnum font-serif text-[1.375rem] leading-none" data-testid="judge-progress">
+                {Math.min(pos + (shown ? 0 : 1), items.length)}/{items.length}
+              </span>
+              <span className="text-[0.75rem] text-ink-3">判断对错</span>
+              <span className="tnum ml-auto flex items-center gap-1 rounded-[2px] bg-know-soft px-1.5 py-0.5 text-[0.8125rem] font-semibold text-know" data-testid="judge-ok">
+                <Check className="size-3.5" strokeWidth={3} /> {okN}
+              </span>
             </div>
-            <span className="tnum min-w-12 text-right font-serif text-[1.125rem] leading-none" data-testid="judge-progress">
-              {Math.min(pos + (shown ? 0 : 1), items.length)}/{items.length}
-            </span>
-            <span className="tnum flex items-center gap-1 text-[0.8125rem] font-semibold text-know" data-testid="judge-ok">
-              <Check className="size-3.5" strokeWidth={3} /> {okN}
-            </span>
-          </div>
+            <ol className="mt-3 flex h-1.5 gap-[2px]" aria-hidden>
+              {items.map((_, k) => (
+                <li key={k} className={cn("h-full flex-1 transition-colors duration-300", k < answers.length ? (answers[k].ok ? "bg-ink" : "bg-forget") : k === pos ? "bg-mark" : "bg-rule")} />
+              ))}
+            </ol>
+          </header>
           <JudgeCard key={`${cur.w}-${shown ? pos - 1 : pos}`} item={cur} word={word} accent={accent} shown={shown} swap={swap} onJudge={judge} index={index} />
-          <div className="shrink-0 pb-4 pt-4">
+          <footer className="shrink-0 pb-4 pt-4">
             {shown && !shown.ok ? (
               <button type="button" onClick={advance} data-testid="judge-next" className="press flex h-16 w-full items-center justify-center gap-2.5 rounded-xl bg-ink text-base font-semibold text-paper-3 hover:bg-ink-2">
                 记住了 · 继续 <span className="kbd hidden fine:inline-grid">空格</span>
               </button>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5" data-testid="judge-buttons" data-order={sides.map((b) => (b ? "yes" : "no")).join(",")}>
+              <div className="flex gap-2.5" data-testid="judge-buttons" data-order={sides.map((b) => (b ? "yes" : "no")).join(",")}>
                 {sides.map((yes, k) => (
-                  <button
-                    key={String(yes)}
-                    type="button"
-                    disabled={!!shown}
-                    onClick={() => judge(yes)}
-                    data-testid={yes ? "judge-yes" : "judge-no"}
-                    className={cn(
-                      "press relative flex h-16 items-center justify-center gap-2 overflow-hidden rounded-xl bg-paper-3 text-[1.0625rem] font-semibold ring-1 ring-rule ring-inset before:absolute before:inset-x-0 before:top-0 before:h-[3px] hover:bg-paper-2 disabled:opacity-60",
-                      yes ? "text-know before:bg-know" : "text-forget before:bg-forget",
-                    )}
-                  >
-                    {k === 0 && <ArrowLeft className="size-4" />}
-                    {yes ? <Check className="size-5" strokeWidth={2.6} /> : <X className="size-5" strokeWidth={2.6} />}
-                    {yes ? "对" : "不对"}
-                    {k === 1 && <ArrowRight className="size-4" />}
-                  </button>
+                  <JudgeKey key={String(yes)} yes={yes} side={k === 0 ? "left" : "right"} disabled={!!shown} onClick={() => judge(yes)} />
                 ))}
               </div>
             )}
-          </div>
+          </footer>
         </>
       )}
       {phase === "done" && (
@@ -275,47 +263,44 @@ function JudgeCard({
         onPointerUp={onUp}
         onPointerCancel={onUp}
       >
-        {/* 12.0 · 一张索引卡：上半是词头（左对齐、衬线），下半是一条「释义」，中间一条细线写「是这个意思吗？」 */}
+        {/* 12.0 · 一张索引卡：词头（左对齐、衬线）+ 读音同一行；下面一句「是这个意思吗？」引出被检验的释义 */}
         <div className="relative flex flex-1 flex-col justify-center px-6">
           <h2 className="fs-card word-head break-all text-[3.5rem] leading-[1]" data-testid="judge-word">
             {word.w}
           </h2>
-          <div className="mt-2.5 flex items-center gap-2 text-[0.9375rem] text-ink-2">
+          <p className="mt-2 flex items-center gap-1 text-[0.9375rem] text-ink-2">
             <Phonetic word={word} accent={accent} />
             <button
               type="button"
               aria-label="播放发音"
-              onClick={(e) => {
-                e.stopPropagation();
-                speak(word.w, accent);
-              }}
-              className="press grid size-10 place-items-center rounded-lg text-ink ring-1 ring-rule-strong ring-inset hover:bg-mark"
+              onClick={(e) => (e.stopPropagation(), speak(word.w, accent))}
+              className="press grid size-10 place-items-center rounded-full text-ink-2 hover:bg-mark hover:text-ink"
             >
               <Volume2 className="size-[18px]" />
             </button>
-          </div>
-          <div className="section-rule mb-3 mt-7 text-[0.75rem] text-ink-3">是这个意思吗？</div>
-          <div
+          </p>
+          <p className="mt-7 text-[0.75rem] text-ink-3">是这个意思吗？</p>
+          <blockquote
             className={cn(
-              "fs-card border-l-[3px] py-1 pl-3.5 text-[1.125rem] font-medium leading-snug transition-colors",
-              !shown && "border-ink",
-              shown && item.truth && "border-know text-know",
-              shown && !item.truth && "border-forget text-forget line-through decoration-2",
+              "fs-card mt-2 rounded-lg px-3.5 py-2.5 text-[1.125rem] font-medium leading-snug transition-colors",
+              !shown && "bg-paper-2 text-ink",
+              shown && item.truth && "bg-know-soft text-know",
+              shown && !item.truth && "bg-forget-soft text-forget line-through decoration-2",
             )}
             data-testid="judge-meaning"
           >
             {item.shown}
-          </div>
+          </blockquote>
           {shown && (
-            <div className="pop mt-5 text-[0.875rem]" data-testid="judge-feedback" data-ok={shown.ok ? 1 : 0}>
-              <div className={cn("font-semibold", shown.ok ? "text-know" : "text-forget")}>{shown.ok ? "✓ 判断正确" : "✗ 判断错了"}</div>
+            <section className="pop mt-4 text-[0.875rem]" data-testid="judge-feedback" data-ok={shown.ok ? 1 : 0}>
+              <p className={cn("font-semibold", shown.ok ? "text-know" : "text-forget")}>{shown.ok ? "✓ 判断正确" : "✗ 判断错了"}</p>
               {!item.truth && (
-                <div className="mt-2 border-t border-rule pt-2 text-left leading-relaxed text-ink-2">
+                <p className="mt-2 leading-relaxed text-ink-2">
                   <b className="word-head text-[1.25em] text-ink">{word.w}</b> 是：<span className="hl text-ink">{optionMeaning(word)}</span>
-                  {from && <div className="mt-0.5 text-[0.75rem] text-ink-3">上面那个是 {from.w} 的意思</div>}
-                </div>
+                  {from && <span className="mt-0.5 block text-[0.75rem] text-ink-3">上面那个是 {from.w} 的意思</span>}
+                </p>
               )}
-            </div>
+            </section>
           )}
         </div>
         {!shown && <p className="relative border-t border-dashed border-rule py-3 text-center text-[0.75rem] text-ink-3">{swap ? "左滑 = 对 · 右滑 = 不对" : "右滑 = 对 · 左滑 = 不对"}</p>}
@@ -330,6 +315,27 @@ function JudgeCard({
         )}
       </div>
     </div>
+  );
+}
+
+/** 作答键：同样重量的两个键，顶上一道语义色；靠哪边就在哪边画一个方向箭头（提示滑动方向） */
+function JudgeKey({ yes, side, disabled, onClick }: { yes: boolean; side: "left" | "right"; disabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      data-testid={yes ? "judge-yes" : "judge-no"}
+      className={cn(
+        "press relative flex h-16 flex-1 items-center justify-center gap-2 overflow-hidden rounded-xl bg-paper-3 text-[1.0625rem] font-semibold ring-1 ring-rule ring-inset before:absolute before:inset-x-0 before:top-0 before:h-[3px] hover:bg-paper-2 disabled:opacity-60",
+        yes ? "text-know before:bg-know" : "text-forget before:bg-forget",
+      )}
+    >
+      {side === "left" && <ArrowLeft className="size-4 opacity-60" />}
+      {yes ? <Check className="size-5" strokeWidth={2.6} /> : <X className="size-5" strokeWidth={2.6} />}
+      {yes ? "对" : "不对"}
+      {side === "right" && <ArrowRight className="size-4 opacity-60" />}
+    </button>
   );
 }
 
