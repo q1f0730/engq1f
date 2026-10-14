@@ -1,3 +1,6 @@
+packages:
+  - "."
+
 # esbuild 需要跑 postinstall 校验二进制：pnpm 11+ 读 allowBuilds，pnpm 10 读 onlyBuiltDependencies
 allowBuilds:
   esbuild: true
