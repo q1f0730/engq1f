@@ -81,6 +81,15 @@ pnpm preview      # 本地预览构建产物 http://localhost:3015
 - service worker（`sw.js`）和 `manifest.webmanifest` 都用相对路径注册 / 声明，作用域就是部署目录；子路径部署后同样可以「添加到桌面」并离线使用。
 - PWA 需要 HTTPS（`localhost` 除外）；GitHub Pages 默认就是 HTTPS。
 
+### 两个在线站点（13.0.0，账号与数据互不相通）
+
+| 站点 | 构建 | 后端 | 自动发布 |
+|---|---|---|---|
+| gz58y2647ucx.meoo.run | `BACKEND=supabase pnpm build` | Meoo Cloud（Supabase） | `.github/workflows/meoo-deploy.yml` |
+| watercoloreyes.cn | `BACKEND=cloudflare pnpm build` | Cloudflare Pages Functions（`functions/`）+ D1 | Cloudflare Pages 的 Git 集成 |
+
+详见 [docs/cloud.md](docs/cloud.md) 和 [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md)。不登录的话两个站点都一样：记录只存在本机，离线可用。
+
 GitHub Pages 一键部署：仓库已带 [`.github/workflows/pages.yml`](.github/workflows/pages.yml)。在仓库 **Settings → Pages → Build and deployment** 里把 Source 选成 **GitHub Actions**，之后每次推送到 `main` 都会用 pnpm 构建并把 `dist/` 发布到 Pages。
 
 ## 数据来源与许可
