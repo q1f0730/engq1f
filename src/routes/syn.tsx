@@ -97,19 +97,19 @@ function SynPage() {
                 {g.words.map((w, k) => {
                   const c = st.cards[w];
                   return (
-                    <span key={w}>
-                      {k > 0 && <span className="text-rule-strong">, </span>}
+                    <span key={w} className="whitespace-nowrap">
                       <button
                         type="button"
                         data-testid="syn-chip"
                         onClick={() => setOpen(index.map.get(w) ?? null)}
                         className={cn(
-                          "press -mx-0.5 rounded-[2px] px-0.5 font-serif text-[1.25rem] leading-none underline-offset-4 hover:underline",
+                          "press rounded-[2px] font-serif text-[1.25rem] leading-none underline-offset-4 hover:underline",
                           c?.st === "mastered" ? "text-know" : c ? "text-vague underline decoration-vague/40 decoration-dotted" : "text-ink",
                         )}
                       >
                         {w}
                       </button>
+                      {k < g.words.length - 1 && <span className="font-serif text-[1.125rem] text-ink-3">,</span>}{" "}
                     </span>
                   );
                 })}

@@ -115,7 +115,7 @@ function HowTab() {
           ].map((t, k) => (
             <li key={k} className="grid grid-cols-[1.5rem_1fr] gap-x-2 border-b border-rule py-2.5">
               <span className="tnum font-serif text-[1rem] text-ink-3">{k + 1}</span>
-              <span>· {t}</span>
+              <span>{t}</span>
             </li>
           ))}
         </ol>
