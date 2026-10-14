@@ -20,7 +20,7 @@ function serviceWorker(): Plugin {
     apply: "build",
     generateBundle(_opts, bundle) {
       const files = Object.keys(bundle).filter((f) => !f.endsWith(".map") && f !== "sw.js");
-      const extra = ["./", "index.html", "data/cet4.json", "manifest.webmanifest", "icon.svg"];
+      const extra = ["./", "index.html", "data/cet4.json", "manifest.webmanifest", "icon.svg", "fonts/instrument-serif-latin-400-normal.woff2", "fonts/instrument-serif-latin-400-italic.woff2"];
       const precache = [...new Set([...extra, ...files])];
       const hash = createHash("sha1")
         .update(files.sort().join("|"))
