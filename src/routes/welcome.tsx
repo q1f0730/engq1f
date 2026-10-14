@@ -248,8 +248,8 @@ function Welcome() {
               </>
             )}
           </p>
-          {!soon && (
           {/* 每天几个：三栏，像一张价目表；推荐那一栏顶上一道墨线写「推荐」 */}
+          {!soon && (
           <div className="mt-6 grid grid-cols-3 border-y border-rule" data-testid="daily-pick">
             {options.map((n) => {
               const sp = spareOf(size, n);
