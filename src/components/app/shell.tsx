@@ -58,7 +58,7 @@ export function AppShell({ children, sub = false }: { children: ReactNode; sub?:
                     active ? "text-ink" : "text-ink-3 hover:text-ink",
                   )}
                 >
-                  <span className={cn("relative", active && "hl")}>{t.label}</span>
+                  <span className={cn("relative", active && "hl hl-low")}>{t.label}</span>
                 </Link>
               );
             })}

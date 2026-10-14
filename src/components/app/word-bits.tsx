@@ -96,11 +96,11 @@ export function Phrases({ word, max = 6 }: { word: Word; max?: number }) {
   return (
     <section>
       <Rubric>常用短语</Rubric>
-      <dl className="grid gap-x-6 gap-y-2 text-[0.875rem] leading-snug sm:grid-cols-2">
+      <dl className="grid gap-x-6 gap-y-1.5 text-[0.875rem] leading-snug sm:grid-cols-2">
         {word.ph.slice(0, max).map(([a, b]) => (
           <div key={a} className="min-w-0">
-            <dt className="font-medium text-ink">{a}</dt>
-            <dd className="mt-0.5 text-ink-3">{b}</dd>
+            <dt className="inline font-medium text-ink">{a}</dt>
+            <dd className="ml-2 inline text-ink-3">{b}</dd>
           </div>
         ))}
       </dl>

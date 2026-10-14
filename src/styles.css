@@ -277,6 +277,11 @@
     -webkit-box-decoration-break: clone;
     color: inherit;
   }
+  /* 小字（底栏标签）：荧光带压到字脚以下，不像删除线 */
+  .hl-low {
+    background-image: linear-gradient(transparent 74%, var(--hl) 74%, var(--hl) 100%);
+    padding-bottom: 1px;
+  }
   /* 荧光笔：划过的动作（招牌动效）。伪元素从左往右 scaleX */
   .hl-swipe {
     position: relative;
