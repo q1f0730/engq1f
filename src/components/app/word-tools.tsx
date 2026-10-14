@@ -219,7 +219,7 @@ export function ExportSheet({ open, onOpenChange, words, title }: { open: boolea
         <div className="space-y-2 pt-1">
           <p className="pb-1 text-xs text-ink-3">导出的是当前看到的列表（已按筛选、搜索和排序）。</p>
           <button type="button" className={row} data-testid="export-csv" onClick={() => download(`${name}.csv`, toCSV(words, accent), "text/csv;charset=utf-8")}>
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-know-soft text-know">
+            <span className="grid size-8 shrink-0 place-items-center text-ink-2">
               <FileSpreadsheet className="size-5" />
             </span>
             <span className="min-w-0 flex-1">
@@ -228,7 +228,7 @@ export function ExportSheet({ open, onOpenChange, words, title }: { open: boolea
             </span>
           </button>
           <button type="button" className={row} data-testid="export-anki" onClick={() => download(`${name}-anki.txt`, toAnki(words, accent), "text/tab-separated-values;charset=utf-8")}>
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-mark-soft text-ink">
+            <span className="grid size-8 shrink-0 place-items-center text-ink-2">
               <Layers className="size-5" />
             </span>
             <span className="min-w-0 flex-1">
@@ -238,7 +238,7 @@ export function ExportSheet({ open, onOpenChange, words, title }: { open: boolea
           </button>
           <div className="rounded-2xl bg-paper-2 p-3.5">
             <div className="flex items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-vague-soft text-vague">
+              <span className="grid size-8 shrink-0 place-items-center text-ink-2">
                 <Printer className="size-5" />
               </span>
               <span className="min-w-0 flex-1">

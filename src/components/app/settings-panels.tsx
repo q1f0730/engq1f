@@ -104,7 +104,7 @@ export function AdvancedBody({ full, onHelp }: { full?: boolean; onHelp: () => v
               )}
               <Link to="/test" data-testid="go-test" className="block">
                 <Panel className="flex items-center gap-4 transition hover:border-ink">
-                  <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
+                  <div className="grid size-8 shrink-0 place-items-center text-ink-2">
                     <Gauge className="size-6" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -133,7 +133,7 @@ export function LabLink() {
   return (
     <Link to="/lab" data-testid="go-lab" className="block">
       <Panel className="flex items-center gap-4 transition hover:border-ink">
-        <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-paper-2 text-ink-3">
+        <div className="grid size-8 shrink-0 place-items-center text-ink-2">
           <SlidersHorizontal className="size-6" />
         </div>
         <div className="min-w-0 flex-1">

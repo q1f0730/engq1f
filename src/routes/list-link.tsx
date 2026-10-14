@@ -53,7 +53,7 @@ function ListLinkPage() {
       <PageHeader title="收到一个词单" sub="来自分享链接 · 不含对方的学习进度" />
       <Panel>
         <div className="flex items-start gap-3">
-          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
+          <div className="grid size-8 shrink-0 place-items-center text-ink-2">
             <Link2 className="size-6" />
           </div>
           <div className="min-w-0 flex-1">

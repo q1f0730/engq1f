@@ -107,7 +107,7 @@ function VocabTest({ index }: { index: WordIndex }) {
 
       {phase === "intro" && (
         <div className="card-in flex flex-1 flex-col justify-center text-center">
-          <div className="mx-auto grid size-20 place-items-center rounded-2xl bg-mark-soft text-ink">
+          <div className="mx-auto grid size-20 place-items-center rounded-2xl bg-mark-soft text-ink hidden">
             <Gauge className="size-10" />
           </div>
           <h1 className="mt-6 font-display text-[1.875rem] font-semibold tracking-[-0.015em]">3 分钟测出你的四级词汇量</h1>

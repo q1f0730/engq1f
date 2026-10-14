@@ -321,7 +321,7 @@ function Today() {
                 )}
               </div>
               {examIdle || (sum.paused && sum.reviewed + sum.due === 0) ? (
-                <span className="mb-1 grid size-12 shrink-0 place-items-center rounded-xl bg-paper-2 text-ink-2" data-testid="hero-ring-idle">
+                <span className="mb-1 grid size-8 shrink-0 place-items-center text-ink-2" data-testid="hero-ring-idle">
                   {sum.paused ? <Coffee className="size-6" /> : <GraduationCap className="size-6" />}
                 </span>
               ) : (
@@ -664,7 +664,7 @@ function AdviceCard({
       return (
         <section className="rounded-2xl border border-ink bg-paper-3 p-4" data-testid="welcome-back" data-backlog={advice.backlog} data-days={advice.days}>
           <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
+            <span className="grid size-8 shrink-0 place-items-center text-ink-2">
               <Sparkles className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
@@ -846,7 +846,7 @@ function RecoveringCard({ advice, day, st, index }: { advice: Extract<Advice, { 
   return (
     <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-3.5 pr-4" data-testid="recovering" data-shifted={shiftedToday ? advice.shifted : 0} data-until={advice.until}>
       <div className="flex items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
+        <span className="grid size-8 shrink-0 place-items-center text-ink-2">
           <Sparkles className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -975,7 +975,7 @@ function ExamOverCard({ advice, index, st, day, streak }: { advice: Extract<Advi
         {step === "plan" ? (
           <StepBack onBack={() => setStep("ask")} testid="exam-plan-back" />
         ) : (
-          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
+          <span className="grid size-8 shrink-0 place-items-center text-ink-2">
             <GraduationCap className="size-5" />
           </span>
         )}
@@ -1112,7 +1112,7 @@ function SprintCard({ adv, exam, st, day, curFinish }: { adv: ExamAdvice; exam: 
   return (
     <section className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="sprint" data-kind={adv.kind === "cap" && adv.canRaise === null ? "cap-info" : adv.kind} data-too={adv.kind === "cap" ? 1 : 0}>
       <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
+        <span className="grid size-8 shrink-0 place-items-center text-ink-2">
           <Target className="size-5" />
         </span>
         <div className="min-w-0 flex-1 leading-snug">

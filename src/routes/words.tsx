@@ -359,7 +359,7 @@ function WordsPage() {
       {tab === "core" && coreCount > 0 && (
         <div className="mb-3 rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="core-panel">
           <div className="flex items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
+            <span className="grid size-8 shrink-0 place-items-center text-ink-2">
               <GraduationCap className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
