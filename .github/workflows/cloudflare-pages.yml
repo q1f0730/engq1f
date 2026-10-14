@@ -1,7 +1,9 @@
 # 可选：用 wrangler 把构建好的 dist 发到 Cloudflare Pages（只在手动触发时运行，不会随 push 自动发布）
 # 需要的仓库设置（Settings → Secrets and variables → Actions）：
 #   Secrets:   CLOUDFLARE_API_TOKEN（权限：Account · Cloudflare Pages · Edit）、CLOUDFLARE_ACCOUNT_ID
-#   Variables: CF_PAGES_PROJECT（Pages 项目名，例如 cet4-vocab）、SUPABASE_URL、SUPABASE_ANON_KEY（可不设 = 纯本机版）
+#   Variables: CF_PAGES_PROJECT（Pages 项目名，例如 cet4-vocab）、SUPABASE_ANON_KEY（可不设 = 纯本机版）
+#   Pages 项目自己的环境变量（运行时，给 functions/sb-api 代理）：SB_UPSTREAM、SB_ORIGIN
+#   不设 SUPABASE_URL：Meoo 网关只认 meoo.run 来源，前端要走同域 /sb-api 代理
 # 详见 docs/deploy-cloudflare.md
 name: Deploy to Cloudflare Pages
 
@@ -35,7 +37,8 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          # 云同步走同域 /sb-api（functions/sb-api 代理）；有 key 才开
+          CET4V_CLOUD: ${{ vars.SUPABASE_ANON_KEY != '' && '1' || '0' }}
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
 
       - name: Deploy (wrangler pages deploy)
