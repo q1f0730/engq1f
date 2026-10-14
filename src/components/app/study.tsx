@@ -767,17 +767,22 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
 function CardTools({ onUndo, canUndo, onBury, onStar, starred }: { onUndo: () => void; canUndo: boolean; onBury?: () => void; onStar: () => void; starred: boolean }) {
   const cls = "press flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-ink disabled:pointer-events-none disabled:opacity-35";
   return (
-    <div className="flex shrink-0 items-center justify-center gap-0.5 pt-1.5" data-testid="card-tools">
+    <div className="flex shrink-0 items-center justify-center pt-1.5 text-ink-3" data-testid="card-tools">
       <button type="button" onClick={onUndo} disabled={!canUndo} data-testid="undo" aria-label="撤销" className={cls}>
         <Undo2 className="size-4" /> 撤销
       </button>
       {onBury && (
-        <button type="button" onClick={onBury} data-testid="bury" aria-label="明天再说" className={cls}>
-          <CalendarClock className="size-4" /> 明天再说
-        </button>
+        <>
+          <span className="h-4 w-px bg-rule" aria-hidden />
+          <button type="button" onClick={onBury} data-testid="bury" aria-label="明天再说" className={cls}>
+            <CalendarClock className="size-4" /> 明天再说
+          </button>
+        </>
       )}
+      <span className="h-4 w-px bg-rule" aria-hidden />
       <button type="button" onClick={onStar} data-testid="star" aria-label={starred ? "移出生词本" : "加入生词本"} aria-pressed={starred} className={cn(cls, starred && "text-ink")}>
-        <Star className={cn("size-4", starred && "fill-mark text-ink")} /> {starred ? "已收藏" : "收藏"}
+        <Star className={cn("size-4", starred && "fill-mark text-ink")} />
+        <span className={cn(starred && "hl")}>{starred ? "已收藏" : "收藏"}</span>
       </button>
     </div>
   );
@@ -814,8 +819,9 @@ function SpeedBtn({ tone, side, label, hint, onClick }: { tone: "know" | "forget
       onClick={onClick}
       data-testid={`speed-${tone}`}
       className={cn(
-        "press relative flex h-16 items-center justify-center gap-2 overflow-hidden rounded-xl bg-paper-3 text-base font-semibold ring-1 ring-rule ring-inset before:absolute before:inset-x-0 before:top-0 before:h-[3px]",
-        tone === "know" ? "text-know before:bg-know" : "text-forget before:bg-forget",
+        "press relative flex h-16 items-center justify-center gap-2 overflow-hidden rounded-xl bg-paper-3 text-base font-semibold ring-1 ring-rule ring-inset hover:bg-paper-2",
+        side === "left" ? "before:absolute before:inset-y-0 before:left-0 before:w-[3px]" : "after:absolute after:inset-y-0 after:right-0 after:w-[3px]",
+        tone === "know" ? "text-know before:bg-know after:bg-know" : "text-forget before:bg-forget after:bg-forget",
       )}
     >
       {side === "left" && <ArrowLeft className="size-4" />}
@@ -893,6 +899,7 @@ function SpeedCard({
           onReveal();
         }}
       >
+        {/* 12.0 · 速刷：一屏一词，词头在上半；释义在下半原地展开（展开前是一条虚线框写着「点一下看释义」） */}
         <div className="relative flex h-full flex-col px-7 pb-16 pt-8 text-left">
           <div className="fs-card flex w-full max-w-full flex-1 flex-col items-start justify-center">
             <FitWord w={word.w} className={cn("word-head break-all leading-[1]", wordSize(word.w))} testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
@@ -913,12 +920,13 @@ function SpeedCard({
           </div>
           <div className="fs-card w-full max-w-md shrink-0" data-testid="speed-meaning" data-revealed={reveal ? 1 : 0}>
             {reveal ? (
-              <div className="rise border-t border-rule pt-3 text-left">
+              <div className="rise border-t-2 border-ink pt-3 text-left">
                 <Meanings word={word} />
               </div>
             ) : (
-              <div className="flex h-14 items-center rounded-lg border border-dashed border-rule-strong px-4 text-[0.8125rem] text-ink-3">
-                点一下看释义 · {swipeHint(swap)}
+              <div className="flex h-14 items-center justify-between border-y border-dashed border-rule-strong text-[0.8125rem] text-ink-3">
+                <span>点一下看释义</span>
+                <span>{swipeHint(swap)}</span>
               </div>
             )}
           </div>
@@ -930,12 +938,16 @@ function SpeedCard({
             onKill();
           }}
           data-testid="kill"
-          className="press absolute bottom-3 left-1/2 flex h-10 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
+          className="press absolute inset-x-0 bottom-0 flex h-12 items-center justify-center gap-1.5 whitespace-nowrap border-t border-dashed border-rule text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
         >
           <Swords className="size-3.5" /> 斩 · 我本来就会
         </button>
         {hint && (
-          <div className={cn("pointer-events-none absolute inset-0 grid place-items-center rounded-2xl text-[1.75rem] font-semibold ring-2 ring-inset", hint === "know" ? "bg-know-soft/85 text-know ring-know" : "bg-forget-soft/85 text-forget ring-forget")} data-testid="swipe-hint" data-rating={hint}>
+          <div
+            className={cn("pointer-events-none absolute inset-0 grid place-items-center rounded-2xl text-[1.75rem] font-semibold ring-2 ring-inset", hint === "know" ? "bg-know-soft/85 text-know ring-know" : "bg-forget-soft/85 text-forget ring-forget")}
+            data-testid="swipe-hint"
+            data-rating={hint}
+          >
             {hint === "know" ? "认识" : "不认识"}
           </div>
         )}
@@ -1102,16 +1114,19 @@ function FlipCard({
     if (r) onSwipe(r);
   };
 
+  // 12.0 · 正面是一张索引卡：词头（衬线、左对齐）占上半，下面一条短墨线，再下面是读音；提示语贴在卡片底部
   const front = (
-    <div className="flex h-full flex-col justify-center px-7 text-left" data-testid="card-front">
+    <div className="flex h-full flex-col justify-center px-7 pb-14 text-left" data-testid="card-front">
       {cnFirst ? (
         <div className="fs-card w-full max-w-md text-left">
+          <div className="mb-4 text-[0.75rem] text-ink-3">中 → 英</div>
           <Meanings word={word} size="lg" />
-          <p className="mt-8 text-[0.8125rem] text-ink-3">想一想对应的英文单词</p>
+          <p className="mt-8 border-t border-rule pt-3 text-[0.8125rem] text-ink-3">想一想对应的英文单词</p>
         </div>
       ) : (
         <div className="fs-card flex w-full max-w-full flex-col items-start">
           <FitWord w={word.w} className={cn("word-head break-all leading-[1] text-ink", wordSize(word.w))} testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
+          <span className="mt-5 h-[2px] w-10 bg-ink" aria-hidden />
           <div className="mt-4 flex items-center gap-3 text-[1.0625rem] text-ink-2" data-testid="front-ipa" data-shown={frontIpa ? 1 : 0}>
             {frontIpa && <Phonetic word={word} accent={accent} />}
             <button
@@ -1126,67 +1141,72 @@ function FlipCard({
               <Volume2 className="size-5" />
             </button>
           </div>
-          <p className="mt-12 text-[0.8125rem] text-ink-3" data-testid="front-hint">{frontIpa ? "认识这个词吗？点卡片可以先看释义" : "先认词形 · 音标在背面"}</p>
+          <p className="mt-10 text-[0.8125rem] text-ink-3" data-testid="front-hint">
+            {frontIpa ? "认识这个词吗？点卡片可以先看释义" : "先认词形 · 音标在背面"}
+          </p>
         </div>
       )}
     </div>
   );
 
+  // 背面右上角：刚才的评分，一个语气色小方块 + 字（不是彩色胶囊）
   const ratingTag = last ? (
     <span
       className={cn(
-        "pop shrink-0 rounded-[3px] px-2 py-0.5 text-[0.75rem] font-semibold",
-        last.rating === "know" ? "bg-know-soft text-know" : last.rating === "vague" ? "bg-vague-soft text-vague" : "bg-forget-soft text-forget",
+        "pop inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap pt-2 text-[0.8125rem] font-semibold",
+        last.rating === "know" ? "text-know" : last.rating === "vague" ? "text-vague" : "text-forget",
       )}
       data-testid="rated-tag"
     >
+      <span className={cn("size-2 rounded-[2px]", last.rating === "know" ? "bg-know" : last.rating === "vague" ? "bg-vague" : "bg-forget")} aria-hidden />
       {last.rating === "know" ? "认识" : last.rating === "vague" ? "模糊" : "不认识"}
     </span>
   ) : null;
 
+  // 12.0 · 背面是词典的一个条目：词头 + 读音，下面一道粗墨线，再下面释义、短语、形近词、例句
   const back = (
     <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-5 text-left" data-testid="card-back">
       <div className="fs-card back-grid">
-      <div className="back-head flex items-start justify-between gap-3" data-testid="back-head">
-        {/* 11.8 · 单词这一栏占满剩下的宽度（不按内容收缩）：按实际宽度缩字号时量到的是真正可用的宽度 */}
-        <div className="min-w-0 flex-1">
-          <FitWord w={word.w} className="word-head break-words text-[2.75rem] leading-[1.02]" testid="back-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
-          <div className="mt-1.5 flex items-center gap-2 text-[0.9375rem] text-ink-2">
-            <Phonetic word={word} accent={accent} />
-            <button
-              type="button"
-              aria-label="播放发音"
-              onClick={(e) => {
-                e.stopPropagation();
-                speak(word.w, accent);
-              }}
-              className="press grid size-9 place-items-center rounded-lg text-ink ring-1 ring-rule-strong ring-inset hover:bg-mark"
-            >
-              <Volume2 className="size-4" />
-            </button>
+        <div className="back-head flex items-start justify-between gap-3" data-testid="back-head">
+          {/* 11.8 · 单词这一栏占满剩下的宽度（不按内容收缩）：按实际宽度缩字号时量到的是真正可用的宽度 */}
+          <div className="min-w-0 flex-1">
+            <FitWord w={word.w} className="word-head break-words text-[2.75rem] leading-[1.02]" testid="back-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
+            <div className="mt-1.5 flex items-center gap-2 text-[0.9375rem] text-ink-2">
+              <Phonetic word={word} accent={accent} />
+              <button
+                type="button"
+                aria-label="播放发音"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  speak(word.w, accent);
+                }}
+                className="press grid size-9 place-items-center rounded-lg text-ink ring-1 ring-rule-strong ring-inset hover:bg-mark"
+              >
+                <Volume2 className="size-4" />
+              </button>
+            </div>
+          </div>
+          {ratingTag}
+        </div>
+        <div className="back-rule my-4 h-[2px] bg-ink" />
+        {/* 11.6 · 横屏（高度 < 500）：单词在左、释义在右，释义第一行不用滚动就看得见；右栏放不下时底部渐隐 + 「上滑看更多」 */}
+        <div className="back-body" data-testid="back-body" ref={bodyRef} onScroll={checkMore} data-more={more ? 1 : 0}>
+          <Meanings word={word} size="lg" />
+          <div className="mt-6 empty:hidden">
+            <Phrases word={word} />
+          </div>
+          <div className="mt-6 empty:hidden">
+            <Confusables index={index} word={word} accent={accent} />
+          </div>
+          <div className="mt-6 empty:hidden">
+            <Examples word={word} enabled={flipped} />
           </div>
         </div>
-        {ratingTag}
-      </div>
-      <div className="back-rule my-4 h-px bg-rule" />
-      {/* 11.6 · 横屏（高度 < 500）：单词在左、释义在右，释义第一行不用滚动就看得见；右栏放不下时底部渐隐 + 「上滑看更多」 */}
-      <div className="back-body" data-testid="back-body" ref={bodyRef} onScroll={checkMore} data-more={more ? 1 : 0}>
-        <Meanings word={word} size="lg" />
-        <div className="mt-6 empty:hidden">
-          <Phrases word={word} />
-        </div>
-        <div className="mt-6 empty:hidden">
-          <Confusables index={index} word={word} accent={accent} />
-        </div>
-        <div className="mt-6 empty:hidden">
-          <Examples word={word} enabled={flipped} />
-        </div>
-      </div>
-      {more && (
-        <div className="back-more" data-testid="back-more" aria-hidden>
-          上滑看更多 ↓
-        </div>
-      )}
+        {more && (
+          <div className="back-more" data-testid="back-more" aria-hidden>
+            上滑看更多 ↓
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1194,6 +1214,7 @@ function FlipCard({
   const style = drag
     ? { transform: `translate(${drag.x}px, ${Math.min(0, drag.y) * 0.6}px) rotate(${drag.x / 18}deg)`, transition: "none" }
     : { transition: "transform 420ms var(--ease-spring)" };
+  const HINT_CN = { know: "认识", vague: "模糊", forget: "不认识" } as const;
 
   return (
     <div className="relative min-h-0 flex-1 card-in">
@@ -1213,24 +1234,21 @@ function FlipCard({
         }}
       >
         <div className={cn("flip-inner h-full", flipped && "is-flipped")}>
-          <div
-            className={cn(
-              "flip-face relative h-full overflow-hidden rounded-2xl bg-paper-3 ring-1 ring-rule ring-inset",
+          <div className="flip-face relative h-full overflow-hidden rounded-2xl bg-paper-3 ring-1 ring-rule ring-inset" aria-hidden={flipped}>
+            <div className="relative h-full">{front}</div>
+            {canKill && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onKill();
+                }}
+                data-testid="kill"
+                className="card-kill press absolute inset-x-0 bottom-0 flex h-12 items-center justify-center gap-1.5 whitespace-nowrap border-t border-dashed border-rule text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
+              >
+                <Swords className="size-3.5" /> 斩 · 我本来就会
+              </button>
             )}
-            aria-hidden={flipped}
-          >
-                        <div className="relative h-full">{front}</div>
-            {canKill && <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onKill();
-              }}
-              data-testid="kill"
-              className="card-kill press absolute bottom-3 left-1/2 flex h-10 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-know"
-            >
-              <Swords className="size-3.5" /> 斩 · 我本来就会
-            </button>}
             {hint && (
               <div
                 className={cn(
@@ -1238,7 +1256,9 @@ function FlipCard({
                   hint === "know" ? "bg-know-soft/85 text-know ring-know" : hint === "vague" ? "bg-vague-soft/85 text-vague ring-vague" : "bg-forget-soft/85 text-forget ring-forget",
                 )}
               >
-                <span data-testid="swipe-hint" data-rating={hint}>{hint === "know" ? "认识" : hint === "vague" ? "模糊" : "不认识"}</span>
+                <span data-testid="swipe-hint" data-rating={hint}>
+                  {HINT_CN[hint]}
+                </span>
               </div>
             )}
           </div>
@@ -1282,7 +1302,15 @@ function QuizView({
   return (
     <div className="flex min-h-0 flex-1 flex-col card-in" data-testid="quiz" data-quiz-mode={mode} data-w={word.w}>
       <QuizPrompt word={word} mode={mode} accent={accent} seed={seed} done={done} />
-      <ChoiceList choices={options} done={done} pick={answered?.pick} wrong={done && answered?.rating === "forget" && answered.pick !== -1} shakeKey={shake} onPick={onPick} subTestId={mode === "listen" ? "listen-meaning" : undefined} />
+      <ChoiceList
+        choices={options}
+        done={done}
+        pick={answered?.pick}
+        wrong={done && answered?.rating === "forget" && answered.pick !== -1}
+        shakeKey={shake}
+        onPick={onPick}
+        subTestId={mode === "listen" ? "listen-meaning" : undefined}
+      />
       <div className="shrink-0 pb-4 pt-3">
         {done ? (
           <div className={cn("flex gap-2.5", leftHand && "flex-row-reverse")} data-testid="quiz-actions">
@@ -1293,17 +1321,14 @@ function QuizView({
               type="button"
               onClick={onNext}
               data-testid="next"
-              className={cn(
-                "press flex h-14 flex-1 items-center justify-center gap-2 rounded-xl text-base font-semibold",
-                answered?.rating === "know" ? "bg-know text-paper-3" : "bg-ink text-paper-3 hover:bg-ink-2",
-              )}
+              className={cn("press flex h-14 flex-1 items-center justify-center gap-2 rounded-xl text-base font-semibold", answered?.rating === "know" ? "bg-mark text-mark-ink" : "bg-ink text-paper-3 hover:bg-ink-2")}
             >
               {answered?.rating === "know" ? "答对了 · 下一个" : "记住它 · 下一个"}
             </button>
           </div>
         ) : (
-          <button type="button" onClick={onGiveUp} data-testid="give-up" className="press h-11 w-full rounded-lg text-sm font-medium text-ink-3 underline decoration-rule-strong underline-offset-4 hover:text-ink">
-            <CircleHelp className="mr-1.5 inline size-4" />
+          <button type="button" onClick={onGiveUp} data-testid="give-up" className="press flex h-11 w-full items-center justify-center gap-1.5 rounded-lg text-[0.875rem] font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 hover:text-ink">
+            <CircleHelp className="size-4" />
             不认识，看答案
           </button>
         )}
@@ -1321,102 +1346,100 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
   const cnph = mode === "cnphrase" ? cnPhraseOf(word, seed) : undefined;
   return (
     <div
-      className={cn(
-        "relative flex flex-1 flex-col items-center justify-center overflow-y-auto rounded-2xl bg-paper-3 px-6 py-6 text-center ring-1 ring-rule ring-inset",
-        compact ? "min-h-[120px]" : "min-h-[150px]",
-      )}
+      className={cn("relative flex flex-1 flex-col justify-center overflow-y-auto rounded-2xl bg-paper-3 px-6 py-6 text-left ring-1 ring-rule ring-inset", compact ? "min-h-[120px]" : "min-h-[150px]")}
       data-testid="quiz-prompt"
     >
-      <div className="fs-card flex w-full flex-col items-center">
-      {mode === "cn2en" && !done && (
-        <div className="w-full max-w-md text-left">
-          <Meanings word={word} size="lg" />
-        </div>
-      )}
-      {(mode === "audio" || mode === "listen") && !done && (
-        <button
-          type="button"
-          onClick={() => speak(word.w, accent)}
-          className="press grid size-24 place-items-center rounded-2xl bg-mark text-mark-ink"
-          aria-label="再听一遍"
-          data-testid="quiz-audio"
-        >
-          <Volume2 className="size-10" />
-        </button>
-      )}
-      {mode === "phrase" && phrase && (
-        <div className={cn("w-full max-w-md", done ? "order-last mt-4 border-t border-rule pt-3 text-left" : "")} data-testid="quiz-phrase">
-          <div className={cn("word-head leading-snug", done ? "text-[1.25rem]" : "text-[2.25rem]")}>
-            <PhraseText phrase={phrase[0]} word={word.w} />
+      {/* 12.0 · 题干左对齐（和学习卡一样是索引卡）；听音题是一个荧光笔方块按钮 */}
+      <div className="fs-card flex w-full flex-col items-start">
+        {mode === "cn2en" && !done && (
+          <div className="w-full max-w-md">
+            <Meanings word={word} size="lg" />
           </div>
-          {done ? <div className="mt-0.5 text-sm text-ink-3">{phrase[1]}</div> : null}
-        </div>
-      )}
-      {cloze && (
-        <div className={cn("w-full max-w-md", done ? "order-last mt-4 border-t border-rule pt-3 text-left" : "")} data-testid="quiz-cloze">
-          <div className={cn("word-head leading-snug", done ? "text-[1.25rem]" : "text-[2.25rem]")}>
-            {done ? <PhraseText phrase={cloze.phrase} word={word.w} /> : <ClozeText text={cloze.blanked} />}
+        )}
+        {(mode === "audio" || mode === "listen") && !done && (
+          <button type="button" onClick={() => speak(word.w, accent)} className="press grid size-24 place-items-center rounded-2xl bg-mark text-mark-ink ring-[1.5px] ring-ink ring-inset" aria-label="再听一遍" data-testid="quiz-audio">
+            <Volume2 className="size-10" />
+          </button>
+        )}
+        {mode === "phrase" && phrase && (
+          <div className={cn("w-full max-w-md", done && "order-last mt-4 border-t border-rule pt-3")} data-testid="quiz-phrase">
+            <div className={cn("word-head leading-snug", done ? "text-[1.25rem]" : "text-[2.25rem]")}>
+              <PhraseText phrase={phrase[0]} word={word.w} />
+            </div>
+            {done ? <div className="mt-0.5 text-[0.875rem] text-ink-3">{phrase[1]}</div> : null}
           </div>
-          <div className={cn("text-ink-3", done ? "mt-0.5 text-sm" : "mt-2 text-[0.9375rem]")} data-testid="cloze-cn">
-            {cloze.cn}
+        )}
+        {cloze && (
+          <div className={cn("w-full max-w-md", done && "order-last mt-4 border-t border-rule pt-3")} data-testid="quiz-cloze">
+            <div className={cn("word-head leading-snug", done ? "text-[1.25rem]" : "text-[2.25rem]")}>{done ? <PhraseText phrase={cloze.phrase} word={word.w} /> : <ClozeText text={cloze.blanked} />}</div>
+            <div className={cn("text-ink-3", done ? "mt-0.5 text-[0.875rem]" : "mt-2 text-[0.9375rem]")} data-testid="cloze-cn">
+              {cloze.cn}
+            </div>
           </div>
-        </div>
-      )}
-      {ex && (
-        <div className={cn("w-full max-w-md text-left", done ? "order-last mt-4 border-t border-rule pt-3" : "")} data-testid="quiz-example">
-          {!done && <div className="mb-2 text-[0.8125rem] text-ink-3">例句</div>}
-          <div className={cn("leading-relaxed", done ? "text-sm text-ink" : "font-serif text-[1.5rem] leading-snug")}>
-            {done ? (
-              <>
-                {ex.blanked.split("____")[0]}
-                <b className="font-semibold text-ink">{ex.form}</b>
-                {ex.blanked.split("____").slice(1).join("____")}
-              </>
-            ) : (
-              <ClozeText text={ex.blanked} />
+        )}
+        {ex && (
+          <div className={cn("w-full max-w-md", done && "order-last mt-4 border-t border-rule pt-3")} data-testid="quiz-example">
+            {!done && <div className="mb-2 text-[0.75rem] text-ink-3">例句</div>}
+            <div className={cn("leading-relaxed", done ? "text-[0.875rem] text-ink" : "font-serif text-[1.5rem] leading-snug")}>
+              {done ? (
+                <>
+                  {ex.blanked.split("____")[0]}
+                  <b className="hl font-semibold text-ink">{ex.form}</b>
+                  {ex.blanked.split("____").slice(1).join("____")}
+                </>
+              ) : (
+                <ClozeText text={ex.blanked} />
+              )}
+            </div>
+            {!done && ex.form.toLowerCase() !== word.w.toLowerCase() && (
+              <div className="mt-2 text-[0.75rem] text-ink-3" data-testid="example-form-hint">
+                空格处是这个词的变形
+              </div>
             )}
           </div>
-          {!done && ex.form.toLowerCase() !== word.w.toLowerCase() && <div className="mt-2 text-xs text-ink-3" data-testid="example-form-hint">空格处是这个词的变形</div>}
-        </div>
-      )}
-      {cnph && (
-        <div className={cn("w-full max-w-md", done ? "order-last mt-4 border-t border-rule pt-3 text-left" : "")} data-testid="quiz-cnphrase">
-          {done ? (
-            <>
-              <div className="word-head text-[1.25rem] leading-snug">
-                <PhraseText phrase={cnph[0]} word={word.w} />
+        )}
+        {cnph && (
+          <div className={cn("w-full max-w-md", done && "order-last mt-4 border-t border-rule pt-3")} data-testid="quiz-cnphrase">
+            {done ? (
+              <>
+                <div className="word-head text-[1.25rem] leading-snug">
+                  <PhraseText phrase={cnph[0]} word={word.w} />
+                </div>
+                <div className="mt-0.5 text-[0.875rem] text-ink-3">{cnph[1]}</div>
+              </>
+            ) : (
+              <div className="text-[1.75rem] font-semibold leading-snug" data-testid="cnphrase-cn">
+                {cnph[1]}
               </div>
-              <div className="mt-0.5 text-sm text-ink-3">{cnph[1]}</div>
-            </>
-          ) : (
-            <div className="text-[1.75rem] font-semibold leading-snug" data-testid="cnphrase-cn">
-              {cnph[1]}
-            </div>
-          )}
-        </div>
-      )}
-      {revealWord && (
-        <>
-          <FitWord w={word.w} className={cn("word-head break-all leading-[1]", done ? "text-[2.75rem]" : wordSize(word.w))} testid="quiz-word" />
-          <div className="mt-2.5 flex items-center gap-2.5 text-base text-ink-2">
-            <Phonetic word={word} accent={accent} />
-            <button type="button" aria-label="播放发音" onClick={() => speak(word.w, accent)} className="press grid size-10 place-items-center rounded-lg text-ink ring-1 ring-rule-strong ring-inset hover:bg-mark">
-              <Volume2 className="size-[18px]" />
-            </button>
+            )}
           </div>
-        </>
-      )}
-      {done && (
-        <div className="mt-4 w-full max-w-md text-left">
-          <Meanings word={word} />
-        </div>
-      )}
-      {done && !compact && word.ph?.length && mode !== "cloze" && mode !== "cnphrase" ? (
-        <div className="mt-4 w-full max-w-md text-left">
-          <Phrases word={word} max={3} />
-        </div>
-      ) : null}
-      {!done && <p className="mt-5 text-[0.8125rem] text-ink-3" data-testid="quiz-hint">{MODE_HINT[mode] ?? "选出正确的意思"}</p>}
+        )}
+        {revealWord && (
+          <>
+            <FitWord w={word.w} className={cn("word-head break-all leading-[1]", done ? "text-[2.75rem]" : wordSize(word.w))} testid="quiz-word" />
+            <div className="mt-2.5 flex items-center gap-2.5 text-base text-ink-2">
+              <Phonetic word={word} accent={accent} />
+              <button type="button" aria-label="播放发音" onClick={() => speak(word.w, accent)} className="press grid size-10 place-items-center rounded-lg text-ink ring-1 ring-rule-strong ring-inset hover:bg-mark">
+                <Volume2 className="size-[18px]" />
+              </button>
+            </div>
+          </>
+        )}
+        {done && (
+          <div className="mt-4 w-full max-w-md border-t-2 border-ink pt-3">
+            <Meanings word={word} />
+          </div>
+        )}
+        {done && !compact && word.ph?.length && mode !== "cloze" && mode !== "cnphrase" ? (
+          <div className="mt-4 w-full max-w-md">
+            <Phrases word={word} max={3} />
+          </div>
+        ) : null}
+        {!done && (
+          <p className="mt-5 text-[0.8125rem] text-ink-3" data-testid="quiz-hint">
+            {MODE_HINT[mode] ?? "选出正确的意思"}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1443,6 +1466,7 @@ export function ChoiceList({
   // 11.3 · 数字角标是键盘快捷键提示：和评分按钮一样，只在有鼠标 / 触控板的设备上显示（答完的 ✓ / ✗ 照常显示）
   const fine = useFinePointer();
   return (
+    /* 12.0 · 选项是一张答题卡：每行左边一个题号格，答完对的那行涂荧光笔、选错的那行打 × */
     <div key={shakeKey} className={cn("mt-3 grid min-w-0 shrink-0 gap-2", wrong && "shake")} data-testid="quiz-options" data-keys={fine ? 1 : 0}>
       {choices.map((o, k) => {
         const isCorrect = o.correct;
@@ -1458,18 +1482,18 @@ export function ChoiceList({
             className={cn(
               "press flex min-h-[52px] w-full min-w-0 items-center gap-3 rounded-xl px-4 py-2.5 text-left text-[0.9375rem] ring-inset",
               !done && "bg-paper-3 ring-1 ring-rule hover:ring-ink",
-              done && isCorrect && "bg-know-soft text-ink ring-[1.5px] ring-know",
+              done && isCorrect && "bg-mark-soft text-ink ring-[1.5px] ring-ink",
               done && picked && !isCorrect && "bg-forget-soft ring-[1.5px] ring-forget",
-              done && !isCorrect && !picked && "bg-paper-3 opacity-50 ring-1 ring-rule",
+              done && !isCorrect && !picked && "bg-transparent opacity-45 ring-1 ring-rule",
             )}
           >
             {(fine || (done && (isCorrect || picked))) && (
               <span
                 data-testid="choice-badge"
                 className={cn(
-                  "tnum grid size-6 shrink-0 place-items-center rounded-[4px] bg-paper-2 text-xs font-medium text-ink-3",
-                  done && isCorrect && "bg-know text-paper-3",
-                  done && picked && !isCorrect && "bg-forget text-paper-3",
+                  "tnum grid size-6 shrink-0 place-items-center rounded-[3px] font-serif text-[0.9375rem] text-ink-3 ring-1 ring-rule-strong ring-inset",
+                  done && isCorrect && "bg-ink text-paper-3 ring-0",
+                  done && picked && !isCorrect && "bg-forget text-paper-3 ring-0",
                 )}
               >
                 {done && isCorrect ? <Check className="size-3.5" /> : done && picked ? <X className="size-3.5" /> : k + 1}
@@ -1478,7 +1502,7 @@ export function ChoiceList({
             <span className={cn("fs-card min-w-0 flex-1 leading-snug", o.en ? "word-head text-[1.375rem] leading-tight" : "line-clamp-2")}>
               {o.text}
               {done && o.sub && (
-                <span className="mt-0.5 block truncate font-sans text-xs font-normal text-ink-3" data-testid={subTestId}>
+                <span className="mt-0.5 block truncate font-sans text-[0.75rem] font-normal text-ink-3" data-testid={subTestId}>
                   {o.sub}
                 </span>
               )}
@@ -1532,10 +1556,15 @@ function Empty({ mode }: { mode: StudyMode }) {
     mastered: ["还没有斩掉的词", "学习时遇到本来就会的词，点「斩」跳过。"],
   };
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-start justify-center px-7 text-left" data-testid="study-empty">
-      <h1 className="text-[1.625rem] font-semibold tracking-[-0.02em]"><span className="hl-swipe">{text[mode][0]}</span></h1>
-      <p className="mt-3 max-w-[22em] text-[0.9375rem] leading-relaxed text-ink-3">{text[mode][1]}</p>
-      <Link to="/" className="press mt-8 flex h-12 items-center rounded-lg bg-ink px-8 font-semibold text-paper-3 hover:bg-ink-2">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-7 text-left" data-testid="study-empty">
+      <div className="font-serif text-[3.5rem] italic leading-none text-rule-strong" aria-hidden>
+        —
+      </div>
+      <h1 className="mt-4 text-[1.625rem] font-semibold tracking-[-0.02em]">
+        <span className="hl-swipe">{text[mode][0]}</span>
+      </h1>
+      <p className="mt-3 max-w-[22em] text-[0.9375rem] leading-relaxed text-ink-2">{text[mode][1]}</p>
+      <Link to="/" className="press mt-8 flex h-12 w-fit items-center rounded-lg bg-ink px-8 font-semibold text-paper-3 hover:bg-ink-2">
         回到今日
       </Link>
     </div>
@@ -1589,8 +1618,10 @@ function Summary({
         <button type="button" onClick={() => exitBack(router)} aria-label="关闭" data-testid="summary-close" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
           <X className="size-[22px]" />
         </button>
+        <span className="ml-auto text-[0.75rem] text-ink-3">{MODE_TITLE[mode]}</span>
       </div>
-      <div className="flex flex-col items-start pt-6 text-left">
+      {/* 12.0 · 小结是这一组的「批改单」：大标题 + 一行用时正确率，下面三格读数，再下面每个词一行 */}
+      <header className="mt-6 border-b-2 border-ink pb-4">
         <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.025em]" data-testid="summary-title">
           <span className="hl-swipe">{firstEver ? "第一组 ✓" : "本组完成"}</span>
         </h1>
@@ -1599,24 +1630,23 @@ function Summary({
             好的开始！{comeBackLine(words.filter(([w]) => !st.cards[w]?.k).map(([w]) => st.cards[w]?.d).filter((d): d is string => !!d), day, words.length)}
           </p>
         )}
-        <p className="tnum mt-2 text-[0.9375rem] text-ink-3">
+        <p className="tnum mt-2 text-[0.875rem] text-ink-2">
           {MODE_TITLE[mode]} {words.length} 词 · 首次正确率 {acc}% · 用时 {Math.max(1, Math.round(ms / 60000))} 分钟
         </p>
-      </div>
+      </header>
 
       {/* 11.3 · 第一组学完就说清楚：数据只存在本机 */}
       {firstEver && (
-        <div className="relative mt-6 flex gap-3 rounded-xl bg-vague-soft py-3.5 pl-4 pr-4 text-left" data-testid="local-only-warning">
-          <span className="absolute inset-y-3 left-0 w-[3px] rounded-r-[2px] bg-vague" aria-hidden />
+        <div className="mt-5 flex gap-3 border-l-2 border-vague py-1 pl-3.5 text-left" data-testid="local-only-warning">
           <HardDriveDownload className="mt-0.5 size-5 shrink-0 text-vague" />
           <div className="min-w-0 text-[0.8125rem] leading-relaxed">
-            <b className="block text-sm font-semibold text-vague">数据只存在本机，卸载 / 清除会丢失</b>
-            <span className="text-ink-3">不用注册、不上传。删掉桌面图标、卸载或清理浏览器，学习记录会一起删掉。学几天后记得在「我的 → 数据与备份」导出一份。</span>
+            <b className="block text-[0.875rem] font-semibold text-ink">数据只存在本机，卸载 / 清除会丢失</b>
+            <span className="text-ink-2">不用注册、不上传。删掉桌面图标、卸载或清理浏览器，学习记录会一起删掉。学几天后记得在「我的 → 数据与备份」导出一份。</span>
           </div>
         </div>
       )}
 
-      <div className="mt-7 grid grid-cols-3 divide-x divide-rule border-y border-rule py-4 text-left">
+      <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-b border-rule pb-4 text-left">
         {sum.timeMode ? (
           <MiniStat label="今日用时" value={`${Math.floor(sum.ms / 60000)}/${sum.goalMin}分`} />
         ) : sum.goal === 0 && (sum.examMode || sum.paused || sum.recovering) ? (
@@ -1632,7 +1662,7 @@ function Summary({
           // 11.1 · 庆祝的时候不显示一个泄气的 0：换成离打卡还差多少
           <MiniStat label="今日打卡" value={sum.checked ? "已打卡" : sum.ready ? "可以打卡" : `还差 ${toGo} 个`} testid="summary-streak" />
         )}
-      </div>
+      </dl>
 
       {sum.ready && !sum.checked && (
         <button
@@ -1644,7 +1674,7 @@ function Summary({
             // 11.1 · 不自动弹分享图：想分享再点
             celebrate(r.milestone);
           }}
-          className="press mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-mark text-base font-semibold text-mark-ink"
+          className="press mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-mark text-base font-semibold text-mark-ink ring-[1.5px] ring-ink ring-inset"
         >
           <Flame className="size-5" /> 今日任务完成，打卡
         </button>
@@ -1661,86 +1691,78 @@ function Summary({
         </button>
       )}
 
-      {postRes && postN > 0 && (
-        <div className="relative mt-5 flex items-center gap-3 rounded-xl bg-know-soft py-3.5 pl-4 pr-4" data-testid="post-result" data-ok={postOk} data-n={postN}>
-          <span className="absolute inset-y-3 left-0 w-[3px] rounded-r-[2px] bg-know" aria-hidden />
-          <ClipboardCheck className="size-5 shrink-0 text-know" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-semibold text-know">
-              学后速测 {postOk}/{postN} · {postPct}%
-            </span>
-            <span className="block truncate text-xs text-ink-3">{postWrong.length ? `没记住：${postWrong.join("、")}` : "刚学的词全部答对，记得很牢"}</span>
-          </span>
+      {/* 下一步：学后速测 / 错词再练，排成两条「待办」 */}
+      {(postRes && postN > 0) || (!postRes && onPostQuiz) || missed.length > 0 ? (
+        <div className="mt-6 border-t border-rule">
+          {postRes && postN > 0 && (
+            <div className="flex min-h-16 items-center gap-3 border-b border-rule py-3" data-testid="post-result" data-ok={postOk} data-n={postN}>
+              <span className="tnum w-12 shrink-0 font-serif text-[1.5rem] leading-none text-know">{postPct}%</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.9375rem] font-semibold text-ink">
+                  学后速测 {postOk}/{postN} · {postPct}%
+                </span>
+                <span className="block truncate text-[0.75rem] text-ink-3">{postWrong.length ? `没记住：${postWrong.join("、")}` : "刚学的词全部答对，记得很牢"}</span>
+              </span>
+            </div>
+          )}
+          {!postRes && onPostQuiz && (
+            <button type="button" data-testid="post-quiz-start" onClick={onPostQuiz} className="press group flex min-h-16 w-full items-center gap-3 border-b border-rule py-3 text-left hover:bg-paper-2/60">
+              <ClipboardCheck className="size-5 shrink-0 text-ink-2" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.9375rem] font-semibold">学后速测 {words.filter(([w]) => !st.cards[w]?.k).length} 题</span>
+                <span className="block truncate text-[0.75rem] text-ink-3">刚学的词马上四选一检验，结果计入小结</span>
+              </span>
+              <ArrowRight className="size-5 shrink-0 text-ink-3 transition-transform duration-300 ease-[var(--ease-spring)] group-hover:translate-x-0.5" />
+            </button>
+          )}
+          {missed.length > 0 && (
+            <button
+              type="button"
+              data-testid="retry-wrong"
+              onClick={() => replaceStudy(router, { mode: "practice", words: missed.join(","), t: Date.now() })}
+              className="press group flex min-h-16 w-full items-center gap-3 border-b border-rule py-3 text-left hover:bg-paper-2/60"
+            >
+              <Dumbbell className="size-5 shrink-0 text-forget" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.9375rem] font-semibold text-forget">
+                  {mode === "practice" ? "还有错的，再练一遍" : "错词再练"} {missed.length}
+                </span>
+                <span className="block truncate text-[0.75rem] text-ink-3">换成选择题再过一遍，不影响复习计划</span>
+              </span>
+              <ArrowRight className="size-5 shrink-0 text-ink-3 transition-transform duration-300 ease-[var(--ease-spring)] group-hover:translate-x-0.5" />
+            </button>
+          )}
         </div>
-      )}
+      ) : null}
 
-      {!postRes && onPostQuiz && (
-        <button
-          type="button"
-          data-testid="post-quiz-start"
-          onClick={onPostQuiz}
-          className="press group mt-5 flex w-full items-center gap-3 border-b border-rule py-3.5 text-left"
-        >
-          <ClipboardCheck className="size-5 shrink-0 text-know" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-semibold text-know">学后速测 {words.filter(([w]) => !st.cards[w]?.k).length} 题</span>
-            <span className="block truncate text-xs text-ink-3">刚学的词马上四选一检验，结果计入小结</span>
-          </span>
-          <ArrowRight className="size-5 shrink-0 text-ink-3 transition-transform duration-300 ease-[var(--ease-spring)] group-hover:translate-x-0.5" />
-        </button>
-      )}
-
-      {missed.length > 0 && (
-        <button
-          type="button"
-          data-testid="retry-wrong"
-          onClick={() => replaceStudy(router, { mode: "practice", words: missed.join(","), t: Date.now() })}
-          className="press group mt-1 flex w-full items-center gap-3 border-b border-rule py-3.5 text-left"
-        >
-          <Dumbbell className="size-5 shrink-0 text-forget" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-semibold text-forget">{mode === "practice" ? "还有错的，再练一遍" : "错词再练"} {missed.length}</span>
-            <span className="block truncate text-xs text-ink-3">换成选择题再过一遍，不影响复习计划</span>
-          </span>
-        </button>
-      )}
-
-      <div className="mt-7 divide-y divide-rule border-y border-rule">
-        {words.map(([w, r]) => {
+      {/* 这一组的词：一行一个，左边一个语气色小方块（认识 / 模糊 / 不认识），速测结果写在右边 */}
+      <h2 className="mt-8 border-b border-ink pb-2 text-[0.8125rem] font-medium text-ink-2">这一组的词</h2>
+      <ol>
+        {words.map(([w, r], k) => {
           const word = index.map.get(w);
           return (
-            <div key={w} className="flex items-center gap-3 py-2.5">
-              <span
-                className={cn(
-                  "h-4 w-[3px] shrink-0 rounded-[1px]",
-                  r === "know" ? "bg-know" : r === "vague" ? "bg-vague" : "bg-forget",
-                )}
-                aria-label={r === "know" ? "认识" : r === "vague" ? "模糊" : "不认识"}
-              />
-              <span className="word-head w-32 shrink-0 truncate text-[1.25rem] leading-tight">{w}</span>
-              <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-3">{word ? shortMeaning(word, 1) : ""}</span>
-              {postRes && w in postRes && (
-                <span
-                  className={cn("shrink-0 rounded-[3px] px-2 py-0.5 text-[0.6875rem] font-semibold", postRes[w] ? "bg-know-soft text-know" : "bg-forget-soft text-forget")}
-                  data-testid="post-mark"
-                  data-ok={postRes[w] ? 1 : 0}
-                >
+            <li key={w} className="grid min-h-12 grid-cols-[1.5rem_minmax(0,8rem)_minmax(0,1fr)_auto] items-center gap-x-2.5 border-b border-rule py-2">
+              <span className="tnum font-serif text-[0.875rem] text-ink-3">{k + 1}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <span className={cn("size-2 shrink-0 rounded-[2px]", r === "know" ? "bg-know" : r === "vague" ? "bg-vague" : "bg-forget")} aria-label={r === "know" ? "认识" : r === "vague" ? "模糊" : "不认识"} />
+                <span className="word-head truncate text-[1.25rem] leading-tight">{w}</span>
+              </span>
+              <span className="min-w-0 truncate text-[0.8125rem] text-ink-2">{word ? shortMeaning(word, 1) : ""}</span>
+              {postRes && w in postRes ? (
+                <span className={cn("shrink-0 text-[0.6875rem] font-semibold", postRes[w] ? "text-know" : "text-forget")} data-testid="post-mark" data-ok={postRes[w] ? 1 : 0}>
                   速测{postRes[w] ? "✓" : "✗"}
                 </span>
+              ) : (
+                <span />
               )}
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
       <div className="mt-8 flex gap-2">
         {mode === "new" && sum.newLeft > 0 ? (
-          <button
-            type="button"
-            onClick={() => restart("new")}
-            data-testid="again"
-            className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-paper-2 font-medium hover:bg-rule"
-          >
+          <button type="button" onClick={() => restart("new")} data-testid="again" className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2">
             <RotateCcw className="size-4" />
             {sum.remainingGoal > 0 ? "下一组" : "再学一组"}
           </button>
@@ -1750,7 +1772,7 @@ function Summary({
             type="button"
             onClick={() => replaceStudy(router, { mode: "list", list: listId, t: Date.now() })}
             data-testid="list-again"
-            className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-paper-2 font-medium hover:bg-rule"
+            className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2"
           >
             <RotateCcw className="size-4" /> 继续词单
           </button>
@@ -1759,7 +1781,7 @@ function Summary({
             type="button"
             onClick={() => restart(mode === "speed" ? "speed" : "review")}
             data-testid="go-review"
-            className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-paper-2 font-medium hover:bg-rule"
+            className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2"
           >
             {mode === "speed" ? "继续速刷" : "去复习"} {sum.due}
           </button>
@@ -1776,8 +1798,8 @@ function Summary({
 function MiniStat({ label, value, testid }: { label: string; value: string; testid?: string }) {
   return (
     <div className="min-w-0 px-3 first:pl-0" data-testid={testid}>
-      <div className="tnum truncate font-serif text-[1.75rem] leading-none">{value}</div>
-      <div className="mt-1.5 text-[0.75rem] text-ink-3">{label}</div>
+      <dt className="text-[0.75rem] text-ink-3">{label}</dt>
+      <dd className="tnum mt-1.5 truncate font-serif text-[1.625rem] leading-none">{value}</dd>
     </div>
   );
 }
