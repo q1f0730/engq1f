@@ -15,7 +15,8 @@
   - **前端适配层** `src/lib/backend/`：`Backend` 接口（signUp / signIn / signOut / session / resetPassword / pullCards / pushCards / profile …），Supabase 实现是原来的调用原样搬过去，Cloudflare 实现只用 fetch；`cloud.ts` 只管什么时候同步，合并 / 墓碑规则（`cloud-merge.ts`）没改。后端按构建常量懒加载，另一个不进产物（Cloudflare 构建里没有 supabase-js）。
   - 删掉了之前的 `functions/sb-api` 同域代理（让 Cloudflare 站点共用 Meoo Cloud 的方案，已作废）。
   - Service worker 不再缓存 `/api/*`；离线打开时不会因为 Cloudflare Pages 把 `/index.html` 308 到 `/` 而打不开（缓存里重定向过的响应换成干净的）。`public/_headers` 照旧（sw.js / version.json 不缓存、assets 长期缓存）。
-- **测试**：vitest __VITEST__；e2e 全量 __E2E__（main、v2–v11、jobs-r1–r8、v13）；`pnpm typecheck` 通过；首屏 JS gzip __GZIP__。真实云端测试（mail.tm 邮箱注册 → 验证码 → 两个浏览器同步 → 重置墓碑传播 → RLS 挡住另一个用户 → 清理）20/20 通过。
+- **测试**：vitest 574/574（22 个文件；新增 `src/lib/cf-backend.test.ts` 14 个：服务端裁决规则、D1 迁移 + `PUSH_SQL` 跑在 SQLite 上、整个 API 跑在 node:sqlite 做的 D1 替身上、前端 Cloudflare 适配层打同一个 API）；e2e 全量 1321/1321（main、v2–v11、jobs-r1–r8、v13，最终构建）+ `cf` 32/32（`wrangler pages dev` + 本地 D1：注册、登录、密码错、限流、上传、第二个浏览器、墓碑、旧写入 / 同 ts 不复活、B 读不到 / 改不了 A、退出吊销、游客离线、SW 不缓存 /api），合计 1353/1353；`pnpm typecheck` 通过（含 `server/`、`functions/`）；两种构建都通过；首屏 JS gzip 175.3KB（`BACKEND=supabase`）/ 175.0KB（`BACKEND=cloudflare`），12.0 为 172.3KB。真实云端测试（Meoo Cloud：mail.tm 邮箱注册 → 验证码 → 两个浏览器同步 → 重置墓碑传播 → RLS 挡住另一个用户 → 清理）20/20 通过，测试账号已从 `auth.users` 删掉。
+- **e2e 用例调整**：v13 新增「supabase 构建里没有 Cloudflare 适配层的代码块」；jobs-r1 #25 只检查短语选项（偶尔退回成释义题时，「n. 电，电学；电流」是词本身的释义，不算专业短语）；jobs-r3 R3-11 横屏选项最多找 30 题（题型多了，带小字释义的题出现得更晚）。
 
 ## v12.0.0 · taste-skill 重设计「荧光笔」（2026-10-14）
 整套界面重画，功能和数据不变。方向见评审工作区的 direction.md：minimalist 为骨架、soft 只取弹簧动效和浮层双层边框；把背单词还原成「一本词典 + 一支荧光笔」。
