@@ -92,7 +92,8 @@ export const EXAM_DAYS_KEEP = 12;
  */
 export function examDayOn(st: Pick<HabitState, "settings" | "examDone" | "dayRule" | "examDays">, d: string): boolean {
   if (d === st.examDone || st.examDays?.includes(d) || officialDay(d)) return true;
-  if (snapExamOn(st.dayRule, d)) return acceptedSnapExams(st).has(d);
+  // 11.8 · 当天临时推迟的考试日：那一天本身照旧免打卡（早上才得知推迟），只是不记成考过的一场
+  if (snapExamOn(st.dayRule, d)) return acceptedSnapExams(st).has(d) || postponedOn(st.dayRule, d);
   return !!st.settings.examDate && d === st.settings.examDate && !hasSnapNear(st.dayRule, d);
 }
 
@@ -127,6 +128,8 @@ export function acceptedSnapExams(st: Pick<HabitState, "dayRule" | "examDays"> &
   const prior = [...(st.examDays ?? []), ...(st.examDone ? [st.examDone] : [])];
   const set = new Set<string>();
   for (const c of [...cands].sort()) {
+    // 11.8 · 考试当天（还没记下考完）把日期推迟到 EXAM_GAP 天内：这一场没考，不算（r8 R8-4）
+    if (postponedOn(rules, c) && !prior.includes(c)) continue;
     if (officialDay(c) || prior.includes(c)) {
       set.add(c);
       continue;
@@ -137,6 +140,33 @@ export function acceptedSnapExams(st: Pick<HabitState, "dayRule" | "examDays"> &
   }
   acceptCache.set(rules, { ed: st.examDays, done: st.examDone, set });
   return set;
+}
+
+/**
+ * 11.8 · d 当天把考试日推迟了：当天最后生效的快照里，考试日在 d 之后 EXAM_GAP 天内（考试当天临时推迟）。
+ * 推迟到更远（例如考完当晚定下明年 6 月）不算推迟。只认官方 / 预估场次：自定的考试日当天再往后挪不算
+ * （不然「考试当天改成明天」天天续命，R7-6 的漏洞又回来了）。
+ */
+export function postponedOn(rules: Record<string, DayRule> | undefined, d: string): boolean {
+  if (!officialDay(d)) return false;
+  const e = rules?.[d]?.e;
+  return !!e && e > d && e <= addDays(d, EXAM_GAP);
+}
+
+/** 11.8 · d 那场是不是用户真的考了：确认过考完、记下来的考试日，或者按快照算数（考前一天记的就是它、当天没推迟） */
+export function examTaken(st: Pick<HabitState, "dayRule" | "examDays" | "examDone">, d: string): boolean {
+  return d === st.examDone || !!st.examDays?.includes(d) || acceptedSnapExams(st).has(d);
+}
+
+/**
+ * 11.8 · 自定考试日 d 会不会被 30 天规则拒掉：返回撞上的那一场（之前 EXAM_GAP 天内算数的考试日），没撞返回 null。
+ * 官方 / 预估场次永远算。设日期时用来提前提示（r8 R8-4），不让火苗悄悄断掉。
+ */
+export function examGapClash(st: Pick<HabitState, "dayRule" | "examDays" | "examDone">, d: string): string | null {
+  if (!d || officialDay(d)) return null;
+  const lo = addDays(d, -(EXAM_GAP - 1));
+  const taken = [...(st.examDays ?? []), ...(st.examDone ? [st.examDone] : []), ...acceptedSnapExams(st)];
+  return taken.filter((x) => x < d && x >= lo).sort().pop() ?? null;
 }
 
 const hasSnapNear = (rules: Record<string, DayRule> | undefined, d: string) => {

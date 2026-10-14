@@ -21,6 +21,7 @@ import {
   type Notebook,
 } from "@/lib/plan";
 import { listGroup } from "@/lib/lists";
+import { useFitLine } from "@/lib/fit";
 import { buzz } from "@/lib/haptics";
 import {
   addDays,
@@ -100,6 +101,16 @@ function buildItems(index: WordIndex, mode: StudyMode, words: string[]): Session
   if (mode === "list") return listGroup(index, st, words, day).items;
   if (mode === "rank") return rankGroup(index, st, day);
   return notebookGroup(index, st, mode, day);
+}
+
+/** 11.8 · 单词标题：按实际宽度缩字号，竖屏 360 宽 / 大字号也不在字母中间换行（r8 R8-2） */
+function FitWord({ w, className, testid, style }: { w: string; className: string; testid: string; style?: React.CSSProperties }) {
+  const ref = useFitLine<HTMLHeadingElement>(w, 14);
+  return (
+    <h2 ref={ref} className={cn("w-full max-w-full self-stretch", className)} data-testid={testid} data-fit="1" style={style}>
+      <span>{w}</span>
+    </h2>
+  );
 }
 
 function wordSize(w: string) {
@@ -874,10 +885,8 @@ function SpeedCard({
       >
         <div className="paper-grain absolute inset-0 opacity-60" />
         <div className="relative flex h-full flex-col items-center px-6 pb-14 pt-8 text-center">
-          <div className="fs-card flex flex-1 flex-col items-center justify-center">
-            <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} data-testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties}>
-              {word.w}
-            </h2>
+          <div className="fs-card flex w-full max-w-full flex-1 flex-col items-center justify-center">
+            <FitWord w={word.w} className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
             <div className="mt-3 flex items-center gap-2.5 text-[16px] text-muted-foreground">
               {(frontIpa || reveal) && <Phonetic word={word} accent={accent} />}
               <button
@@ -1087,10 +1096,8 @@ function FlipCard({
           <p className="mt-6 text-center text-[13px] text-muted-foreground">想一想对应的英文单词</p>
         </div>
       ) : (
-        <div className="fs-card flex max-w-full flex-col items-center">
-          <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} data-testid="card-word">
-            {word.w}
-          </h2>
+        <div className="fs-card flex w-full max-w-full flex-col items-center">
+          <FitWord w={word.w} className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
           <div className="mt-4 flex items-center gap-2.5 text-[17px] text-muted-foreground" data-testid="front-ipa" data-shown={frontIpa ? 1 : 0}>
             {frontIpa && <Phonetic word={word} accent={accent} />}
             <button
@@ -1128,7 +1135,7 @@ function FlipCard({
       <div className="fs-card back-grid my-auto">
       <div className="back-head flex items-start justify-between gap-3" data-testid="back-head">
         <div className="min-w-0">
-          <h2 className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight" data-testid="back-word" style={{ "--wl": word.w.length } as React.CSSProperties}>{word.w}</h2>
+          <FitWord w={word.w} className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight" testid="back-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
           <div className="mt-1 flex items-center gap-2 text-[15px] text-muted-foreground">
             <Phonetic word={word} accent={accent} />
             <button
@@ -1376,9 +1383,7 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
       )}
       {revealWord && (
         <>
-          <h2 className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", done ? "text-[38px]" : wordSize(word.w))} data-testid="quiz-word">
-            {word.w}
-          </h2>
+          <FitWord w={word.w} className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", done ? "text-[38px]" : wordSize(word.w))} testid="quiz-word" />
           <div className="mt-2 flex items-center gap-2 text-[16px] text-muted-foreground">
             <Phonetic word={word} accent={accent} />
             <button type="button" aria-label="播放发音" onClick={() => speak(word.w, accent)} className="grid size-9 place-items-center rounded-full bg-brand-soft text-primary">

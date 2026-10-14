@@ -66,7 +66,7 @@ import {
   useApp,
   type AppState,
 } from "@/lib/store";
-import { MAKEUP_EVERY, MAKEUP_MAX, STREAK_WARN_MIN, WEEKDAY_CN, brokenStreak, canPatch, curStreak, eveFree, examDayOn, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf, skipKind } from "@/lib/habit";
+import { MAKEUP_EVERY, MAKEUP_MAX, STREAK_WARN_MIN, WEEKDAY_CN, brokenStreak, canPatch, curStreak, eveFree, examDayOn, examTaken, isRestDay, lateWarning, minutesToMidnight, patchedStreak, restOf, skipKind } from "@/lib/habit";
 import { celebrate } from "@/lib/celebrate";
 import { SPRINT_MAX, capReach, coreUnmastered, examForecast, daysUntil, effectiveExam, examAdvice, nextExamDate, passedExam, quizDoneOn, recommendPlan, sprintPlan, upcomingExams, type ExamAdvice, type SprintPlan } from "@/lib/exam";
 import { QUIZ_MIN_LEARNED, RECOVER_RESTART_GAP, homeAdvice, lastActive, recoverGap, recoverPerDay, recoverTick, recoveryPlan, type Advice } from "@/lib/coach";
@@ -149,7 +149,7 @@ function Today() {
   const examAdv = st.examPause ? null : examAdvice(day, exam.day, { book: st.settings.book, daily: st.settings.daily, newLeft: sum.newLeft, coreNewLeft });
   // 11.2 · 考完了：用户选了才换计划
   // 11.5 · 自定的日期只有真的是考试日（按当时的快照，提前设好的）才问「考完了吗」；当天才改成今天的不算
-  const over0 = passedExam(day, st.settings.examDate, st.examDone, examActiveIn(st));
+  const over0 = passedExam(day, st.settings.examDate, st.examDone, examActiveIn(st), (x) => examTaken(st, x));
   const over = over0 && over0.custom && !examDayOn(st, over0.day) ? null : over0;
   const examOver = over ? { ...over, next: nextExamDate(day) } : null;
   const paceQuiet = (!!st.paceOk && diffDays(st.paceOk, day) < PACE_QUIET_DAYS) || (!!st.sprintSnooze && st.sprintSnooze > day);

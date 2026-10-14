@@ -8,7 +8,7 @@ import { celebrate } from "./celebrate";
 import type { QuizRecord } from "./exam";
 import { LIST_MAX, addWords, cleanListName, normalizeLists, removeWords, type WordList } from "./lists";
 import { appendRev, normalizeRevlog, popRev, type RevEntry } from "./stats";
-import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, autoCredit, harvestExamDays, parseHM, type CheckInResult, type DayRule, type GoalMode, type PatchResult } from "./habit";
+import { MAKEUP_MAX, TIME_GOALS, applyCheckIn, applyPatch, autoCredit, examDayOn, examGapClash, examTaken, harvestExamDays, postponedOn, parseHM, type CheckInResult, type DayRule, type GoalMode, type PatchResult } from "./habit";
 import { passedExam } from "./examdate";
 import type { ShareTpl } from "./share";
 import { cleanFontSize, cleanMotion, motionReduced, type FontSize, type Motion } from "./ux";
@@ -754,10 +754,30 @@ export function setSettings(patch: Partial<Settings>) {
     // 11.2 · 重新选了考试日期 = 结束「先休息」
     extra = { examPause: undefined, ...(state.pause && !state.pause.until ? { pause: { ...state.pause, until: d } } : {}) };
     // 11.5 · 考完还没选、直接在「我的」改了日期 = 选了「备考下一场」：刚考完的那一场记下来（不算断签、不再问、不冒出另一场）
-    const over = passedExam(d, state.settings.examDate, state.examDone, examActiveIn(state));
+    const over = passedExam(d, state.settings.examDate, state.examDone, examActiveIn(state), (x) => examTaken(state, x));
     if (over) extra = { ...extra, examDone: over.day, examDays: addExamDay(state.examDays, over.day), sprintSeen: d };
   }
+  const was = state.settings.examDate;
   commit({ ...state, ...extra, settings: { ...state.settings, ...patch } });
+  if ("examDate" in patch && patch.examDate !== was) examDateNotice(was);
+}
+
+/**
+ * 11.8 · 改考试日期后的提示（r8 R8-4）：考试当天临时推迟 = 这一场不算考过，连续天数保留；
+ * 新日期离上一场算数的考试不到 30 天 = 不算新的一场，提前说清楚「照常学一组才能打卡」，不让火苗悄悄断掉。
+ */
+function examDateNotice(was: string | undefined) {
+  const d = today();
+  const nd = state.settings.examDate;
+  if (!nd || nd <= d) return;
+  const md = (x: string) => `${Number(x.slice(5, 7))}月${Number(x.slice(8, 10))}日`;
+  const clash = examGapClash(state, nd);
+  const say = () => {
+    if (clash) toast.warning(`离上次考试（${md(clash)}）不到 30 天`, { id: "exam-gap", description: `${md(nd)} 不算新的一场：考前一天和当天照常学一组就能打卡，不然连续天数会断` });
+    else if (examDayOn(state, d) && (was || "") !== nd && postponedOn(state.dayRule, d)) toast.success(`考试推迟到 ${md(nd)}`, { id: "exam-moved", description: "今天这场不算考过，连续天数保留；新日期的考前一天和当天照样不用打卡" });
+  };
+  if (typeof queueMicrotask === "function") queueMicrotask(say);
+  else say();
 }
 
 /** extra：引导里已经看过的计划提示（当天不再弹冲刺卡等） */

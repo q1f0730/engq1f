@@ -975,6 +975,7 @@ function RescueDumpPanel() {
 
 /** 11.2 · 「清空所有学习记录」从「高级」挪到数据中心最底部 */
 function ResetPanel() {
+  const navigate = useNavigate();
   const [confirm, setConfirm] = useState(false);
   return (
     <Panel data-testid="reset-panel">
@@ -994,7 +995,8 @@ function ResetPanel() {
               resetAll();
               setConfirm(false);
               toast("已清空");
-              location.hash = "#/welcome";
+              // 11.8 · 用路由压引导页（带序号）：重新引导完成后能退回第一条 app 记录，首页按返回不再白按一次（r8 R8-5）
+              navigate({ to: "/welcome" });
             }}
             className="h-12 rounded-2xl bg-destructive font-semibold text-white"
           >

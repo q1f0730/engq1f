@@ -13,6 +13,7 @@ import { fmtDate } from "@/lib/format";
 import { PageHeader, Panel, PanelTitle, Segmented, Spinner } from "@/components/app/shell";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
+import { useFitLine } from "@/lib/fit";
 import { fmtMinutes, fmtMinutesShort, fmtPct, fmtPctDelta } from "@/lib/format";
 import { bookSize, summarize } from "@/lib/plan";
 import { addDays, emptyLog, forecast, masteryCounts } from "@/lib/srs";
@@ -125,7 +126,7 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
         </PanelTitle>
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           <Tile icon={<Target className="size-4" />} label="考前能学完" value={`${projected}/${book}`}
-            small={String(projected).length + String(book).length > 7} sub={fcx.examMode ? nb("考前模式：", "只复习") : projected >= book ? nb(`按每天 ${st.settings.daily} 个`, "能学完") : (
+            small={String(projected).length + String(book).length >= 7} sub={fcx.examMode ? nb("考前模式：", "只复习") : projected >= book ? nb(`按每天 ${st.settings.daily} 个`, "能学完") : (
               // 11.7 · 窄屏按「还能学 N 个 / 剩 M 个来不及」两段换行，不会有一两个字单独成行（r7 R7-7）
               <>
                 <span className="whitespace-nowrap">还能学 {fcx.reach} 个</span>，<span className="whitespace-nowrap">剩 {fcx.left} 个来不及</span>
@@ -506,6 +507,8 @@ function nb(...parts: string[]): React.ReactNode {
 }
 
 function Tile({ icon, label, value, sub, tone, testid, small }: { icon: React.ReactNode; label: string; value: string; sub?: React.ReactNode; tone: string; testid?: string; small?: boolean }) {
+  // 11.8 · 主数字只占一行：≥7 位先用小字号，再按磁贴实际宽度缩（360 宽新用户「900/4544」不再断成两行，r8 R8-3）
+  const vref = useFitLine<HTMLDivElement>(value, 15);
   return (
     <div className="rounded-3xl border border-border/70 bg-card p-4" data-testid={testid}>
       {/* 11.7 · 标签不折行（360 宽下「近 7 天记得住」不再把「住」挤到第二行） */}
@@ -513,8 +516,8 @@ function Tile({ icon, label, value, sub, tone, testid, small }: { icon: React.Re
         <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${tone}`}>{icon}</span>
         {label}
       </div>
-      <div className={`tnum mt-2.5 [overflow-wrap:anywhere] font-extrabold leading-tight tracking-tight ${small ? "text-[21px]" : "text-[26px]"}`} data-value={value}>
-        {value}
+      <div ref={vref} className={`tnum mt-2.5 whitespace-nowrap font-extrabold leading-tight tracking-tight ${small ? "text-[21px]" : "text-[26px]"}`} data-value={value}>
+        <span>{value}</span>
       </div>
       {sub && <div className="text-[12px] text-muted-foreground" data-part="sub">{sub}</div>}
     </div>

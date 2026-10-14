@@ -14,11 +14,23 @@ export function secondSaturday(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+/**
+ * 11.8 · 6 月场次：落在 6 月 11–17 日之间的那个星期六（r8 R8-1）。
+ * 核对过 2019-06-15、2021-06-12、2022-06-11、2023-06-17、2024-06-15、2025-06-14、2026-06-13：7 场全中；
+ * 「第二个周六」只中 4 场（2019、2023、2024 是第三个周六），「第三个周六」只中 3 场（2021、2022、2025、2026 是第二个）。
+ * 12 月没有这么整齐（2021-12-18、2022-12-10、2023-12-16），照旧按第二个周六估（近 7 场中 5 场）。
+ */
+export function juneSaturday(year: number): string {
+  const d = new Date(year, 5, 11, 12);
+  const day = 11 + ((6 - d.getDay() + 7) % 7);
+  return `${year}-06-${String(day).padStart(2, "0")}`;
+}
+
 /** 某一场（年 + 6/12 月）的日期：已公布用官方日期，否则预估 */
 export function examOf(year: number, month: 6 | 12): { day: string; official: boolean } {
   const pre = `${year}-${String(month).padStart(2, "0")}`;
   const hit = OFFICIAL_EXAMS.find((d) => d.startsWith(pre));
-  return hit ? { day: hit, official: true } : { day: secondSaturday(year, month), official: false };
+  return hit ? { day: hit, official: true } : { day: month === 6 ? juneSaturday(year) : secondSaturday(year, month), official: false };
 }
 
 /** 从今天起接下来的 n 场考试（考试当天也算「接下来」） */
@@ -69,13 +81,23 @@ export const EXAM_OVER_WINDOW = 30;
  * 刚考完的那一场：自定日期已经过了；或者自动场次已经过去、用户考前在用（考后 30 天内，或者考后还没打开过）。
  * 已经确认过（examDone）的不再返回。
  */
-export function passedExam(today: string, setting: string | undefined, done: string | undefined, activeIn: (from: string, to: string) => boolean): { day: string; custom: boolean } | null {
-  if (setting && /^\d{4}-\d{2}-\d{2}$/.test(setting) && setting < today) return setting === done ? null : { day: setting, custom: true };
+export function passedExam(
+  today: string,
+  setting: string | undefined,
+  done: string | undefined,
+  activeIn: (from: string, to: string) => boolean,
+  taken?: (d: string) => boolean,
+): { day: string; custom: boolean } | null {
+  const valid = !!setting && /^\d{4}-\d{2}-\d{2}$/.test(setting);
+  if (valid && setting! < today) return setting === done ? null : { day: setting!, custom: true };
   const y = Number(today.slice(0, 4));
   const cands = [examOf(y - 1, 12), examOf(y, 6), examOf(y, 12)].map((e) => e.day).filter((d) => d < today);
   const last = cands.sort().pop();
   // 11.5 · 确认过的是这一场或者更晚的一场（例如自定的 12-19）：不再冒出更早的官方场次
   if (!last || (!!done && done >= last)) return null;
+  // 11.8 · 自定的考试日还没到、比这场自动场次晚：自定日期说了算，除非按每天的快照那一场确实是他考的（taken：
+  // 考前一天的快照记的就是它、当天没有推迟），不然官方那天一过不能就「考完了」（r8 R8-1）
+  if (valid && setting! > last && !taken?.(last)) return null;
   // 11.3 · 考前半年里用过就算在备考这一场（不再要求「考前一个月在学」）；
   // 考后 30 天内问；更久才回来、考后一次都没打开过的也问（不静默换成下一场）
   if (!activeIn(addDays(last, -EXAM_PREP_DAYS), last)) return null;

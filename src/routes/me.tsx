@@ -1,5 +1,5 @@
 import { finePointer } from "@/lib/pointer";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Accessibility, Database, Scale, BellRing, CalendarDays, Check, ChevronDown, Contrast, MonitorDown, SlidersHorizontal, Ticket, ChevronRight, Download, FileUp, Gauge, Keyboard, Moon, RotateCcw, ShieldCheck, ShieldAlert, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "@/lib/toast";
@@ -48,6 +48,7 @@ import { readAdvOpen } from "@/components/app/settings-panels";
 export const Route = createFileRoute("/me")({ component: MePage });
 
 function MePage() {
+  const navigate = useNavigate();
   const { index } = useWords();
   const st = useApp();
   const [help, setHelp] = useState(false);
@@ -395,7 +396,8 @@ function MePage() {
               resetAll();
               setConfirm(false);
               toast("已清空");
-              location.hash = "#/welcome";
+              // 11.8 · 用路由压引导页（带序号）：重新引导完成后能退回第一条 app 记录，首页按返回不再白按一次（r8 R8-5）
+              navigate({ to: "/welcome" });
             }}
             className="h-12 rounded-2xl bg-destructive font-semibold text-destructive-foreground"
           >
