@@ -145,81 +145,65 @@ function VocabTest({ index }: { index: WordIndex }) {
 
       {phase === "run" && cur && (
         <div className="flex flex-1 flex-col">
-          <div className="flex items-baseline justify-between text-[0.8125rem] text-ink-3">
-            <span data-testid="test-progress">
+          {/* 12.0 · 作答页：一行「第几个 · 哪一层」+ 计时，下面三段尺子标出现在在哪一层 */}
+          <div className="flex items-baseline justify-between">
+            <span data-testid="test-progress" className="tnum text-[0.8125rem] text-ink-3">
               {pos + 1} / {items.length} · {TIER_NAME[cur.t]}
             </span>
-            <span className={cn("tnum flex items-center gap-1 font-serif text-[1.25rem] leading-none", left < 30000 ? "text-forget" : "text-ink")}>
-              <Timer className="size-4" />
+            <span className={cn("tnum flex items-center gap-1.5 font-serif text-[1.375rem] leading-none", left < 30000 ? "text-forget" : "text-ink")}>
+              <Timer className="size-4 opacity-70" />
               {mm}:{String(ss).padStart(2, "0")}
             </span>
           </div>
-          <div className="mt-2 h-[3px] bg-rule">
-            <div className="h-full bg-ink transition-all" style={{ width: `${(pos / items.length) * 100}%` }} />
-          </div>
-          <div key={pos} className="card-in mt-6 flex flex-1 flex-col justify-center border-y border-rule px-1">
-            <span className="text-[0.75rem] text-ink-3">认识这个词吗？</span>
-            <h2 className="word-head mt-2 break-all text-[4rem] leading-[1]" data-testid="test-word">
+          <TierRuler pos={pos} />
+          <div key={pos} className="card-in flex flex-1 flex-col justify-center">
+            <p className="text-[0.8125rem] text-ink-3">认识这个词吗？</p>
+            <h2 className="word-head mt-3 break-all text-[4rem] leading-[1]" data-testid="test-word">
               {cur.w.w}
             </h2>
           </div>
-          <div className="grid grid-cols-2 gap-2.5 py-5">
-            <button
-              type="button"
-              onClick={() => mark(false)}
-              data-testid="test-unknown"
-              className="press relative h-16 overflow-hidden rounded-xl bg-paper-3 text-[1.0625rem] font-semibold text-forget ring-1 ring-rule ring-inset before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-forget hover:bg-paper-2"
-            >
+          <div className="flex gap-2.5 border-t border-rule py-5">
+            <AnswerKey tone="forget" testid="test-unknown" onClick={() => mark(false)} hint="2">
               不认识
-            </button>
-            <button
-              type="button"
-              onClick={() => mark(true)}
-              data-testid="test-know"
-              className="press relative h-16 overflow-hidden rounded-xl bg-paper-3 text-[1.0625rem] font-semibold text-know ring-1 ring-rule ring-inset before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-know hover:bg-paper-2"
-            >
+            </AnswerKey>
+            <AnswerKey tone="know" testid="test-know" onClick={() => mark(true)} hint="1">
               认识
-            </button>
+            </AnswerKey>
           </div>
         </div>
       )}
 
       {phase === "done" && (
         <div className="card-in flex flex-1 flex-col pb-6" data-testid="test-result">
-          <section className="mt-4 border-t-2 border-ink pt-4">
-            <div className="text-[0.8125rem] text-ink-2">你的四级词汇量约</div>
-            <div className="mt-1 flex items-baseline gap-2">
+          <section className="mt-4">
+            <p className="text-[0.8125rem] text-ink-2">你的四级词汇量约</p>
+            <p className="mt-2 flex items-baseline gap-2">
               <span className="tnum hl-swipe font-serif text-[4.5rem] leading-[0.9] tracking-[-0.03em]" data-testid="test-est">
                 {result.est}
               </span>
               <span className="tnum font-serif text-[1.375rem] text-ink-3">/ {index.list.length}</span>
-            </div>
-            <div className="mt-2 text-[0.8125rem] text-ink-3">
+            </p>
+            <p className="mt-2 text-[0.8125rem] text-ink-3">
               共测 {known.length} 词，认识 {result.knownWords.length} 个
-            </div>
+            </p>
           </section>
-          {/* 分层结果：一张小表，每层一条细横线 */}
-          <table className="mt-6 w-full border-t border-ink text-left">
-            <tbody>
-              {result.per.map((p, t) => (
-                <tr key={t} className="border-b border-rule">
-                  <td className="py-2.5 text-[0.875rem] font-medium">
-                    {TIER_NAME[t]}
-                    <span className="ml-1.5 text-[0.75rem] font-normal text-ink-3">{p.size} 词</span>
-                  </td>
-                  <td className="w-[42%] py-2.5">
-                    <div className="h-1.5 bg-paper-2">
-                      <div className="h-full bg-ink" style={{ width: `${p.rate * 100}%` }} />
-                    </div>
-                  </td>
-                  <td className="tnum w-14 py-2.5 text-right font-serif text-[1.125rem]">{p.n ? `${Math.round(p.rate * 100)}%` : "未测"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* 分层结果：和开始页同一把三段尺子，每段写上认识的比例 */}
+          <dl className="mt-7 grid grid-cols-3 gap-1">
+            {result.per.map((p, t) => (
+              <div key={t} className="min-w-0">
+                <dd className="tnum font-serif text-[1.625rem] leading-none">{p.n ? `${Math.round(p.rate * 100)}%` : "未测"}</dd>
+                <div className="mt-2 h-2 bg-paper-2">
+                  <div className="h-full bg-ink" style={{ width: `${p.rate * 100}%` }} />
+                </div>
+                <dt className="mt-1.5 text-[0.75rem] text-ink-3">
+                  {TIER_NAME[t]} · {p.size} 词
+                </dt>
+              </div>
+            ))}
+          </dl>
           {result.knownWords.length > 0 && (
-            <div className="mt-6">
-              <div className="text-[0.8125rem] text-ink-3">认识的词</div>
+            <details className="mt-6 border-t border-rule pt-3" open>
+              <summary className="cursor-pointer text-[0.8125rem] text-ink-3">认识的词 {result.knownWords.length}</summary>
               <p className="mt-1.5 max-h-32 overflow-y-auto font-serif text-[1.0625rem] leading-relaxed text-ink-2">
                 {result.knownWords.map((w, k) => (
                   <span key={w} title={shortMeaning(index.map.get(w)!, 1)}>
@@ -228,30 +212,65 @@ function VocabTest({ index }: { index: WordIndex }) {
                   </span>
                 ))}
               </p>
-            </div>
+            </details>
           )}
           <div className="flex-1" />
-          {result.knownWords.length > 0 && (
-            <button
-              type="button"
-              disabled={marked}
-              onClick={() => {
-                batchKill(result.knownWords);
-                setMarked(true);
-                toast.success(`已把 ${result.knownWords.length} 个词标为熟词`);
-              }}
-              data-testid="test-mark"
-              className={actClass("secondary") + " mt-6 h-auto min-h-14 w-full whitespace-normal py-2 text-[0.875rem] disabled:opacity-60"}
-            >
-              <Check className="size-5 shrink-0" />
-              {marked ? "已斩掉这些词" : `把 ${result.knownWords.length} 个认识的词斩掉（以后不再出现）`}
-            </button>
-          )}
-          <Link to="/" data-testid="test-home" className={actClass("primary") + " mt-2.5 h-14 w-full text-base"}>
-            开始背单词
-          </Link>
+          <div className="mt-6 flex flex-col gap-2.5">
+            {result.knownWords.length > 0 && (
+              <button
+                type="button"
+                disabled={marked}
+                onClick={() => {
+                  batchKill(result.knownWords);
+                  setMarked(true);
+                  toast.success(`已把 ${result.knownWords.length} 个词标为熟词`);
+                }}
+                data-testid="test-mark"
+                className={actClass("secondary") + " h-auto min-h-14 w-full whitespace-normal py-2 text-[0.875rem] disabled:opacity-60"}
+              >
+                <Check className="size-5 shrink-0" />
+                {marked ? "已斩掉这些词" : `把 ${result.knownWords.length} 个认识的词斩掉（以后不再出现）`}
+              </button>
+            )}
+            <Link to="/" data-testid="test-home" className={actClass("primary") + " h-14 w-full text-base"}>
+              开始背单词
+            </Link>
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** 三段尺子：已经走过的层是墨色，当前层里按进度填，后面的是纸色 */
+function TierRuler({ pos }: { pos: number }) {
+  return (
+    <div className="mt-2.5 grid grid-cols-3 gap-1" aria-hidden>
+      {[0, 1, 2].map((t) => {
+        const f = Math.min(1, Math.max(0, (pos - t * PER_TIER) / PER_TIER));
+        return (
+          <div key={t} className="h-[3px] bg-rule">
+            <div className="h-full bg-ink transition-[width] duration-300" style={{ width: `${f * 100}%` }} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AnswerKey({ tone, testid, onClick, hint, children }: { tone: "know" | "forget"; testid: string; onClick: () => void; hint: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testid}
+      className={cn(
+        "press relative flex h-16 flex-1 items-center justify-center gap-2 overflow-hidden rounded-xl bg-paper-3 text-[1.0625rem] font-semibold ring-1 ring-rule ring-inset before:absolute before:inset-x-0 before:top-0 before:h-[3px] hover:bg-paper-2",
+        tone === "know" ? "text-know before:bg-know" : "text-forget before:bg-forget",
+      )}
+    >
+      {children}
+      <span className="kbd-hint hidden font-mono text-[0.6875rem] font-normal text-ink-3 [@media(hover:hover)]:inline">{hint}</span>
+    </button>
   );
 }
