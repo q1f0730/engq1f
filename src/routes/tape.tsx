@@ -228,7 +228,7 @@ function Tape({ index }: { index: WordIndex }) {
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
               <h2
                 className={cn(
-                  "font-display break-all font-semibold leading-[1.05] tracking-[-0.035em] transition-colors",
+                  "word-head break-all leading-[1] transition-colors",
                   word.w.length <= 8 ? "text-[3.25rem]" : word.w.length <= 12 ? "text-[2.625rem]" : "text-[2rem]",
                   phase === "en" && "text-ink",
                 )}

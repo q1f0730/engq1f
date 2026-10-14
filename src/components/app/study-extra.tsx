@@ -76,7 +76,7 @@ export function PreviewList({
               </button>
               <div className={cn("min-w-0 flex-1", k && "opacity-55")}>
                 <div className="flex items-baseline gap-2">
-                  <span className={cn("font-display truncate text-[1.0625rem] font-semibold", k && "line-through decoration-2")}>{w}</span>
+                  <span className={cn("word-head truncate text-[1.375rem] leading-tight", k && "line-through decoration-1")}>{w}</span>
                   <Phonetic word={word} accent={accent} className="truncate text-xs text-ink-3" />
                 </div>
                 <div className="fs-card truncate text-[0.8125rem] text-ink-3">{shortMeaning(word, 2)}</div>

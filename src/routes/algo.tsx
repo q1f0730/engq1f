@@ -260,7 +260,7 @@ function SimTab({ n0 }: { n0?: number }) {
         <PanelTitle>每天学多少新词？</PanelTitle>
         <div className="flex items-end justify-between gap-3">
           <div className="flex items-baseline gap-1.5">
-            <span className="tnum font-display text-[3.25rem] font-semibold leading-none tracking-[-0.015em] text-ink" data-testid="sim-n">
+            <span className="tnum text-[4.375rem] leading-none text-ink font-serif leading-none" data-testid="sim-n">
               {n}
             </span>
             <span className="text-[0.9375rem] font-semibold text-ink-3">词 / 天</span>
@@ -331,9 +331,9 @@ function diffHint(a: number, b: number) {
 
 function Stat({ label, value, hint, testid }: { label: string; value: number; hint: string; testid: string }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-paper-2 px-3 py-2.5" data-testid={testid} data-value={value}>
+    <div className="min-w-0 border-t border-rule pt-2.5 pb-1.5" data-testid={testid} data-value={value}>
       <div className="truncate text-[0.6875rem] font-semibold text-ink-3">{label}</div>
-      <div className="tnum font-display text-2xl font-semibold leading-tight">{value}</div>
+      <div className="tnum text-[2rem] font-serif leading-none">{value}</div>
       <div className="truncate text-[0.6875rem] text-ink-3">{hint}</div>
     </div>
   );

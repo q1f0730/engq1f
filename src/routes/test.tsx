@@ -110,7 +110,7 @@ function VocabTest({ index }: { index: WordIndex }) {
           <div className="mx-auto grid size-20 place-items-center rounded-2xl bg-mark-soft text-ink hidden">
             <Gauge className="size-10" />
           </div>
-          <h1 className="mt-6 font-display text-[1.875rem] font-semibold tracking-[-0.015em]">3 分钟测出你的四级词汇量</h1>
+          <h1 className="mt-6 text-[2.25rem] font-semibold leading-[1.1] tracking-[-0.03em]">3 分钟测出你的四级词汇量</h1>
           <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink-3">
             从基础词到进阶词，每层抽 {PER_TIER} 个。看到单词能马上想起意思就点「认识」，犹豫就点「不认识」。测完可以把认识的词直接标为熟词，背的时候跳过。
           </p>
@@ -143,7 +143,7 @@ function VocabTest({ index }: { index: WordIndex }) {
             <div className="h-full bg-ink transition-all" style={{ width: `${(pos / items.length) * 100}%` }} />
           </div>
           <div key={pos} className="card-in mt-6 flex flex-1 items-center justify-center rounded-xl ring-1 ring-rule ring-inset bg-paper-3">
-            <h2 className="font-display break-all px-6 text-center text-[3rem] font-semibold tracking-[-0.03em]" data-testid="test-word">
+            <h2 className="word-head break-all px-6 text-center text-[4rem] leading-[1]" data-testid="test-word">
               {cur.w.w}
             </h2>
           </div>
@@ -163,7 +163,7 @@ function VocabTest({ index }: { index: WordIndex }) {
           <div className="mt-4 rounded-2xl hero-gradient p-6 text-ink">
             <div className="text-sm font-semibold text-ink-2">你的四级词汇量约</div>
             <div className="mt-1 flex items-baseline gap-2">
-              <span className="tnum font-display text-[4rem] font-semibold leading-none" data-testid="test-est">
+              <span className="tnum text-[4.5rem] font-serif leading-none" data-testid="test-est">
                 {result.est}
               </span>
               <span className="text-lg font-semibold text-ink-2">/ {index.list.length}</span>

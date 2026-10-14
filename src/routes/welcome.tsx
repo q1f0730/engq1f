@@ -76,7 +76,7 @@ function Welcome() {
         )}
         <div className="flex gap-1.5">
           {[0, 1, 2].map((k) => (
-            <span key={k} className={cn("h-1.5 rounded-full transition-all", k === step ? "w-6 bg-ink" : "w-1.5 bg-rule")} />
+            <span key={k} className={cn("h-1.5 rounded-[2px] transition-[width,background-color] duration-300 ease-[var(--ease-spring)]", k === step ? "w-6 bg-ink" : k < step ? "w-3 bg-ink-3" : "w-3 bg-rule")} />
           ))}
         </div>
         <span className="w-10" />
@@ -85,21 +85,31 @@ function Welcome() {
       {step === 0 && (
         <div className="card-in flex flex-1 flex-col">
           <div className="flex flex-1 flex-col justify-center">
-            <Logo className="size-20 drop-shadow-xl" />
-            <h1 className="mt-8 font-display text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.015em]">
+            <Logo className="size-11" />
+            {/* 12.0 · 首屏的「招牌」：一个词典词条，荧光笔划过词头 */}
+            <div className="mt-10 border-y border-rule py-5" aria-hidden>
+              <div className="flex items-baseline gap-3">
+                <span className="word-head hl-swipe text-[3.5rem] leading-none">persist</span>
+                <span className="font-ipa text-[0.9375rem] text-ink-3">/pərˈsɪst/</span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-2.5 text-[0.9375rem] text-ink-2">
+                <span className="pos text-[1.0625rem] text-ink-3">v.</span>坚持；持续
+              </div>
+            </div>
+            <h1 className="mt-8 text-[2.25rem] font-semibold leading-[1.12] tracking-[-0.03em]">
               四级单词，
               <br />
-              <span className="text-ink">考前</span>稳稳背完。
+              <span className="hl">考前</span>稳稳背完。
             </h1>
-            <p className="mt-4 text-base leading-relaxed text-ink-3">
+            <p className="mt-4 max-w-[24em] text-[0.9375rem] leading-relaxed text-ink-2">
               {sizes.all} 个四级词汇，按你的考试日期排好每天学多少。忘了的词明天再来，记住的词越隔越久。
             </p>
-            <div className="mt-8 grid grid-cols-2 gap-2.5">
-              <Feature icon={<ShieldCheck className="size-4" />} label="不用注册" />
+            <ul className="mt-6 flex flex-wrap gap-x-1 gap-y-1.5 text-[0.8125rem] text-ink-3">
+              <Feature icon={<ShieldCheck className="size-4" />} label="不用注册" first />
               <Feature icon={<WifiOff className="size-4" />} label="离线可用" />
               <Feature icon={<Zap className="size-4" />} label="秒开无广告" />
               <Feature icon={<RotateCcw className="size-4" />} label="忘了的词自动回来" />
-            </div>
+            </ul>
           </div>
           <Primary onClick={() => setStep(1)} testid="welcome-next">
             开始制定计划 <ArrowRight className="size-5" />
@@ -141,7 +151,7 @@ function Welcome() {
 
       {step === 1 && (
         <div className="card-in flex flex-1 flex-col">
-          <h1 className="mt-4 font-display text-[1.875rem] font-semibold tracking-[-0.015em]">什么时候考四级？</h1>
+          <h1 className="mt-4 text-[2rem] font-semibold leading-tight tracking-[-0.025em]">什么时候考四级？</h1>
           <p className="mt-1 text-[0.9375rem] text-ink-3">按考试日期安排每天的量，保证考前学完、留出复习时间。</p>
           <div className="mt-5 grid grid-cols-3 gap-2" data-testid="onb-exam">
             {exams.map((e, k) => (
@@ -214,7 +224,7 @@ function Welcome() {
 
       {step === 2 && (
         <div className="card-in flex flex-1 flex-col">
-          <h1 className="mt-4 font-display text-[1.875rem] font-semibold tracking-[-0.015em]">{soon ? "考前冲刺" : cap ? "冲刺计划" : "每天学多少新词？"}</h1>
+          <h1 className="mt-4 text-[2rem] font-semibold leading-tight tracking-[-0.025em]">{soon ? "考前冲刺" : cap ? "冲刺计划" : "每天学多少新词？"}</h1>
           <p className="mt-1 text-[0.9375rem] text-ink-3" data-testid="onb-plan-line" data-kind={soon ? "soon" : cap ? "cap" : "plan"}>
             {soon ? (
               <>
@@ -243,7 +253,7 @@ function Welcome() {
                   data-rec={n === bookPlan.daily ? 1 : 0}
                   className={cn("relative rounded-2xl border py-4 transition", curDaily === n ? "border-ink bg-mark-soft" : "border-rule bg-paper-3")}
                 >
-                  <div className={cn("tnum font-display text-[1.75rem] font-semibold leading-none", curDaily === n ? "text-ink" : "")}>{n}</div>
+                  <div className={cn("tnum text-[2.375rem] font-serif leading-none", curDaily === n ? "text-ink" : "")}>{n}</div>
                   <div className={cn("mt-1.5 text-[0.6875rem]", sp < 0 && !cap && !soon ? "font-semibold text-forget" : "text-ink-3")}>{cap || (soon && sp < 0) ? `考前学 ${reachOf(n)} 个` : sp < 0 ? "考后才学完" : `考前 ${sp} 天学完`}</div>
                   {n === bookPlan.daily && <span className="absolute -top-2 right-2 rounded-[3px] bg-ink px-2 py-0.5 text-[0.625rem] font-semibold text-paper-3">推荐</span>}
                 </button>
@@ -296,12 +306,13 @@ function Welcome() {
   );
 }
 
-function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
+/** 12.0 · 卖点不是 2×2 图标卡片：一行字，用斜线隔开 */
+function Feature({ label, first }: { icon?: React.ReactNode; label: string; first?: boolean }) {
   return (
-    <div className="flex items-center gap-2 rounded-2xl bg-paper-3 px-3.5 py-3 text-sm font-semibold ring-1 ring-rule">
-      <span className="text-ink">{icon}</span>
+    <li className="flex items-center gap-1">
+      {!first && <span className="text-rule-strong" aria-hidden>/</span>}
       {label}
-    </div>
+    </li>
   );
 }
 
@@ -311,7 +322,7 @@ function Primary({ children, onClick, testid }: { children: React.ReactNode; onC
       type="button"
       onClick={onClick}
       data-testid={testid}
-      className="press my-4 flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-ink text-[1.0625rem] font-semibold text-paper-3 hover:bg-ink-2"
+      className="press my-4 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-ink text-[1.0625rem] font-semibold text-paper-3 hover:bg-ink-2 [&_svg]:transition-transform [&_svg]:duration-300 [&_svg]:ease-[var(--ease-spring)] hover:[&_svg]:translate-x-0.5"
     >
       {children}
     </button>
@@ -325,8 +336,8 @@ function Choice({ active, onClick, title, sub, testid, badge }: { active: boolea
       onClick={onClick}
       data-testid={testid}
       className={cn(
-        "flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition",
-        active ? "border-ink bg-mark-soft" : "border-rule bg-paper-3",
+        "press flex w-full items-center gap-4 rounded-xl p-4 text-left ring-inset",
+        active ? "bg-paper-3 ring-2 ring-ink" : "bg-paper-3 ring-1 ring-rule hover:ring-rule-strong",
       )}
     >
       <div className="min-w-0 flex-1">

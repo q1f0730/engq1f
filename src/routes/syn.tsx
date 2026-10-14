@@ -103,7 +103,7 @@ function SynPage() {
                       data-testid="syn-chip"
                       onClick={() => setOpen(index.map.get(w) ?? null)}
                       className={cn(
-                        "press font-display rounded-lg px-3 py-1.5 text-sm font-semibold",
+                        "press rounded-md px-2.5 py-1 font-serif text-[1.125rem] leading-snug",
                         c?.st === "mastered" ? "bg-know-soft text-know" : c ? "bg-vague-soft text-vague" : "bg-paper-2 text-ink",
                       )}
                     >

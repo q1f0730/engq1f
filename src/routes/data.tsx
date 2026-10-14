@@ -430,8 +430,8 @@ function ReportPanel({ index, profileName }: { index: WordIndex; profileName: st
 
 function Mini({ v, k }: { v: number | string; k: string }) {
   return (
-    <div className="rounded-2xl bg-paper-2 px-2 py-2.5">
-      <div className="tnum text-xl font-semibold leading-none">{v}</div>
+    <div className="border-t border-rule pt-2.5 pb-1.5">
+      <div className="tnum text-[1.75rem] font-serif leading-none">{v}</div>
       <div className="mt-1 text-[0.6875rem] text-ink-3">{k}</div>
     </div>
   );
@@ -854,7 +854,7 @@ function StoragePanel() {
       ) : (
         <>
           <div className="flex items-baseline justify-between gap-2">
-            <span className="tnum text-2xl font-semibold" data-testid="storage-total">
+            <span className="tnum text-[2rem] font-serif leading-none" data-testid="storage-total">
               {fmtBytes(total)}
             </span>
             {est && (

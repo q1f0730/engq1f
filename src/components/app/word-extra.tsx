@@ -26,7 +26,7 @@ export default function WordExtra({ word, onOpen }: { word: Word; onOpen: (w: Wo
           </div>
           <ul className="space-y-2">
             {syn.map((g) => (
-              <li key={g.key} className="rounded-xl bg-paper-2 px-3 py-2" data-testid="syn-group" data-sense={g.sense}>
+              <li key={g.key} className="border-t border-rule pt-2.5 pb-1" data-testid="syn-group" data-sense={g.sense}>
                 <div className="text-[0.8125rem] font-semibold text-ink">
                   {POS_CN[g.pos] && <span className="mr-1.5 rounded-md bg-paper px-1.5 py-px text-[0.6875rem] italic text-ink-3">{POS_CN[g.pos]}</span>}
                   {g.sense}
@@ -43,7 +43,7 @@ export default function WordExtra({ word, onOpen }: { word: Word; onOpen: (w: Wo
                           e.stopPropagation();
                           open(w);
                         }}
-                        className="press font-display rounded-lg bg-paper-3 px-2.5 py-1 text-sm font-semibold ring-1 ring-rule hover:ring-ink"
+                        className="press rounded-md bg-paper-3 px-2.5 py-1 font-serif text-[1.0625rem] ring-1 ring-rule ring-inset hover:ring-ink"
                       >
                         {w}
                       </button>
@@ -72,7 +72,7 @@ export default function WordExtra({ word, onOpen }: { word: Word; onOpen: (w: Wo
                   }}
                   className="press min-w-0 rounded-xl bg-paper-2 px-3 py-2 text-left hover:bg-paper-2"
                 >
-                  <span className="font-display block truncate text-[0.9375rem] font-semibold">
+                  <span className="block truncate font-serif text-[1.1875rem] leading-tight">
                     <span className="text-ink-3">{w.slice(0, prefix)}</span>
                     <span className="text-ink">{w.slice(prefix)}</span>
                   </span>

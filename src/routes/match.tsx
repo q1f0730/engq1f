@@ -167,7 +167,7 @@ function MatchGame({ index }: { index: WordIndex }) {
           <div className="mt-3 flex shrink-0 items-end justify-between px-1">
             <div>
               <div className="text-xs font-semibold text-ink-3">得分</div>
-              <div className="tnum font-display text-[2.125rem] font-semibold leading-none tracking-[-0.015em]" data-testid="match-score" data-score={score.score}>
+              <div className="tnum text-[2.875rem] font-serif leading-none" data-testid="match-score" data-score={score.score}>
                 {score.score}
               </div>
             </div>
@@ -244,7 +244,7 @@ function Tile({ w, state, onClick, children, en, testid }: { w: string; state: T
       aria-pressed={state === "sel"}
       className={cn(
         "flex h-[68px] items-center justify-center rounded-2xl border-2 px-2 text-center transition-all duration-200",
-        en ? "font-display text-[1.0625rem] font-semibold" : "text-[0.9375rem] font-semibold leading-tight",
+        en ? "font-serif text-[1.375rem] leading-tight" : "text-[0.9375rem] font-semibold leading-tight",
         state === "idle" && "press border-rule bg-paper-3 hover:border-ink",
         state === "sel" && "-translate-y-0.5 border-ink bg-mark-soft text-ink",
         state === "ok" && "scale-95 border-know bg-know-soft text-know",

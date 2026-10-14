@@ -260,9 +260,9 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
 
 function Side({ label, words, days, sub }: { label: string; words: number; days: number; sub: string }) {
   return (
-    <div className="rounded-2xl bg-paper-2 px-3 py-3">
+    <div className="border-t border-rule pt-2.5 pb-1">
       <div className="text-xs font-semibold text-ink-3">{label}</div>
-      <div className="tnum mt-1 text-[1.375rem] font-semibold leading-none">{words}</div>
+      <div className="tnum mt-1 text-[1.875rem] font-serif leading-none">{words}</div>
       <div className="text-xs text-ink-3">词 · 打卡 {days} 天</div>
       <div className="mt-1 text-[0.6875rem] text-ink-3">{sub}</div>
     </div>

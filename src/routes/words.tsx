@@ -420,7 +420,7 @@ function WordsPage() {
                 const on = selected.has(w.w);
                 return [
                   head ? (
-                    <li key={`h-${L}`} data-letter={L} className="bg-paper-2 px-4 py-1 font-display text-xs font-semibold text-ink-3">
+                    <li key={`h-${L}`} data-letter={L} className="bg-paper px-4 pb-1 pt-4 font-serif text-[1.25rem] leading-none text-ink-3">
                       {L}
                     </li>
                   ) : null,
@@ -466,7 +466,7 @@ function WordsPage() {
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-display truncate text-[1.0625rem] font-semibold tracking-[-0.015em]">{w.w}</span>
+                          <span className="word-head truncate text-[1.375rem] leading-tight">{w.w}</span>
                           {w.c && <span className="shrink-0 rounded bg-mark-soft px-1 text-[0.625rem] font-semibold text-ink">核心</span>}
                           {st.star[w.w] && <Star className="size-3.5 shrink-0 fill-vague text-vague" />}
                         </div>

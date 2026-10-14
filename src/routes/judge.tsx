@@ -281,7 +281,7 @@ function JudgeCard({
       >
         <div className="paper-grain absolute inset-0 opacity-60" />
         <div className="relative flex flex-1 flex-col items-center justify-center px-6 text-center">
-          <h2 className="fs-card font-display break-all text-[2.875rem] font-semibold leading-[1.05] tracking-[-0.035em]" data-testid="judge-word">
+          <h2 className="fs-card word-head break-all text-[3.75rem] leading-[1]" data-testid="judge-word">
             {word.w}
           </h2>
           <div className="mt-2 flex items-center gap-2 text-[0.9375rem] text-ink-3">
@@ -317,7 +317,7 @@ function JudgeCard({
               <div className={cn("font-semibold", shown.ok ? "text-know" : "text-forget")}>{shown.ok ? "✓ 判断正确" : "✗ 判断错了"}</div>
               {!item.truth && (
                 <div className="mt-2 rounded-2xl bg-paper-2 px-4 py-2.5 text-left text-sm leading-relaxed">
-                  <b className="font-display">{word.w}</b> 是：{optionMeaning(word)}
+                  <b className="font-serif text-[1.125em] font-normal">{word.w}</b> 是：{optionMeaning(word)}
                   {from && <div className="text-xs text-ink-3">上面那个是 {from.w} 的意思</div>}
                 </div>
               )}

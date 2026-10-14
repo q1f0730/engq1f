@@ -121,10 +121,10 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
       <Panel data-testid="outlook">
         <PanelTitle right={<span className="tnum text-xs text-ink-3">{fmtDate(exam.day, true)}</span>}>
           <span className="flex items-center gap-1.5">
-            <GraduationCap className="size-4 text-ink" /> 距四级还有 <b className="tnum text-ink">{daysLeft}</b> 天
+            距四级还有 <b className="tnum hl font-serif text-[1.375rem] font-normal leading-none text-ink">{daysLeft}</b> 天
           </span>
         </PanelTitle>
-        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-5 md:grid-cols-4">
           <Tile icon={<Target className="size-4" />} label="考前能学完" value={`${projected}/${book}`}
             small={String(projected).length + String(book).length >= 7} sub={fcx.examMode ? nb("考前模式：", "只复习") : projected >= book ? nb(`按每天 ${st.settings.daily} 个`, "能学完") : (
               // 11.7 · 窄屏按「还能学 N 个 / 剩 M 个来不及」两段换行，不会有一两个字单独成行（r7 R7-7）
@@ -148,12 +148,12 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
       <div className="mt-4 grid gap-4 md:mt-5 md:grid-cols-2 md:gap-5">
         <Panel data-testid="mastery">
           <PanelTitle right={<span className="text-xs text-ink-3">共 {total} 词 · 当前词书 {book}</span>}>掌握程度</PanelTitle>
-          <div className="flex h-4 overflow-hidden rounded-full bg-paper-2">
+          <div className="flex h-3 gap-[2px] overflow-hidden rounded-[3px] bg-rule">
             <div className="h-full bg-know transition-all" style={{ width: `${(m.mastered / total) * 100}%` }} />
             <div className="h-full bg-vague transition-all" style={{ width: `${(m.learning / total) * 100}%` }} />
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-            <Legend color="bg-muted-foreground/30" label="未学" value={m.new} />
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <Legend color="bg-rule-strong" label="未学" value={m.new} />
             <Legend color="bg-vague" label="学习中" value={m.learning} />
             <Legend color="bg-know" label="已掌握" value={m.mastered} />
           </div>
@@ -251,7 +251,7 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
 
 function MiniStat({ label, value, testid }: { label: string; value: string; testid?: string }) {
   return (
-    <div className="rounded-2xl bg-paper-2 py-2" data-testid={testid} data-value={value}>
+    <div className="border-t border-rule pt-2.5 pb-1" data-testid={testid} data-value={value}>
       <div className="tnum text-[0.9375rem] font-semibold">{value}</div>
       <div className="text-[0.6875rem] text-ink-3">{label}</div>
     </div>
@@ -294,7 +294,7 @@ function ReviewTab({ index, st, onOpen }: { index: WordIndex; st: AppState; onOp
         ) : (
           <>
             <div className="mb-2 flex items-end gap-3">
-              <div className="tnum font-display text-[2.5rem] font-semibold leading-none text-know" data-testid="retention-rate" data-value={ret.rate ?? ""}>
+              <div className="tnum text-[3.375rem] leading-none text-know font-serif leading-none" data-testid="retention-rate" data-value={ret.rate ?? ""}>
                 {ret.rate}%
               </div>
               <div className="pb-1 text-xs text-ink-3">
@@ -425,7 +425,7 @@ function BadgesTab({ index, st }: { index: WordIndex; st: AppState }) {
 
 function Empty({ children, testid }: { children: React.ReactNode; testid?: string }) {
   return (
-    <div className="rounded-2xl bg-paper-2 px-4 py-6 text-center text-[0.8125rem] leading-relaxed text-ink-3" data-testid={testid}>
+    <div className="rounded-xl border border-dashed border-rule-strong px-4 py-6 text-left text-[0.8125rem] leading-relaxed text-ink-3" data-testid={testid}>
       {children}
     </div>
   );
@@ -447,7 +447,7 @@ function QuizPanel({ quizzes }: { quizzes: import("@/lib/exam").QuizRecord[] }) 
         模拟小测成绩
       </PanelTitle>
       {qs.count === 0 ? (
-        <div className="rounded-2xl bg-paper-2 px-4 py-6 text-center text-[0.8125rem] text-ink-3" data-testid="quiz-history-empty">
+        <div className="rounded-xl border border-dashed border-rule-strong px-4 py-6 text-left text-[0.8125rem] text-ink-3" data-testid="quiz-history-empty">
           还没做过模拟小测。20 题 5 分钟，做完这里会出现成绩曲线。
         </div>
       ) : (
@@ -471,8 +471,8 @@ function QuizPanel({ quizzes }: { quizzes: import("@/lib/exam").QuizRecord[] }) 
 
 function QStat({ label, value, unit, testid }: { label: string; value: number; unit?: string; testid?: string }) {
   return (
-    <div className="rounded-2xl bg-paper-2 py-2.5" data-testid={testid} data-value={value}>
-      <div className="tnum text-xl font-semibold">
+    <div className="border-t border-rule pt-2.5 pb-1.5" data-testid={testid} data-value={value}>
+      <div className="tnum text-[1.75rem] font-serif leading-none">
         {value}
         {unit && <span className="ml-0.5 text-xs font-semibold text-ink-3">{unit}</span>}
       </div>
@@ -510,16 +510,17 @@ function Tile({ icon, label, value, sub, tone, testid, small }: { icon: React.Re
   // 11.8 · 主数字只占一行：≥7 位先用小字号，再按磁贴实际宽度缩（360 宽新用户「900/4544」不再断成两行，r8 R8-3）
   const vref = useFitLine<HTMLDivElement>(value, 15);
   return (
-    <div className="rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid={testid}>
-      {/* 11.7 · 标签不折行（360 宽下「近 7 天记得住」不再把「住」挤到第二行） */}
-      <div className="flex items-center gap-2 whitespace-nowrap text-[0.8125rem] text-ink-3" data-part="label">
-        <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${tone}`}>{icon}</span>
+    // 12.0 · 磁贴不再是白卡片 + 彩色图标：上方一条细线，衬线大数字，标签在上
+    <div className="min-w-0 border-t border-rule pb-4 pr-2 pt-3" data-testid={testid} data-tone={tone}>
+      {/* 标签不折行（360 宽下「近 7 天记得住」不再把「住」挤到第二行） */}
+      <div className="flex items-center gap-1.5 whitespace-nowrap text-[0.8125rem] text-ink-3 [&_svg]:size-3.5" data-part="label">
+        {icon}
         {label}
       </div>
-      <div ref={vref} className={`tnum mt-2.5 whitespace-nowrap font-semibold leading-tight tracking-[-0.015em] ${small ? "text-[1.3125rem]" : "text-[1.625rem]"}`} data-value={value}>
+      <div ref={vref} className={`tnum mt-2 whitespace-nowrap font-serif leading-none ${small ? "text-[2rem]" : "text-[2.5rem]"}`} data-value={value}>
         <span>{value}</span>
       </div>
-      {sub && <div className="text-xs text-ink-3" data-part="sub">{sub}</div>}
+      {sub && <div className="mt-1.5 text-[0.75rem] leading-snug text-ink-3" data-part="sub">{sub}</div>}
     </div>
   );
 }
@@ -527,9 +528,9 @@ function Tile({ icon, label, value, sub, tone, testid, small }: { icon: React.Re
 function Legend({ color, label, value }: { color: string; label: string; value: number }) {
   return (
     <div>
-      <div className="tnum text-[1.375rem] font-semibold">{value}</div>
-      <div className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-ink-3">
-        <i className={`inline-block size-2.5 rounded-full ${color}`} />
+      <div className="tnum font-serif text-[2rem] leading-none">{value}</div>
+      <div className="mt-1.5 flex items-center gap-1.5 text-[0.75rem] text-ink-3">
+        <i className={`inline-block h-2.5 w-[3px] rounded-[1px] ${color}`} />
         {label}
       </div>
     </div>
@@ -538,8 +539,8 @@ function Legend({ color, label, value }: { color: string; label: string; value: 
 
 function Big({ label, value, testid }: { label: string; value: number; testid?: string }) {
   return (
-    <div className="rounded-2xl bg-paper-2 py-3" data-testid={testid} data-value={value}>
-      <div className="tnum text-2xl font-semibold">
+    <div className="border-t border-rule pt-2.5 pb-1" data-testid={testid} data-value={value}>
+      <div className="tnum text-[2rem] font-serif leading-none">
         {value}
         <span className="ml-0.5 text-[0.8125rem] font-semibold text-ink-3">天</span>
       </div>

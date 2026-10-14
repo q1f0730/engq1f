@@ -77,7 +77,7 @@ export function DaySheet({
 
 function Mini({ label, value, testid }: { label: string; value: string; testid?: string }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-paper-2 px-1 py-2" data-testid={testid} data-value={value}>
+    <div className="min-w-0 border-t border-rule pt-2.5 pb-1" data-testid={testid} data-value={value}>
       <div className="tnum truncate text-base font-semibold leading-tight">{value}</div>
       <div className="mt-0.5 text-[0.6875rem] text-ink-3">{label}</div>
     </div>

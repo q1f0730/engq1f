@@ -53,7 +53,7 @@ export function MilestoneOverlay() {
         <div className="milestone-medal grid size-36 place-items-center rounded-full">
           <div className="flex flex-col items-center leading-none">
             <Flame className="size-7 fill-current text-[#ffe2a8]" />
-            <span className="tnum mt-1 font-display text-[3.5rem] font-semibold tracking-[-0.015em]" data-testid="milestone-days">
+            <span className="tnum mt-1 text-[4.5rem] font-serif leading-none" data-testid="milestone-days">
               {n}
             </span>
             <span className="text-[0.8125rem] font-semibold text-ink-2">天</span>
