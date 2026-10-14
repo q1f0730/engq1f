@@ -156,41 +156,41 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
       {phase === "intro" && <Intro onStart={start} onQuit={quit} stats={prevStats} />}
       {phase === "run" && cur && word && (
         <>
-          <div className="flex shrink-0 items-center gap-2 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="press -ml-2 grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
-              <X className="size-[22px]" />
-            </button>
-            {/* 12.0 · 卷面：题号「第 N 题 / 20」在左，倒计时在右（最后一分钟变砖红、下面一道砖红线） */}
-            <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
-              <span className="text-[0.75rem] text-ink-3">第</span>
-              <span className="tnum font-serif text-[1.375rem] leading-none" data-testid="mock-progress">
-                {pos + 1}/{items.length}
+          {/* 12.0 · 卷面抬头：左边「模拟小测 · 题型」，中间一排答题格，右边倒计时（最后一分钟变砖红、下面一道砖红线） */}
+          <header className="shrink-0 pt-3">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={quit} aria-label="退出" className="press -ml-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
+                <X className="size-[22px]" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="flex items-baseline gap-1">
+                  <span className="text-[0.75rem] text-ink-3">第</span>
+                  <span className="tnum font-serif text-[1.375rem] leading-none" data-testid="mock-progress">
+                    {pos + 1}/{items.length}
+                  </span>
+                  <span className="text-[0.75rem] text-ink-3">题</span>
+                </p>
+                <p className="mt-0.5 truncate text-[0.75rem] text-ink-3">
+                  模拟小测 ·{" "}
+                  <span className="font-medium text-ink-2" data-testid="mock-mode" data-mode={cur.mode}>
+                    {MODE_LABEL[cur.mode]}
+                  </span>
+                </p>
+              </div>
+              <span
+                className={cn("tnum flex h-10 shrink-0 items-center gap-1.5 border-b-2 px-0.5 font-serif text-[1.5rem] leading-none", left < 60000 ? "border-forget text-forget" : "border-ink text-ink")}
+                data-testid="mock-timer"
+              >
+                <Timer className="size-4" />
+                {fmtClock(left)}
               </span>
-              <span className="text-[0.75rem] text-ink-3">题</span>
             </div>
-            <span
-              className={cn(
-                "tnum flex h-9 items-center gap-1.5 border-b-2 px-0.5 font-serif text-[1.375rem] leading-none",
-                left < 60000 ? "border-forget text-forget" : "border-ink text-ink",
-              )}
-              data-testid="mock-timer"
-            >
-              <Timer className="size-4" />
-              {fmtClock(left)}
-            </span>
-          </div>
-          <div className="mt-2 flex h-1.5 shrink-0 gap-[2px]" aria-hidden>
-            {items.map((_, k) => (
-              <span key={k} className={cn("h-full flex-1 transition-colors duration-300", k < pos ? "bg-ink" : k === pos ? "bg-mark" : "bg-rule")} />
-            ))}
-          </div>
-          <div className="mt-2 flex h-6 shrink-0 items-center gap-2 text-[0.75rem] text-ink-3">
-            <span>模拟小测</span>
-            <span className="text-rule-strong">·</span>
-            <span className="font-medium text-ink-2" data-testid="mock-mode" data-mode={cur.mode}>
-              {MODE_LABEL[cur.mode]}
-            </span>
-          </div>
+            <ol className="mt-3 flex h-1.5 gap-[2px]" aria-hidden>
+              {items.map((_, k) => (
+                <li key={k} className={cn("h-full flex-1 transition-colors duration-300", k < pos ? "bg-ink" : k === pos ? "bg-mark" : "bg-rule")} />
+              ))}
+            </ol>
+          </header>
           <div key={pos} className="card-in flex min-h-0 flex-1 flex-col" data-testid="quiz" data-quiz-mode={cur.mode} data-w={cur.w}>
             <QuizPrompt word={word} mode={cur.mode} accent={accent} seed={cur.seed} done={false} compact />
             <ChoiceList choices={cur.choices} done={false} onPick={pick} />
@@ -237,29 +237,15 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
         </button>
       </TopBar>
       {/* 12.0 · 开始页排成一张卷子的卷首：标题、三格「题量 / 时间 / 满分」、八种题型的「题型说明」，最后是开始键 */}
-      <div className="rise mt-4 border-y-2 border-ink py-4">
-        <div className="text-[0.75rem] tracking-[0.2em] text-ink-3">CET-4 · 词汇</div>
+      <header className="rise mt-4 border-t-2 border-ink pt-4">
+        <p className="text-[0.75rem] text-ink-3">CET-4 · 词汇</p>
         <h1 className="mt-1 text-[1.75rem] font-semibold leading-tight tracking-[-0.02em]">四级词汇模拟小测</h1>
-        <dl className="mt-4 grid grid-cols-3 divide-x divide-rule">
-          <div className="pr-3">
-            <dt className="text-[0.75rem] text-ink-3">题量</dt>
-            <dd className="tnum mt-1 font-serif text-[2rem] leading-none">
-              {MOCK_SIZE}
-              <span className="ml-0.5 font-sans text-[0.8125rem] text-ink-3">题</span>
-            </dd>
-          </div>
-          <div className="px-3">
-            <dt className="text-[0.75rem] text-ink-3">限时</dt>
-            <dd className="tnum mt-1 font-serif text-[2rem] leading-none">
-              5<span className="ml-0.5 font-sans text-[0.8125rem] text-ink-3">分钟</span>
-            </dd>
-          </div>
-          <div className="pl-3">
-            <dt className="text-[0.75rem] text-ink-3">满分</dt>
-            <dd className="tnum mt-1 font-serif text-[2rem] leading-none">100</dd>
-          </div>
+        <dl className="mt-5 flex gap-7 border-b border-rule pb-4">
+          <Readout value={String(MOCK_SIZE)} unit="题" label="题量" big />
+          <Readout value="5" unit="分钟" label="限时" big />
+          <Readout value="100" label="满分" big />
         </dl>
-      </div>
+      </header>
       <h2 className="sr-only">{MOCK_SIZE} 题 · 5 分钟</h2>
       <p className="rise mt-4 text-[0.875rem] leading-relaxed text-ink-2" style={{ "--i": 1 } as React.CSSProperties}>
         混合 8 种题型，学过的词优先出题。中途不显示对错，交卷后逐题回顾，错题一键进生词本。小测不影响复习计划。
@@ -275,11 +261,11 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
         ))}
       </ol>
       {stats.count > 0 && (
-        <div className="rise mt-5 grid grid-cols-3 divide-x divide-rule border-b border-rule pb-3" data-testid="mock-prev" style={{ "--i": 3 } as React.CSSProperties}>
-          <Mini label="上次" value={`${stats.last}`} />
-          <Mini label="最高" value={`${stats.best}`} />
-          <Mini label="已做" value={`${stats.count} 次`} />
-        </div>
+        <dl className="rise mt-5 flex gap-7 rounded-lg bg-paper-2 px-4 py-3" data-testid="mock-prev" style={{ "--i": 3 } as React.CSSProperties}>
+          <Readout label="上次" value={`${stats.last}`} />
+          <Readout label="最高" value={`${stats.best}`} />
+          <Readout label="已做" value={`${stats.count}`} unit="次" />
+        </dl>
       )}
       <div className="flex-1" />
       <button type="button" onClick={onStart} data-testid="mock-start" className={actClass("primary") + " mb-4 mt-8 h-14 w-full rounded-xl text-[1.0625rem]"}>
@@ -289,11 +275,15 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
   );
 }
 
-function Mini({ label, value }: { label: string; value: string }) {
+/** 一个读数：数字在上（衬线），名字在下；小测开始页和成绩页共用 */
+function Readout({ label, value, unit, big, testid }: { label: string; value: string; unit?: string; big?: boolean; testid?: string }) {
   return (
-    <div className="min-w-0 px-3 first:pl-0">
-      <div className="text-[0.75rem] text-ink-3">{label}</div>
-      <div className="tnum mt-1 truncate font-serif text-[1.375rem] leading-none">{value}</div>
+    <div className="min-w-0">
+      <dd className={cn("tnum truncate font-serif leading-none", big ? "text-[2rem]" : "text-[1.5rem]")}>
+        <span data-testid={testid}>{value}</span>
+        {unit && <span className="ml-0.5 font-sans text-[0.8125rem] text-ink-3">{unit}</span>}
+      </dd>
+      <dt className="mt-1.5 text-[0.75rem] text-ink-3">{label}</dt>
     </div>
   );
 }
@@ -347,11 +337,11 @@ function Result({
           </div>
           <p className="max-w-[9em] pb-2 text-right font-serif text-[1.25rem] italic leading-snug text-ink-2">{verdict}</p>
         </div>
-        <div className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule py-3.5">
-          <HeroStat label="答对" value={`${ok}/${items.length}`} testid="mock-ok" />
-          <HeroStat label={timedOut ? "超时交卷" : "用时"} value={fmtClock(ms)} testid="mock-time" />
-          <HeroStat label="比上次" value={prev === null ? "首次" : `${score - prev >= 0 ? "+" : ""}${score - prev}`} testid="mock-delta" />
-        </div>
+        <dl className="mt-5 flex gap-7 border-y border-rule py-3.5">
+          <Readout label="答对" value={`${ok}/${items.length}`} testid="mock-ok" />
+          <Readout label={timedOut ? "超时交卷" : "用时"} value={fmtClock(ms)} testid="mock-time" />
+          <Readout label="比上次" value={prev === null ? "首次" : `${score - prev >= 0 ? "+" : ""}${score - prev}`} testid="mock-delta" />
+        </dl>
       </section>
 
       <div className="mt-4 flex gap-2">
@@ -470,17 +460,6 @@ function Result({
       <Link to="/" data-testid="mock-home" className={actClass("primary") + " mt-8 h-12 w-full text-base"}>
         回到今日
       </Link>
-    </div>
-  );
-}
-
-function HeroStat({ label, value, testid }: { label: string; value: string; testid?: string }) {
-  return (
-    <div className="min-w-0 px-3 first:pl-0">
-      <div className="text-[0.75rem] text-ink-3">{label}</div>
-      <div className="tnum mt-1 truncate font-serif text-[1.625rem] leading-none" data-testid={testid}>
-        {value}
-      </div>
     </div>
   );
 }
