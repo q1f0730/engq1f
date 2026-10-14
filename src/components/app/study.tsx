@@ -1134,7 +1134,8 @@ function FlipCard({
     <div className="flex h-full flex-col overflow-y-auto px-6 py-6 text-left" data-testid="card-back">
       <div className="fs-card back-grid my-auto">
       <div className="back-head flex items-start justify-between gap-3" data-testid="back-head">
-        <div className="min-w-0">
+        {/* 11.8 · 单词这一栏占满剩下的宽度（不按内容收缩）：按实际宽度缩字号时量到的是真正可用的宽度 */}
+        <div className="min-w-0 flex-1">
           <FitWord w={word.w} className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight" testid="back-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
           <div className="mt-1 flex items-center gap-2 text-[15px] text-muted-foreground">
             <Phonetic word={word} accent={accent} />

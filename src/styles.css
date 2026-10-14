@@ -748,6 +748,7 @@ html[data-motion="reduce"] .checkin-burst {
   }
   .back-grid > .back-head > div {
     width: 100%;
+    flex: 0 0 auto;
   }
   .back-grid > .back-head h2 {
     font-size: max(16px, min(7.5vh, 30px, calc(100cqi / (0.66 * var(--wl, 8))))) !important;
