@@ -141,7 +141,7 @@ export function acceptedSnapExams(st: Pick<HabitState, "dayRule" | "examDays"> &
 
 const hasSnapNear = (rules: Record<string, DayRule> | undefined, d: string) => {
   const from = addDays(d, -21);
-  return Object.keys(rules ?? {}).some((k) => k >= from && k <= d);
+  return Object.keys(rules ?? {}).some((k) => k >= from && k < d);
 };
 
 /**
