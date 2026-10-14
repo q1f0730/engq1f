@@ -34,12 +34,12 @@ function ListLinkPage() {
       <div data-testid="list-link-page" data-state="error">
         <PageHeader title="词单链接" />
         <Panel className="flex flex-col items-center gap-3 py-10 text-center">
-          <Link2Off className="size-10 text-muted-foreground" />
-          <p className="text-[15px] font-bold" data-testid="list-link-error">
+          <Link2Off className="size-10 text-ink-3" />
+          <p className="text-[0.9375rem] font-semibold" data-testid="list-link-error">
             {err}
           </p>
-          <p className="text-[13px] text-muted-foreground">请让对方重新复制完整的链接（聊天软件可能截断了太长的链接）。</p>
-          <Link to="/" className="mt-2 rounded-full bg-secondary px-5 py-2.5 text-[14px] font-semibold">
+          <p className="text-[0.8125rem] text-ink-3">请让对方重新复制完整的链接（聊天软件可能截断了太长的链接）。</p>
+          <Link to="/" className="mt-2 rounded-lg bg-paper-2 px-5 py-2.5 text-sm font-semibold">
             回到今日
           </Link>
         </Panel>
@@ -53,28 +53,28 @@ function ListLinkPage() {
       <PageHeader title="收到一个词单" sub="来自分享链接 · 不含对方的学习进度" />
       <Panel>
         <div className="flex items-start gap-3">
-          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
+          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
             <Link2 className="size-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-[20px] font-extrabold tracking-tight" data-testid="list-link-name">
+            <h2 className="truncate text-xl font-semibold tracking-[-0.015em]" data-testid="list-link-name">
               {got.name || "未命名词单"}
             </h2>
-            <div className="tnum text-[13px] text-muted-foreground" data-testid="list-link-meta">
+            <div className="tnum text-[0.8125rem] text-ink-3" data-testid="list-link-meta">
               {words.length} 个四级词{got.words.length > words.length ? `（${got.words.length - words.length} 个不在词库里，已跳过）` : ""} · 你学过其中 {learned} 个
             </div>
           </div>
         </div>
-        <ul className="mt-4 max-h-[46dvh] divide-y divide-border/60 overflow-y-auto rounded-2xl border border-border/70" data-testid="list-link-words">
+        <ul className="mt-4 max-h-[46dvh] divide-y divide-rule overflow-y-auto rounded-2xl border border-rule" data-testid="list-link-words">
           {words.slice(0, 200).map((w) => (
             <li key={w} className="flex items-baseline gap-3 px-3.5 py-2">
-              <span className="shrink-0 text-[15px] font-bold">{w}</span>
-              <span className="min-w-0 truncate text-[13px] text-muted-foreground">{shortMeaning(index.map.get(w)!, 1)}</span>
+              <span className="shrink-0 text-[0.9375rem] font-semibold">{w}</span>
+              <span className="min-w-0 truncate text-[0.8125rem] text-ink-3">{shortMeaning(index.map.get(w)!, 1)}</span>
             </li>
           ))}
-          {words.length > 200 && <li className="px-3.5 py-2 text-[12px] text-muted-foreground">还有 {words.length - 200} 个…</li>}
+          {words.length > 200 && <li className="px-3.5 py-2 text-xs text-ink-3">还有 {words.length - 200} 个…</li>}
         </ul>
-        {exists && <p className="mt-3 text-[12px] text-vague">你已经有一个同名词单，导入后会另存为新词单。</p>}
+        {exists && <p className="mt-3 text-xs text-vague">你已经有一个同名词单，导入后会另存为新词单。</p>}
         <button
           type="button"
           data-testid="list-link-import"
@@ -86,7 +86,7 @@ function ListLinkPage() {
             if (!st.onboarded) navigate({ to: "/welcome", replace: true });
             else navigate({ to: "/words", search: { tab: "list", list: id }, replace: true });
           }}
-          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50"
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20 disabled:opacity-50"
         >
           <ListPlus className="size-4" /> 导入为我的词单
         </button>

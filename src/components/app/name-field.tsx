@@ -23,9 +23,9 @@ export function NameField({ initial = "", placeholder, action, onSubmit, testid 
         placeholder={placeholder}
         data-testid={`${testid}-name`}
         enterKeyHint="done"
-        className="h-11 min-w-0 flex-1 rounded-2xl border border-border/80 bg-background px-4 text-[15px] outline-none transition placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-4 focus:ring-primary/10"
+        className="h-11 min-w-0 flex-1 rounded-2xl border border-rule bg-paper px-4 text-[0.9375rem] outline-none transition placeholder:text-ink-3 focus:border-ink focus:ring-4 focus:ring-ink"
       />
-      <button type="submit" data-testid={`${testid}-ok`} className="h-11 shrink-0 rounded-2xl bg-primary px-4 text-[14px] font-bold text-primary-foreground">
+      <button type="submit" data-testid={`${testid}-ok`} className="h-11 shrink-0 rounded-2xl bg-ink px-4 text-sm font-semibold text-paper-3">
         {action}
       </button>
     </form>

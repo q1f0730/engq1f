@@ -68,7 +68,7 @@ function Welcome() {
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-5 pb-safe pt-safe" data-testid="welcome" data-step={step}>
       <div className="flex h-14 items-center justify-between">
         {step > 0 ? (
-          <button type="button" onClick={() => setStep(step - 1)} className="grid size-10 place-items-center rounded-full hover:bg-secondary" aria-label="上一步">
+          <button type="button" onClick={() => setStep(step - 1)} className="grid size-10 place-items-center rounded-full hover:bg-paper-2" aria-label="上一步">
             <ArrowLeft className="size-5" />
           </button>
         ) : (
@@ -76,7 +76,7 @@ function Welcome() {
         )}
         <div className="flex gap-1.5">
           {[0, 1, 2].map((k) => (
-            <span key={k} className={cn("h-1.5 rounded-full transition-all", k === step ? "w-6 bg-primary" : "w-1.5 bg-border")} />
+            <span key={k} className={cn("h-1.5 rounded-full transition-all", k === step ? "w-6 bg-ink" : "w-1.5 bg-rule")} />
           ))}
         </div>
         <span className="w-10" />
@@ -86,12 +86,12 @@ function Welcome() {
         <div className="card-in flex flex-1 flex-col">
           <div className="flex flex-1 flex-col justify-center">
             <Logo className="size-20 drop-shadow-xl" />
-            <h1 className="mt-8 font-display text-[40px] font-extrabold leading-[1.1] tracking-tight">
+            <h1 className="mt-8 font-display text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.015em]">
               四级单词，
               <br />
-              <span className="text-primary">考前</span>稳稳背完。
+              <span className="text-ink">考前</span>稳稳背完。
             </h1>
-            <p className="mt-4 text-[16px] leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-base leading-relaxed text-ink-3">
               {sizes.all} 个四级词汇，按你的考试日期排好每天学多少。忘了的词明天再来，记住的词越隔越久。
             </p>
             <div className="mt-8 grid grid-cols-2 gap-2.5">
@@ -109,7 +109,7 @@ function Welcome() {
             type="button"
             data-testid="welcome-restore"
             onClick={() => file.current?.click()}
-            className="-mt-2 mb-3 flex h-11 items-center justify-center gap-2 text-[14px] font-semibold text-muted-foreground"
+            className="-mt-2 mb-3 flex h-11 items-center justify-center gap-2 text-sm font-semibold text-ink-3"
           >
             <FileUp className="size-4" /> 我有备份，恢复记录
           </button>
@@ -141,8 +141,8 @@ function Welcome() {
 
       {step === 1 && (
         <div className="card-in flex flex-1 flex-col">
-          <h1 className="mt-4 font-display text-[30px] font-extrabold tracking-tight">什么时候考四级？</h1>
-          <p className="mt-1 text-[15px] text-muted-foreground">按考试日期安排每天的量，保证考前学完、留出复习时间。</p>
+          <h1 className="mt-4 font-display text-[1.875rem] font-semibold tracking-[-0.015em]">什么时候考四级？</h1>
+          <p className="mt-1 text-[0.9375rem] text-ink-3">按考试日期安排每天的量，保证考前学完、留出复习时间。</p>
           <div className="mt-5 grid grid-cols-3 gap-2" data-testid="onb-exam">
             {exams.map((e, k) => (
               <button
@@ -151,10 +151,10 @@ function Welcome() {
                 data-testid={`onb-exam-${k}`}
                 aria-pressed={exam === e.day}
                 onClick={() => setExam(e.day)}
-                className={cn("rounded-2xl border px-1 py-2.5 text-center transition", exam === e.day ? "border-primary bg-brand-soft text-primary" : "border-border bg-card text-muted-foreground")}
+                className={cn("rounded-2xl border px-1 py-2.5 text-center transition", exam === e.day ? "border-ink bg-mark-soft text-ink" : "border-rule bg-paper-3 text-ink-3")}
               >
-                <span className="tnum block text-[15px] font-bold">{fmtDate(e.day)}</span>
-                <span className="block text-[11px] opacity-80">
+                <span className="tnum block text-[0.9375rem] font-semibold">{fmtDate(e.day)}</span>
+                <span className="block text-[0.6875rem] opacity-80">
                   {e.day.slice(0, 4)} · {e.official ? "官方" : "预估"}
                 </span>
               </button>
@@ -162,14 +162,14 @@ function Welcome() {
             <label
               className={cn(
                 "relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border px-1 py-2.5 text-center transition",
-                !exams.some((e) => e.day === exam) ? "border-primary bg-brand-soft text-primary" : "border-border bg-card text-muted-foreground",
+                !exams.some((e) => e.day === exam) ? "border-ink bg-mark-soft text-ink" : "border-rule bg-paper-3 text-ink-3",
               )}
             >
-              <span className="flex items-center gap-1 text-[14px] font-bold">
+              <span className="flex items-center gap-1 text-sm font-semibold">
                 <CalendarDays className="size-3.5" />
                 {!exams.some((e) => e.day === exam) ? fmtDate(exam) : "其他日期"}
               </span>
-              <span className="block text-[11px] opacity-80">自己选</span>
+              <span className="block text-[0.6875rem] opacity-80">自己选</span>
               <input
                 type="date"
                 data-testid="onb-exam-custom"
@@ -181,10 +181,10 @@ function Welcome() {
               />
             </label>
           </div>
-          <p className="mt-2 text-[13px] font-semibold text-primary" data-testid="onb-exam-left">
+          <p className="mt-2 text-[0.8125rem] font-semibold text-ink" data-testid="onb-exam-left">
             还有 {examLeft} 天
           </p>
-          <div className="mb-2 mt-5 text-[12px] font-bold tracking-wider text-muted-foreground">选择词书</div>
+          <div className="mb-2 mt-5 text-xs font-semibold tracking-wider text-ink-3">选择词书</div>
           <div className="space-y-2.5">
             {(["core", "all"] as Book[]).map((b) => {
               const sz = b === "all" ? sizes.all : sizes.core;
@@ -214,19 +214,19 @@ function Welcome() {
 
       {step === 2 && (
         <div className="card-in flex flex-1 flex-col">
-          <h1 className="mt-4 font-display text-[30px] font-extrabold tracking-tight">{soon ? "考前冲刺" : cap ? "冲刺计划" : "每天学多少新词？"}</h1>
-          <p className="mt-1 text-[15px] text-muted-foreground" data-testid="onb-plan-line" data-kind={soon ? "soon" : cap ? "cap" : "plan"}>
+          <h1 className="mt-4 font-display text-[1.875rem] font-semibold tracking-[-0.015em]">{soon ? "考前冲刺" : cap ? "冲刺计划" : "每天学多少新词？"}</h1>
+          <p className="mt-1 text-[0.9375rem] text-ink-3" data-testid="onb-plan-line" data-kind={soon ? "soon" : cap ? "cap" : "plan"}>
             {soon ? (
               <>
-                {examLeft === 0 ? "今天就考了" : "明天就考了"}，来不及系统背新词。首页切换成<b className="text-foreground">考前模式</b>：只复习学过的词，想多看就一组 10 个地过{bookName}。考完再按下一场排计划。
+                {examLeft === 0 ? "今天就考了" : "明天就考了"}，来不及系统背新词。首页切换成<b className="text-ink">考前模式</b>：只复习学过的词，想多看就一组 10 个地过{bookName}。考完再按下一场排计划。
               </>
             ) : cap ? (
               <>
-                {examLeft} 天学不完 {size} 个{bookName}。每天 <b className="text-foreground">{SPRINT_MAX}</b> 个，考前能先拿下其中 <b className="text-foreground">{reachOf(SPRINT_MAX)}</b> 个{reserveDays(examLeft) ? `，最后 ${reserveDays(examLeft)} 天只复习` : ""}。
+                {examLeft} 天学不完 {size} 个{bookName}。每天 <b className="text-ink">{SPRINT_MAX}</b> 个，考前能先拿下其中 <b className="text-ink">{reachOf(SPRINT_MAX)}</b> 个{reserveDays(examLeft) ? `，最后 ${reserveDays(examLeft)} 天只复习` : ""}。
               </>
             ) : (
               <>
-                推荐 <b className="text-foreground">{bookPlan.daily}</b> 个：考前 {Math.max(0, bookPlan.spare)} 天学完{curBook === "core" ? "核心词" : "全部词"}，最后留时间复习。
+                推荐 <b className="text-ink">{bookPlan.daily}</b> 个：考前 {Math.max(0, bookPlan.spare)} 天学完{curBook === "core" ? "核心词" : "全部词"}，最后留时间复习。
               </>
             )}
           </p>
@@ -241,39 +241,39 @@ function Welcome() {
                   onClick={() => setDaily(n)}
                   data-testid={`daily-${n}`}
                   data-rec={n === bookPlan.daily ? 1 : 0}
-                  className={cn("relative rounded-3xl border py-4 transition", curDaily === n ? "border-primary bg-brand-soft" : "border-border bg-card")}
+                  className={cn("relative rounded-2xl border py-4 transition", curDaily === n ? "border-ink bg-mark-soft" : "border-rule bg-paper-3")}
                 >
-                  <div className={cn("tnum font-display text-[28px] font-extrabold leading-none", curDaily === n ? "text-primary" : "")}>{n}</div>
-                  <div className={cn("mt-1.5 text-[11px]", sp < 0 && !cap && !soon ? "font-semibold text-forget" : "text-muted-foreground")}>{cap || (soon && sp < 0) ? `考前学 ${reachOf(n)} 个` : sp < 0 ? "考后才学完" : `考前 ${sp} 天学完`}</div>
-                  {n === bookPlan.daily && <span className="absolute -top-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">推荐</span>}
+                  <div className={cn("tnum font-display text-[1.75rem] font-semibold leading-none", curDaily === n ? "text-ink" : "")}>{n}</div>
+                  <div className={cn("mt-1.5 text-[0.6875rem]", sp < 0 && !cap && !soon ? "font-semibold text-forget" : "text-ink-3")}>{cap || (soon && sp < 0) ? `考前学 ${reachOf(n)} 个` : sp < 0 ? "考后才学完" : `考前 ${sp} 天学完`}</div>
+                  {n === bookPlan.daily && <span className="absolute -top-2 right-2 rounded-[3px] bg-ink px-2 py-0.5 text-[0.625rem] font-semibold text-paper-3">推荐</span>}
                 </button>
               );
             })}
           </div>
           )}
           {!soon && (
-          <div className="mt-5 rounded-3xl bg-secondary/80 p-5" data-testid="plan-preview" data-spare={spare}>
-            <div className="text-[13px] text-muted-foreground">按这个节奏</div>
+          <div className="mt-5 rounded-2xl bg-paper-2 p-5" data-testid="plan-preview" data-spare={spare}>
+            <div className="text-[0.8125rem] text-ink-3">按这个节奏</div>
             {cap || soon ? (
               <>
-                <div className="mt-1 text-[20px] font-extrabold">
-                  考前能学 <span className="text-primary">{reachOf(curDaily)}</span> / {size} 个{bookName}
+                <div className="mt-1 text-xl font-semibold">
+                  考前能学 <span className="text-ink">{reachOf(curDaily)}</span> / {size} 个{bookName}
                 </div>
-                <div className="mt-1 text-[13px] font-semibold text-muted-foreground" data-testid="plan-exam">
+                <div className="mt-1 text-[0.8125rem] font-semibold text-ink-3" data-testid="plan-exam">
                   {soon ? "考前模式：首页只安排复习" : `学 ${learnDays} 天，剩下 ${size - reachOf(curDaily)} 个考后再说`}
                 </div>
               </>
             ) : (
               <>
-                <div className="mt-1 text-[20px] font-extrabold">
-                  {days} 天，<span className="text-primary">{fmtDate(finish, true)}</span> 学完
+                <div className="mt-1 text-xl font-semibold">
+                  {days} 天，<span className="text-ink">{fmtDate(finish, true)}</span> 学完
                 </div>
-                <div className={cn("mt-1 text-[13px] font-semibold", spare < 0 ? "text-forget" : "text-know")} data-testid="plan-exam">
+                <div className={cn("mt-1 text-[0.8125rem] font-semibold", spare < 0 ? "text-forget" : "text-know")} data-testid="plan-exam">
                   {spare < 0 ? `比考试晚 ${-spare} 天，来不及` : `考前 ${spare} 天学完`}
                 </div>
               </>
             )}
-            <div className="mt-1 text-[13px] text-muted-foreground">
+            <div className="mt-1 text-[0.8125rem] text-ink-3">
               每天约 {curDaily} 个新词 + {reviews} 个左右复习，约 {minutes} 分钟
             </div>
           </div>
@@ -286,7 +286,7 @@ function Welcome() {
             type="button"
             onClick={() => finishSetup("/test")}
             data-testid="welcome-test"
-            className="mb-4 flex h-12 items-center justify-center gap-2 text-[14px] font-semibold text-muted-foreground"
+            className="mb-4 flex h-12 items-center justify-center gap-2 text-sm font-semibold text-ink-3"
           >
             <Gauge className="size-4" /> 先测一下词汇量（3 分钟）
           </button>
@@ -298,8 +298,8 @@ function Welcome() {
 
 function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-2xl bg-card px-3.5 py-3 text-[14px] font-semibold shadow-sm ring-1 ring-border/70">
-      <span className="text-primary">{icon}</span>
+    <div className="flex items-center gap-2 rounded-2xl bg-paper-3 px-3.5 py-3 text-sm font-semibold ring-1 ring-rule">
+      <span className="text-ink">{icon}</span>
       {label}
     </div>
   );
@@ -311,7 +311,7 @@ function Primary({ children, onClick, testid }: { children: React.ReactNode; onC
       type="button"
       onClick={onClick}
       data-testid={testid}
-      className="my-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[17px] font-bold text-primary-foreground shadow-xl shadow-primary/25 transition active:scale-[0.98]"
+      className="my-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-[1.0625rem] font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
     >
       {children}
     </button>
@@ -325,18 +325,18 @@ function Choice({ active, onClick, title, sub, testid, badge }: { active: boolea
       onClick={onClick}
       data-testid={testid}
       className={cn(
-        "flex w-full items-center gap-4 rounded-3xl border p-4 text-left transition",
-        active ? "border-primary bg-brand-soft" : "border-border bg-card",
+        "flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition",
+        active ? "border-ink bg-mark-soft" : "border-rule bg-paper-3",
       )}
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 text-[17px] font-bold">
+        <div className="flex items-center gap-2 text-[1.0625rem] font-semibold">
           {title}
-          {badge && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">{badge}</span>}
+          {badge && <span className="rounded-[3px] bg-ink px-2 py-0.5 text-[0.625rem] font-semibold text-paper-3">{badge}</span>}
         </div>
-        <div className="mt-0.5 text-[13px] text-muted-foreground">{sub}</div>
+        <div className="mt-0.5 text-[0.8125rem] text-ink-3">{sub}</div>
       </div>
-      <span className={cn("grid size-6 place-items-center rounded-full border-2", active ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
+      <span className={cn("grid size-6 place-items-center rounded-full border-2", active ? "border-ink bg-ink text-paper-3" : "border-rule")}>
         {active && <Check className="size-3.5" strokeWidth={3} />}
       </span>
     </button>

@@ -99,7 +99,7 @@ export function LeaveSheet({
   const open = blocker.status === "blocked";
   return (
     <BottomSheet open={open} onOpenChange={(v) => !v && blocker.reset?.()} title={title} testid="leave-confirm" noHistory>
-      <p className="text-[14px] text-muted-foreground">{desc}</p>
+      <p className="text-sm text-ink-3">{desc}</p>
       {extra && (
         <button
           type="button"
@@ -108,16 +108,16 @@ export function LeaveSheet({
             blocker.reset?.();
             extra.onClick();
           }}
-          className="mt-5 h-12 w-full rounded-2xl bg-primary font-semibold text-primary-foreground"
+          className="mt-5 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3"
         >
           {extra.label}
         </button>
       )}
       <div className={extra ? "mt-2 grid grid-cols-2 gap-2" : "mt-5 grid grid-cols-2 gap-2"}>
-        <button type="button" data-testid="leave-stay" onClick={() => blocker.reset?.()} className={extra ? "h-12 rounded-2xl bg-secondary font-semibold" : "h-12 rounded-2xl bg-primary font-semibold text-primary-foreground"}>
+        <button type="button" data-testid="leave-stay" onClick={() => blocker.reset?.()} className={extra ? "h-12 rounded-2xl bg-paper-2 font-semibold" : "h-12 rounded-2xl bg-ink font-semibold text-paper-3"}>
           {stay}
         </button>
-        <button type="button" data-testid="leave-go" onClick={() => blocker.proceed?.()} className="h-12 rounded-2xl bg-secondary font-semibold text-destructive">
+        <button type="button" data-testid="leave-go" onClick={() => blocker.proceed?.()} className="h-12 rounded-2xl bg-paper-2 font-semibold text-destructive">
           {leave}
         </button>
       </div>

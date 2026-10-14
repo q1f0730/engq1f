@@ -95,7 +95,7 @@ function MePage() {
         <div className="min-w-0 space-y-4 md:space-y-5">
           {/* 11.1 · 顶层只留最常用的 8 项：考试日期、每日新词、复习上限、提醒、发音、外观、数据与备份、关于 */}
           <Panel data-testid="plan-settings">
-            <PanelTitle right={<span className="tnum text-[13px] font-bold text-primary" data-testid="me-exam-days">还有 {daysUntil(day, exam.day)} 天</span>}>考试日期</PanelTitle>
+            <PanelTitle right={<span className="tnum text-[0.8125rem] font-semibold text-ink" data-testid="me-exam-days">还有 {daysUntil(day, exam.day)} 天</span>}>考试日期</PanelTitle>
             <div data-testid="exam-settings">
             <div className="grid grid-cols-3 gap-1.5" data-testid="exam-options">
               {exams.map((e, k) => (
@@ -106,24 +106,24 @@ function MePage() {
                   onClick={() => setSettings({ examDate: k === 0 ? "" : e.day })}
                   className={cn(
                     "rounded-xl px-1 py-2 text-center transition",
-                    examPick === k ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+                    examPick === k ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3 hover:text-ink",
                   )}
                 >
-                  <span className="tnum block text-[14px] font-bold">{fmtDate(e.day)}</span>
-                  <span className="block text-[11px] opacity-80">{e.day.slice(0, 4)} · {e.official ? "官方" : "预估"}</span>
+                  <span className="tnum block text-sm font-semibold">{fmtDate(e.day)}</span>
+                  <span className="block text-[0.6875rem] opacity-80">{e.day.slice(0, 4)} · {e.official ? "官方" : "预估"}</span>
                 </button>
               ))}
               <label
                 className={cn(
                   "relative flex cursor-pointer flex-col items-center justify-center rounded-xl px-1 py-2 text-center transition",
-                  examPick === 2 ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+                  examPick === 2 ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3 hover:text-ink",
                 )}
               >
-                <span className="flex items-center gap-1 text-[14px] font-bold">
+                <span className="flex items-center gap-1 text-sm font-semibold">
                   <CalendarDays className="size-3.5" />
                   {examPick === 2 ? fmtDate(exam.day) : "自定义"}
                 </span>
-                <span className="block text-[11px] opacity-80">{examPick === 2 ? exam.day.slice(0, 4) : "选日期"}</span>
+                <span className="block text-[0.6875rem] opacity-80">{examPick === 2 ? exam.day.slice(0, 4) : "选日期"}</span>
                 <input
                   type="date"
                   data-testid="exam-custom"
@@ -176,35 +176,35 @@ function MePage() {
                     markPaceOk(sum.newLeft > 0 && finishDate(day, sum.newLeft, n) > exam.day ? day : undefined);
                   }}
                   className={cn(
-                    "tnum rounded-xl py-2 text-[14px] font-bold transition",
-                    s.daily === n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+                    "tnum rounded-xl py-2 text-sm font-semibold transition",
+                    s.daily === n ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3 hover:text-ink",
                   )}
                 >
                   {n}
                 </button>
               ))}
             </div>
-            <div className="mt-2 flex items-center gap-3 rounded-2xl bg-secondary/70 p-3" data-testid="me-sprint">
-              <div className="min-w-0 flex-1 text-[13px] leading-snug text-muted-foreground">
+            <div className="mt-2 flex items-center gap-3 rounded-2xl bg-paper-2 p-3" data-testid="me-sprint">
+              <div className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-ink-3">
                 {plan.newLeft === 0 ? (
                   "新词已经全部学过，考前专心复习。"
                 ) : sum.examMode ? (
                   "考前模式：只复习学过的词，不再排新词。"
                 ) : sw ? (
                   <>
-                    <b className="text-[14px] text-foreground">按考试算：改学核心词，每天 {sw.to} 个</b>
+                    <b className="text-sm text-ink">按考试算：改学核心词，每天 {sw.to} 个</b>
                     <br />
                     全部词每天要 {sw.need} 个才学得完{sw.to < sw.target ? `；核心词先每天 ${sw.to} 个，适应了再加到 ${sw.target} 个` : `；核心词${fmtDate(sw.finish)}学完`}
                   </>
                 ) : plan.tooMany ? (
                   <>
-                    <b className="text-[14px] text-foreground">每天 100 个，考前能学 {capReach(day, exam.day, plan.newLeft)} 个</b>
+                    <b className="text-sm text-ink">每天 100 个，考前能学 {capReach(day, exam.day, plan.newLeft)} 个</b>
                     <br />
                     剩下的 {plan.newLeft - capReach(day, exam.day, plan.newLeft)} 个考前来不及
                   </>
                 ) : (
                   <>
-                    <b className="text-[14px] text-foreground">按考试算：每天 {plan.daily} 个</b>
+                    <b className="text-sm text-ink">按考试算：每天 {plan.daily} 个</b>
                     <br />
                     {fmtDate(plan.finish)}学完剩下 {plan.newLeft} 个{plan.spare ? `，考前留 ${plan.spare} 天复习` : ""}
                   </>
@@ -219,7 +219,7 @@ function MePage() {
                     setSettings({ book: "core", daily: sw.to });
                     toast.success(`改学核心词，每天 ${sw.to} 个`);
                   }}
-                  className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-[13px] font-bold text-primary-foreground"
+                  className="shrink-0 rounded-lg bg-ink px-3.5 py-2 text-[0.8125rem] font-semibold text-paper-3"
                 >
                   改学核心词
                 </button>
@@ -233,7 +233,7 @@ function MePage() {
                     setSettings({ daily: plan.daily });
                     toast.success(`每日新词改为 ${plan.daily}`);
                   }}
-                  className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-[13px] font-bold text-primary-foreground disabled:bg-know-soft disabled:text-know"
+                  className="shrink-0 rounded-lg bg-ink px-3.5 py-2 text-[0.8125rem] font-semibold text-paper-3 disabled:bg-know-soft disabled:text-know"
                 >
                   {s.daily === plan.daily ? "已应用" : "一键应用"}
                 </button>
@@ -248,15 +248,15 @@ function MePage() {
                   data-testid={`cap-${n}`}
                   onClick={() => setSettings({ reviewCap: n })}
                   className={cn(
-                    "tnum rounded-xl py-2 text-[14px] font-bold transition",
-                    (s.reviewCap ?? 0) === n ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+                    "tnum rounded-xl py-2 text-sm font-semibold transition",
+                    (s.reviewCap ?? 0) === n ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3 hover:text-ink",
                   )}
                 >
                   {n === 0 ? "不限" : n}
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-[12px] text-muted-foreground">
+            <p className="mt-2 text-xs text-ink-3">
               今天要复习 {sum.due} 个{sum.deferred > 0 ? `，另有 ${sum.deferred} 个顺延` : ""}。上限只是把超出的词往后排，不会丢。
             </p>
           </Panel>
@@ -296,7 +296,7 @@ function MePage() {
             <PanelTitle
               right={
                 reg.list.length > 1 && profile ? (
-                  <span className="max-w-[45%] truncate rounded-full bg-brand-soft px-2.5 py-1 text-[12px] font-bold text-primary" data-testid="me-profile">
+                  <span className="max-w-[45%] truncate rounded-lg bg-mark-soft px-2.5 py-1 text-xs font-semibold text-ink" data-testid="me-profile">
                     {profile.name}
                   </span>
                 ) : undefined
@@ -305,10 +305,10 @@ function MePage() {
               数据与备份
             </PanelTitle>
             {/* 11.1 · 只说当前这一种状态，一句话，不做成像按钮的 chip */}
-            <p className="-mt-1 mb-3 flex items-start gap-2 text-[13px] leading-snug text-muted-foreground" data-testid="data-status">
+            <p className="-mt-1 mb-3 flex items-start gap-2 text-[0.8125rem] leading-snug text-ink-3" data-testid="data-status">
               {persist === "persisted" ? <ShieldCheck className="mt-px size-4 shrink-0 text-know" /> : <ShieldAlert className="mt-px size-4 shrink-0 text-vague" />}
               <span>
-                <span data-testid="last-backup" className={cn("font-semibold", backupLine ? "text-foreground" : "text-vague")}>
+                <span data-testid="last-backup" className={cn("font-semibold", backupLine ? "text-ink" : "text-vague")}>
                   {backupLine ? `上次备份：${backupLine}` : "还没备份过"}
                 </span>
                 <span data-testid="persist-status" data-state={persist ?? "pending"}>
@@ -333,26 +333,26 @@ function MePage() {
             <Link
               to="/data"
               data-testid="go-data"
-              className="mt-2 flex items-center gap-3 rounded-2xl bg-brand-soft px-4 py-3 text-left transition hover:brightness-[0.98]"
+              className="mt-2 flex items-center gap-3 rounded-2xl bg-mark-soft px-4 py-3 text-left transition hover:brightness-[0.98]"
             >
-              <Database className="size-5 shrink-0 text-primary" />
+              <Database className="size-5 shrink-0 text-ink" />
               <span className="min-w-0 flex-1">
-                <b className="block text-[14px]">数据中心</b>
-                <span className="block truncate text-[12px] text-muted-foreground">快照回滚 · 合并两台设备 · 加密备份 · 学习档案</span>
+                <b className="block text-sm">数据中心</b>
+                <span className="block truncate text-xs text-ink-3">快照回滚 · 合并两台设备 · 加密备份 · 学习档案</span>
               </span>
-              <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+              <ChevronRight className="size-5 shrink-0 text-ink-3" />
             </Link>
           </Panel>
 
           {/* 11.2 · 「高级」是二级页（不再就地展开成一长串）；算法开关在三级页「算法实验室」 */}
           <Panel className="p-0" data-testid="adv">
             <Link to="/advanced" data-testid="adv-toggle" className="flex w-full items-center gap-3 px-5 py-4 text-left">
-              <SlidersHorizontal className="size-5 shrink-0 text-muted-foreground" />
+              <SlidersHorizontal className="size-5 shrink-0 text-ink-3" />
               <span className="min-w-0 flex-1">
-                <b className="block text-[15px]">高级</b>
-                <span className="block truncate text-[12px] text-muted-foreground">词书与顺序 · 打卡规则 · 题型 · 字号与无障碍</span>
+                <b className="block text-[0.9375rem]">高级</b>
+                <span className="block truncate text-xs text-ink-3">词书与顺序 · 打卡规则 · 题型 · 字号与无障碍</span>
               </span>
-              <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+              <ChevronRight className="size-5 shrink-0 text-ink-3" />
             </Link>
           </Panel>
 
@@ -362,12 +362,12 @@ function MePage() {
             <div className="flex items-center gap-3">
               <Logo className="size-11" />
               <div>
-                <div className="text-[15px] font-bold">四级单词打卡</div>
-                <div className="text-[12px] text-muted-foreground">免费 · 无广告 · 离线可用 · 作者 Q1f730</div>
-                <div className="tnum mt-0.5 text-[12px] font-semibold text-muted-foreground" data-testid="app-version">版本 v{APP_VERSION}</div>
+                <div className="text-[0.9375rem] font-semibold">四级单词打卡</div>
+                <div className="text-xs text-ink-3">免费 · 无广告 · 离线可用 · 作者 Q1f730</div>
+                <div className="tnum mt-0.5 text-xs font-semibold text-ink-3" data-testid="app-version">版本 v{APP_VERSION}</div>
               </div>
             </div>
-            <details className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+            <details className="mt-3 text-xs leading-relaxed text-ink-3">
               <summary className="cursor-pointer font-semibold">数据来源与开源协议</summary>
               <div className="mt-2 space-y-1.5">
                 <p>词表与释义：KyleBing/english-vocabulary（BSD-3-Clause）</p>
@@ -384,9 +384,9 @@ function MePage() {
       <ShortcutsSheet open={help} onOpenChange={setHelp} />
       <ImportFlow text={pending} onDone={() => setPending(null)} />
       <BottomSheet open={confirm} onOpenChange={setConfirm} title="清空所有学习记录？" testid="reset-confirm">
-        <p className="text-[14px] text-muted-foreground">学习进度、打卡、生词本都会被删除，且无法恢复。建议先导出备份。</p>
+        <p className="text-sm text-ink-3">学习进度、打卡、生词本都会被删除，且无法恢复。建议先导出备份。</p>
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-2xl bg-secondary font-semibold">
+          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-2xl bg-paper-2 font-semibold">
             取消
           </button>
           <button

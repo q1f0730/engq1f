@@ -19,10 +19,10 @@ const WordExtra = lazy(() => import("./word-extra"));
 
 /** 11.1 · 单词标题按字数缩字号：360 宽下最长的四级词（15 个字母）也一行放下，不在词中间断开 */
 export function titleSize(w: string): string {
-  if (w.length <= 9) return "text-[38px]";
-  if (w.length <= 11) return "text-[32px]";
-  if (w.length <= 13) return "text-[28px]";
-  return "text-[25px]";
+  if (w.length <= 9) return "text-[2.375rem]";
+  if (w.length <= 11) return "text-[2rem]";
+  if (w.length <= 13) return "text-[1.75rem]";
+  return "text-[1.5625rem]";
 }
 
 /** 11.1 · 截断的美音音标（administration → /əd/）：比英音短很多就用英音 */
@@ -56,7 +56,7 @@ export function SpeakButton({ word, accent, className, label }: { word: string; 
       }}
       aria-label={label ?? "播放发音"}
       className={cn(
-        "grid size-9 place-items-center rounded-full bg-brand-soft text-primary transition-transform active:scale-90",
+        "grid size-9 place-items-center rounded-full bg-mark-soft text-ink transition-transform active:scale-90",
         className,
       )}
     >
@@ -69,9 +69,9 @@ export function Meanings({ word, size = "md" }: { word: Word; size?: "md" | "lg"
   return (
     <ul className="space-y-2" data-testid="meanings">
       {word.t.map(([pos, m], k) => (
-        <li key={k} className={cn("flex gap-2.5 leading-relaxed", size === "lg" ? "text-[17px]" : "text-[15px]")}>
+        <li key={k} className={cn("flex gap-2.5 leading-relaxed", size === "lg" ? "text-[1.0625rem]" : "text-[0.9375rem]")}>
           {pos && (
-            <span className="mt-[3px] h-fit shrink-0 rounded-md bg-secondary px-1.5 py-px text-[12px] font-semibold italic text-muted-foreground">
+            <span className="mt-[3px] h-fit shrink-0 rounded-md bg-paper-2 px-1.5 py-px text-xs font-semibold italic text-ink-3">
               {posLabel(pos)}
             </span>
           )}
@@ -86,12 +86,12 @@ export function Phrases({ word, max = 6 }: { word: Word; max?: number }) {
   if (!word.ph?.length) return null;
   return (
     <div>
-      <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">常用短语</div>
+      <div className="mb-2 text-xs font-semibold tracking-wider text-ink-3">常用短语</div>
       <ul className="space-y-1.5">
         {word.ph.slice(0, max).map(([a, b]) => (
-          <li key={a} className="flex flex-wrap items-baseline gap-x-2 text-[14px] leading-snug">
-            <span className="font-semibold text-foreground">{a}</span>
-            <span className="text-muted-foreground">{b}</span>
+          <li key={a} className="flex flex-wrap items-baseline gap-x-2 text-sm leading-snug">
+            <span className="font-semibold text-ink">{a}</span>
+            <span className="text-ink-3">{b}</span>
           </li>
         ))}
       </ul>
@@ -107,7 +107,7 @@ function highlight(sentence: string, word: string) {
   return (
     <>
       {sentence.slice(0, m.index)}
-      <b className="font-semibold text-primary">{m[0]}</b>
+      <b className="font-semibold text-ink">{m[0]}</b>
       {sentence.slice(m.index + m[0].length)}
     </>
   );
@@ -119,11 +119,11 @@ export function Examples({ word, enabled = true }: { word: Word; enabled?: boole
   if (!list.length) return null;
   return (
     <div data-testid="examples">
-      <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">例句</div>
+      <div className="mb-2 text-xs font-semibold tracking-wider text-ink-3">例句</div>
       <ul className="space-y-2">
         {list.map((s) => (
           <li key={s} className="flex items-start gap-2">
-            <span className="min-w-0 flex-1 border-l-2 border-primary/30 pl-3 text-[14px] leading-relaxed text-foreground/85" data-testid="example">
+            <span className="min-w-0 flex-1 border-l-2 border-ink pl-3 text-sm leading-relaxed text-ink" data-testid="example">
               {highlight(s, word.w)}
             </span>
             <button
@@ -135,7 +135,7 @@ export function Examples({ word, enabled = true }: { word: Word; enabled?: boole
                 e.stopPropagation();
                 void sayEnglish(s, getState().settings.accent);
               }}
-              className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft text-primary transition active:scale-90"
+              className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-mark-soft text-ink transition active:scale-90"
             >
               <Play className="ml-px size-3 fill-current" />
             </button>
@@ -163,7 +163,7 @@ export function Confusables({
   if (!list.length) return null;
   return (
     <div data-testid="confusables">
-      <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">形近词 · 别认混</div>
+      <div className="mb-2 text-xs font-semibold tracking-wider text-ink-3">形近词 · 别认混</div>
       <ul className="space-y-1.5">
         {list.map((c) => (
           <li key={c.w}>
@@ -175,12 +175,12 @@ export function Confusables({
                 if (onOpen) onOpen(c);
                 else speak(c.w, accent);
               }}
-              className="flex w-full items-baseline gap-2.5 rounded-xl bg-secondary/70 px-3 py-2 text-left transition hover:bg-secondary active:scale-[0.99]"
+              className="flex w-full items-baseline gap-2.5 rounded-xl bg-paper-2 px-3 py-2 text-left transition hover:bg-paper-2 active:scale-[0.99]"
             >
-              <span className="font-display shrink-0 text-[15px] font-bold">
+              <span className="font-display shrink-0 text-[0.9375rem] font-semibold">
                 <DiffWord a={word.w} b={c.w} />
               </span>
-              <span className="min-w-0 truncate text-[13px] text-muted-foreground">{shortMeaning(c, 1)}</span>
+              <span className="min-w-0 truncate text-[0.8125rem] text-ink-3">{shortMeaning(c, 1)}</span>
             </button>
           </li>
         ))}
@@ -199,7 +199,7 @@ function DiffWord({ a, b }: { a: string; b: string }) {
   return (
     <>
       {b.slice(0, pre)}
-      {mid && <span className="text-primary underline decoration-2 underline-offset-2">{mid}</span>}
+      {mid && <span className="text-ink underline decoration-2 underline-offset-2">{mid}</span>}
       {b.slice(b.length - suf)}
     </>
   );
@@ -208,20 +208,20 @@ function DiffWord({ a, b }: { a: string; b: string }) {
 export function StateBadge({ card }: { card: Card | undefined }) {
   if (isLeech(card))
     return (
-      <span className="rounded-full bg-forget px-2 py-0.5 text-[11px] font-semibold text-white" data-testid="leech-badge">
+      <span className="rounded-[3px] bg-forget px-2 py-0.5 text-[0.6875rem] font-semibold text-white" data-testid="leech-badge">
         顽固
       </span>
     );
   const s = !card ? "new" : card.k ? "killed" : card.st;
   const map = {
-    new: ["未学", "bg-secondary text-muted-foreground"],
+    new: ["未学", "bg-paper-2 text-ink-3"],
     learning: ["学习中", "bg-forget-soft text-forget"],
     review: ["复习中", "bg-vague-soft text-vague"],
     mastered: ["已掌握", "bg-know-soft text-know"],
     killed: ["已斩", "bg-know-soft text-know"],
   } as const;
   const [label, cls] = map[s];
-  return <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", cls)}>{label}</span>;
+  return <span className={cn("rounded-[3px] px-2 py-0.5 text-[0.6875rem] font-semibold", cls)}>{label}</span>;
 }
 
 function fmtDay(d: string) {
@@ -252,35 +252,35 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
             type="button"
             data-testid="sheet-back"
             onClick={() => setTrail((t) => t.slice(0, -1))}
-            className="-ml-1 mb-1 flex items-center gap-0.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground"
+            className="-ml-1 mb-1 flex items-center gap-0.5 text-[0.8125rem] font-semibold text-ink-3 hover:text-ink"
           >
             <ChevronLeft className="size-4" /> 返回 {trail.length > 1 ? trail[trail.length - 2].w : base?.w}
           </button>
         )}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className={cn("font-display whitespace-nowrap font-extrabold leading-tight tracking-tight", titleSize(word.w))} data-testid="sheet-word">
+            <h2 className={cn("font-display whitespace-nowrap font-semibold leading-tight tracking-[-0.015em]", titleSize(word.w))} data-testid="sheet-word">
               {word.w}
             </h2>
-            <div className="mt-1 flex flex-wrap items-center gap-3 text-[14px] text-muted-foreground">
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-ink-3">
               {word.p && ipaOf(word, "us") === ipaOf(word, "uk") && (
                 // 11.2 · 美音、英音音标一样（或美音退回英音）：音标只写一次，两种发音照样能点
                 <span className="flex items-center gap-2" data-testid="sheet-ipa-one">
                   <span className="font-ipa">/{ipaOf(word, "us")}/</span>
-                  <button className="flex items-center gap-0.5 hover:text-foreground" onClick={() => speak(word.w, "us")} aria-label="美音">
+                  <button className="flex items-center gap-0.5 hover:text-ink" onClick={() => speak(word.w, "us")} aria-label="美音">
                     美 <Volume2 className="size-3.5" />
                   </button>
-                  <button className="flex items-center gap-0.5 hover:text-foreground" onClick={() => speak(word.w, "uk")} aria-label="英音">
+                  <button className="flex items-center gap-0.5 hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label="英音">
                     英 <Volume2 className="size-3.5" />
                   </button>
                 </span>
               )}
               {word.p && ipaOf(word, "us") !== ipaOf(word, "uk") && (
                 <>
-                  <button className="flex items-center gap-1 hover:text-foreground" onClick={() => speak(word.w, "us")}>
+                  <button className="flex items-center gap-1 hover:text-ink" onClick={() => speak(word.w, "us")}>
                     美 <span className="font-ipa">/{ipaOf(word, "us")}/</span> <Volume2 className="size-3.5" />
                   </button>
-                  <button className="flex items-center gap-1 hover:text-foreground" onClick={() => speak(word.w, "uk")}>
+                  <button className="flex items-center gap-1 hover:text-ink" onClick={() => speak(word.w, "uk")}>
                     英 <span className="font-ipa">/{ipaOf(word, "uk")}/</span> <Volume2 className="size-3.5" />
                   </button>
                 </>
@@ -310,8 +310,8 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
           <Examples word={word} enabled={open} />
         </div>
 
-        <div className="mt-6 rounded-2xl bg-secondary/70 p-4">
-          <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">学习记录</div>
+        <div className="mt-6 rounded-2xl bg-paper-2 p-4">
+          <div className="mb-2 text-xs font-semibold tracking-wider text-ink-3">学习记录</div>
           {card ? (
             <dl className="grid grid-cols-3 gap-y-3 text-center">
               <Stat label="首次学习" value={card.f.slice(5).replace("-", "/")} />
@@ -322,7 +322,7 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
               <Stat label="下次复习" value={card.k ? "不再复习" : fmtDay(card.d)} />
             </dl>
           ) : (
-            <p className="text-sm text-muted-foreground">还没学过这个词。</p>
+            <p className="text-sm text-ink-3">还没学过这个词。</p>
           )}
         </div>
 
@@ -337,22 +337,22 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
             }}
             data-testid="sheet-star"
             className={cn(
-              "flex h-11 items-center justify-center gap-1.5 rounded-2xl text-[13px] font-semibold",
-              starred ? "bg-vague-soft text-vague" : "bg-secondary",
+              "flex h-11 items-center justify-center gap-1.5 rounded-2xl text-[0.8125rem] font-semibold",
+              starred ? "bg-vague-soft text-vague" : "bg-paper-2",
             )}
           >
             <Star className={cn("size-4", starred && "fill-current")} />
             {starred ? "已收藏" : "生词本"}
           </button>
           {card?.k ? (
-            <button onClick={() => unkillWord(word.w)} className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-secondary text-[13px] font-semibold">
+            <button onClick={() => unkillWord(word.w)} className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold">
               <Undo2 className="size-4" /> 取消斩
             </button>
           ) : (
             <button
               onClick={() => killWord(word.w)}
               data-testid="sheet-kill"
-              className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-know-soft text-[13px] font-semibold text-know"
+              className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-know-soft text-[0.8125rem] font-semibold text-know"
             >
               <Swords className="size-4" /> 斩
             </button>
@@ -360,7 +360,7 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
           <button
             onClick={() => resetWord(word.w)}
             disabled={!card}
-            className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-secondary text-[13px] font-semibold disabled:opacity-40"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold disabled:opacity-40"
           >
             重新学
           </button>
@@ -369,13 +369,13 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
           type="button"
           data-testid="sheet-list"
           onClick={() => setPicker(true)}
-          className="mt-2 flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-secondary text-[13px] font-semibold"
+          className="mt-2 flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold"
         >
           <ListPlus className="size-4" />
           加入词单
           {(() => {
             const n = (st.lists ?? []).filter((l) => l.words.includes(word.w)).length;
-            return n ? <span className="text-muted-foreground" data-testid="sheet-list-n">· 已在 {n} 个</span> : null;
+            return n ? <span className="text-ink-3" data-testid="sheet-list-n">· 已在 {n} 个</span> : null;
           })()}
         </button>
         <ListPicker open={picker} onOpenChange={setPicker} words={[word.w]} />
@@ -391,22 +391,22 @@ function TrackBlock({ w, log, learned }: { w: string; log: RevEntry[]; learned: 
   if (!learned && !entries.length) return null;
   const ok = entries.filter((e) => e[2] >= 2).length;
   return (
-    <div className="mt-3 rounded-2xl bg-secondary/70 p-4" data-testid="word-track">
+    <div className="mt-3 rounded-2xl bg-paper-2 p-4" data-testid="word-track">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-[12px] font-bold tracking-wider text-muted-foreground">记忆轨迹</span>
+        <span className="text-xs font-semibold tracking-wider text-ink-3">记忆轨迹</span>
         {entries.length > 0 && (
-          <span className="tnum text-[12px] text-muted-foreground" data-testid="track-sum">
+          <span className="tnum text-xs text-ink-3" data-testid="track-sum">
             {entries.length} 次作答 · 记得 {ok} 次
           </span>
         )}
       </div>
       {entries.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground" data-testid="track-empty">这个词还没有作答记录（v6 起开始记录）。</p>
+        <p className="text-[0.8125rem] text-ink-3" data-testid="track-empty">这个词还没有作答记录（v6 起开始记录）。</p>
       ) : (
         <>
           <WordTrack entries={entries} max={all ? entries.length : 6} testid="track-list" />
           {entries.length > 6 && (
-            <button type="button" data-testid="track-all" onClick={() => setAll((v) => !v)} className="mt-2 text-[12px] font-semibold text-primary">
+            <button type="button" data-testid="track-all" onClick={() => setAll((v) => !v)} className="mt-2 text-xs font-semibold text-ink">
               {all ? "收起" : `查看全部 ${entries.length} 次`}
             </button>
           )}
@@ -419,8 +419,8 @@ function TrackBlock({ w, log, learned }: { w: string; log: RevEntry[]; learned: 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[11px] text-muted-foreground">{label}</dt>
-      <dd className="tnum mt-0.5 text-[15px] font-bold">{value}</dd>
+      <dt className="text-[0.6875rem] text-ink-3">{label}</dt>
+      <dd className="tnum mt-0.5 text-[0.9375rem] font-semibold">{value}</dd>
     </div>
   );
 }

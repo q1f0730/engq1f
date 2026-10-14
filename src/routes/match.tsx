@@ -17,7 +17,7 @@ export const Route = createFileRoute("/match")({ component: MatchPage });
 
 function MatchPage() {
   const { index, error } = useWords();
-  if (error) return <div className="p-8 text-center text-sm text-muted-foreground">{error}</div>;
+  if (error) return <div className="p-8 text-center text-sm text-ink-3">{error}</div>;
   if (!index) return <Spinner />;
   return <MatchGame index={index} />;
 }
@@ -151,29 +151,29 @@ function MatchGame({ index }: { index: WordIndex }) {
       {phase === "run" && (
         <>
           <div className="flex shrink-0 items-center gap-2 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+            <button type="button" onClick={quit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
               <X className="size-5" />
             </button>
             <div className="flex-1">
-              <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                <div className={cn("h-full rounded-full transition-[width] duration-200", left < 10000 ? "bg-forget" : "bg-primary")} style={{ width: `${(left / MATCH_MS) * 100}%` }} />
+              <div className="h-2 overflow-hidden rounded-full bg-paper-2">
+                <div className={cn("h-full rounded-full transition-[width] duration-200", left < 10000 ? "bg-forget" : "bg-ink")} style={{ width: `${(left / MATCH_MS) * 100}%` }} />
               </div>
             </div>
-            <span className={cn("tnum flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-bold", left < 10000 ? "bg-forget-soft text-forget" : "bg-secondary")} data-testid="match-timer">
+            <span className={cn("tnum flex items-center gap-1 rounded-lg px-2.5 py-1 text-[0.8125rem] font-semibold", left < 10000 ? "bg-forget-soft text-forget" : "bg-paper-2")} data-testid="match-timer">
               <Timer className="size-3.5" />
               {fmtClock(left)}
             </span>
           </div>
           <div className="mt-3 flex shrink-0 items-end justify-between px-1">
             <div>
-              <div className="text-[12px] font-semibold text-muted-foreground">得分</div>
-              <div className="tnum font-display text-[34px] font-extrabold leading-none tracking-tight" data-testid="match-score" data-score={score.score}>
+              <div className="text-xs font-semibold text-ink-3">得分</div>
+              <div className="tnum font-display text-[2.125rem] font-semibold leading-none tracking-[-0.015em]" data-testid="match-score" data-score={score.score}>
                 {score.score}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1 text-[12px] font-semibold text-muted-foreground">
+            <div className="flex flex-col items-end gap-1 text-xs font-semibold text-ink-3">
               {score.combo >= 2 && (
-                <span key={score.combo} className="pop rounded-full bg-vague-soft px-2.5 py-0.5 font-bold text-vague" data-testid="match-combo">
+                <span key={score.combo} className="pop rounded-lg bg-vague-soft px-2.5 py-0.5 font-semibold text-vague" data-testid="match-combo">
                   连对 ×{score.combo} · +{MATCH_POINT + comboBonus(score.combo)}
                 </span>
               )}
@@ -198,7 +198,7 @@ function MatchGame({ index }: { index: WordIndex }) {
               ))}
             </div>
           </div>
-          <p className="shrink-0 pb-4 text-center text-[12px] text-muted-foreground">点英文，再点它的中文意思</p>
+          <p className="shrink-0 pb-4 text-center text-xs text-ink-3">点英文，再点它的中文意思</p>
         </>
       )}
       {phase === "done" && (
@@ -244,9 +244,9 @@ function Tile({ w, state, onClick, children, en, testid }: { w: string; state: T
       aria-pressed={state === "sel"}
       className={cn(
         "flex h-[68px] items-center justify-center rounded-2xl border-2 px-2 text-center transition-all duration-200",
-        en ? "font-display text-[17px] font-bold" : "text-[15px] font-semibold leading-tight",
-        state === "idle" && "border-border/80 bg-card shadow-sm hover:border-primary/40 active:scale-[0.97]",
-        state === "sel" && "-translate-y-0.5 border-primary bg-brand-soft text-primary shadow-md shadow-primary/15",
+        en ? "font-display text-[1.0625rem] font-semibold" : "text-[0.9375rem] font-semibold leading-tight",
+        state === "idle" && "border-rule bg-paper-3 hover:border-ink active:scale-[0.97]",
+        state === "sel" && "-translate-y-0.5 border-ink bg-mark-soft text-ink shadow-primary/15",
         state === "ok" && "scale-95 border-know bg-know-soft text-know",
         state === "bad" && "shake border-forget bg-forget-soft text-forget",
         state === "gone" && "pointer-events-none scale-90 border-transparent bg-transparent opacity-0",

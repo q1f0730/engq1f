@@ -12,7 +12,7 @@ function Advanced() {
   const [help, setHelp] = useState(false);
   return (
     <div data-testid="advanced-page">
-      <Link to="/me" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground" data-testid="advanced-back">
+      <Link to="/me" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[0.8125rem] font-semibold text-ink-3 hover:text-ink" data-testid="advanced-back">
         <ChevronLeft className="size-4" /> 我的
       </Link>
       <PageHeader title="高级" sub="不常用的设置，默认值就是推荐值" />

@@ -72,13 +72,13 @@ export function HourBars({ hours, peak, testid }: { hours: number[]; peak: numbe
             <div
               data-hour={h}
               data-value={v}
-              className={cn("w-full rounded-t-[4px] rounded-b-[2px]", h === peak ? "bg-primary" : v ? "bg-primary/30" : "bg-secondary")}
+              className={cn("w-full rounded-t-[4px] rounded-b-[2px]", h === peak ? "bg-ink" : v ? "bg-ink" : "bg-paper-2")}
               style={{ height: `${v ? Math.max(6, (v / max) * 100) : 3}%` }}
             />
           </div>
         ))}
       </div>
-      <div className="relative mt-1.5 h-4 text-[11px] text-muted-foreground">
+      <div className="relative mt-1.5 h-4 text-[0.6875rem] text-ink-3">
         {[0, 6, 12, 18, 24].map((h) => (
           <span key={h} className="absolute top-0" style={h === 0 ? { left: 0 } : h === 24 ? { right: 0 } : { left: `${(h / 24) * 100}%`, transform: "translateX(-50%)" }}>
             {h === 0 ? "0 点" : h}
@@ -97,13 +97,13 @@ export function IntervalBars({ buckets, total, testid }: { buckets: Bucket[]; to
     <div className="space-y-2.5" data-testid={testid}>
       {buckets.map((b, k) => (
         <div key={b.key} className="flex items-center gap-3" data-testid={`bucket-${b.key}`} data-value={b.count}>
-          <span className="w-[54px] shrink-0 text-[12px] font-semibold text-muted-foreground">{b.label}</span>
-          <div className="h-6 min-w-0 flex-1 overflow-hidden rounded-lg bg-secondary">
+          <span className="w-[54px] shrink-0 text-xs font-semibold text-ink-3">{b.label}</span>
+          <div className="h-6 min-w-0 flex-1 overflow-hidden rounded-lg bg-paper-2">
             <div className={cn("h-full rounded-lg transition-all", tones[k])} style={{ width: `${b.count ? Math.max(3, (b.count / max) * 100) : 0}%` }} />
           </div>
-          <span className="tnum w-[64px] shrink-0 text-right text-[13px] font-bold">
+          <span className="tnum w-[64px] shrink-0 text-right text-[0.8125rem] font-semibold">
             {b.count}
-            <span className="ml-1 text-[11px] font-medium text-muted-foreground">{total ? Math.round((b.count / total) * 100) : 0}%</span>
+            <span className="ml-1 text-[0.6875rem] font-medium text-ink-3">{total ? Math.round((b.count / total) * 100) : 0}%</span>
           </span>
         </div>
       ))}
@@ -148,9 +148,9 @@ export function Forecast30({ data, testid }: { data: ForecastDay[]; testid?: str
           {md(last.day)}
         </text>
       </svg>
-      <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-muted-foreground">
+      <div className="mt-2 flex flex-wrap gap-4 text-xs text-ink-3">
         <span className="flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-sm bg-primary/40" />
+          <i className="inline-block size-2.5 rounded-sm bg-ink" />
           每日复习量
         </span>
         <span className="flex items-center gap-1.5">
@@ -192,10 +192,10 @@ export function MonthCalendar({
   return (
     <div data-testid="month-cal" data-month={ym}>
       <div className="mb-2 flex items-center justify-between">
-        <button type="button" onClick={() => onShift(-1)} data-testid="month-prev" aria-label="上个月" className="grid size-9 place-items-center rounded-full bg-secondary text-muted-foreground hover:text-foreground">
+        <button type="button" onClick={() => onShift(-1)} data-testid="month-prev" aria-label="上个月" className="grid size-9 place-items-center rounded-full bg-paper-2 text-ink-3 hover:text-ink">
           <ChevronLeft className="size-4" />
         </button>
-        <div className="text-[15px] font-bold" data-testid="month-title">
+        <div className="text-[0.9375rem] font-semibold" data-testid="month-title">
           {y} 年 {m} 月
         </div>
         <button
@@ -204,12 +204,12 @@ export function MonthCalendar({
           disabled={!canNext}
           data-testid="month-next"
           aria-label="下个月"
-          className="grid size-9 place-items-center rounded-full bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-35"
+          className="grid size-9 place-items-center rounded-full bg-paper-2 text-ink-3 hover:text-ink disabled:opacity-35"
         >
           <ChevronRight className="size-4" />
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-muted-foreground">
+      <div className="grid grid-cols-7 gap-1 text-center text-[0.6875rem] text-ink-3">
         {["一", "二", "三", "四", "五", "六", "日"].map((d) => (
           <div key={d} className="py-1">
             {d}
@@ -239,15 +239,15 @@ export function MonthCalendar({
                   aria-label={`${Number(d.slice(5, 7))}月${Number(d.slice(8))}日${checked ? (isPatch ? " 补卡" : " 已打卡") : ""}${v ? ` ${v} 词` : ""}`}
                   className={cn(
                     "flex aspect-square min-w-0 flex-col items-center justify-center rounded-xl transition enabled:active:scale-95",
-                    isPatch ? "bg-primary/60 text-primary-foreground" : checked ? "bg-primary text-primary-foreground" : v ? "bg-brand-soft text-primary" : "bg-secondary/60",
+                    isPatch ? "bg-ink text-paper-3" : checked ? "bg-ink text-paper-3" : v ? "bg-mark-soft text-ink" : "bg-paper-2",
                     isRest && "bg-know-soft",
                     future && "opacity-40",
-                    onPick && !future && "enabled:hover:ring-2 enabled:hover:ring-primary/40",
+                    onPick && !future && "enabled:hover:ring-2 enabled:hover:ring-ink",
                     d === today && "ring-2 ring-foreground/70 ring-offset-1 ring-offset-card",
                   )}
                 >
-                  <span className={cn("tnum text-[13px] font-bold leading-none", !checked && !v && (isRest ? "text-know" : "text-muted-foreground"))}>{Number(d.slice(8))}</span>
-                  <span className={cn("tnum mt-0.5 h-3 text-[9.5px] font-semibold leading-3", checked ? "text-primary-foreground/85" : isRest ? "text-know" : "text-primary/80")}>
+                  <span className={cn("tnum text-[0.8125rem] font-semibold leading-none", !checked && !v && (isRest ? "text-know" : "text-ink-3"))}>{Number(d.slice(8))}</span>
+                  <span className={cn("tnum mt-0.5 h-3 text-[0.5938rem] font-semibold leading-3", checked ? "text-paper-3" : isRest ? "text-know" : "text-ink")}>
                     {v ? v : isPatch ? "补" : isRest ? "休" : ""}
                   </span>
                 </button>
@@ -271,17 +271,17 @@ export function RevList({ entries, onOpen }: { entries: RevEntry[]; onOpen: (w: 
         lastDay = d;
         return (
           <div key={`${e[1]}-${k}`}>
-            {head && <div className="pb-1 pt-3 text-[11px] font-bold tracking-wider text-muted-foreground first:pt-0">{d.replace(/-/g, "/")}</div>}
+            {head && <div className="pb-1 pt-3 text-[0.6875rem] font-semibold tracking-wider text-ink-3 first:pt-0">{d.replace(/-/g, "/")}</div>}
             <button
               type="button"
               onClick={() => onOpen(e[0])}
               data-testid="revlog-row"
               data-word={e[0]}
-              className="flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left hover:bg-secondary/70"
+              className="flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left hover:bg-paper-2"
             >
-              <span className="tnum w-11 shrink-0 text-[12px] text-muted-foreground">{hm(e[1])}</span>
-              <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{e[0]}</span>
-              <span className="shrink-0 text-[11px] text-muted-foreground">{kindOf(e)}</span>
+              <span className="tnum w-11 shrink-0 text-xs text-ink-3">{hm(e[1])}</span>
+              <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{e[0]}</span>
+              <span className="shrink-0 text-[0.6875rem] text-ink-3">{kindOf(e)}</span>
               <GradeChip g={e[2]} />
             </button>
           </div>
@@ -317,18 +317,18 @@ export function BadgeGrid({ ctx, unlocked }: { ctx: BadgeCtx; unlocked: Record<s
             key={b.id}
             data-testid={`badge-${b.id}`}
             data-unlocked={on ? 1 : 0}
-            className={cn("flex min-w-0 flex-col items-center rounded-3xl border px-2 pb-3 pt-3.5 text-center", on ? "border-primary/25 bg-brand-soft/60" : "border-border/70 bg-card")}
+            className={cn("flex min-w-0 flex-col items-center rounded-2xl border px-2 pb-3 pt-3.5 text-center", on ? "border-ink bg-mark-soft" : "border-rule bg-paper-3")}
           >
             {on ? (
               <div className="badge-medal grid size-[60px] place-items-center rounded-full text-white">{BADGE_ICON[b.id]}</div>
             ) : (
-              <Ring value={p.pct} size={60} stroke={4} className="text-primary/70">
-                <span className="grid size-[44px] place-items-center rounded-full bg-secondary text-muted-foreground/60">{BADGE_ICON[b.id]}</span>
+              <Ring value={p.pct} size={60} stroke={4} className="text-ink">
+                <span className="grid size-[44px] place-items-center rounded-full bg-paper-2 text-ink-3">{BADGE_ICON[b.id]}</span>
               </Ring>
             )}
-            <div className={cn("mt-2 truncate text-[13px] font-bold", !on && "text-muted-foreground")}>{b.name}</div>
-            <div className="mt-0.5 line-clamp-2 min-h-[30px] text-[11px] leading-[15px] text-muted-foreground">{b.desc}</div>
-            <div className={cn("tnum mt-1 text-[10.5px] font-semibold", on ? "text-primary" : "text-muted-foreground")}>
+            <div className={cn("mt-2 truncate text-[0.8125rem] font-semibold", !on && "text-ink-3")}>{b.name}</div>
+            <div className="mt-0.5 line-clamp-2 min-h-[30px] text-[0.6875rem] leading-[0.9375rem] text-ink-3">{b.desc}</div>
+            <div className={cn("tnum mt-1 text-[0.6562rem] font-semibold", on ? "text-ink" : "text-ink-3")}>
               {on ? (date ? `${Number(date.slice(5, 7))}月${Number(date.slice(8))}日解锁` : "已达成") : Number.isFinite(p.goal) ? `${p.cur} / ${p.goal}` : "—"}
             </div>
           </div>

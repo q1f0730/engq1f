@@ -53,20 +53,20 @@ export function MilestoneOverlay() {
         <div className="milestone-medal grid size-36 place-items-center rounded-full">
           <div className="flex flex-col items-center leading-none">
             <Flame className="size-7 fill-current text-[#ffe2a8]" />
-            <span className="tnum mt-1 font-display text-[56px] font-extrabold tracking-tight" data-testid="milestone-days">
+            <span className="tnum mt-1 font-display text-[3.5rem] font-semibold tracking-[-0.015em]" data-testid="milestone-days">
               {n}
             </span>
-            <span className="text-[13px] font-bold text-white/85">天</span>
+            <span className="text-[0.8125rem] font-semibold text-white/85">天</span>
           </div>
         </div>
-        <h2 className="mt-7 font-display text-[30px] font-extrabold tracking-tight">{title}</h2>
-        <p className="mt-2 max-w-[280px] text-[15px] leading-relaxed text-white/85">{sub}</p>
+        <h2 className="mt-7 font-display text-[1.875rem] font-semibold tracking-[-0.015em]">{title}</h2>
+        <p className="mt-2 max-w-[280px] text-[0.9375rem] leading-relaxed text-white/85">{sub}</p>
         <button
           type="button"
           autoFocus
           data-testid="milestone-close"
           onClick={dismissCelebration}
-          className="mt-8 h-12 rounded-2xl bg-white px-10 text-[16px] font-bold text-[oklch(0.5_0.19_30)] shadow-xl transition active:scale-[0.98]"
+          className="mt-8 h-12 rounded-2xl bg-white px-10 text-base font-semibold text-[oklch(0.5_0.19_30)] transition active:scale-[0.98]"
         >
           继续加油
         </button>

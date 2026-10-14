@@ -48,8 +48,8 @@ export function ShareSheet({ open, onOpenChange, info }: { open: boolean; onOpen
             data-testid={`share-tpl-${t.id}`}
             onClick={() => setSettings({ shareTpl: t.id })}
             className={cn(
-              "flex items-center gap-2 rounded-2xl border p-1.5 pr-2.5 text-left text-[13px] font-semibold transition",
-              tpl === t.id ? "border-primary bg-brand-soft text-primary" : "border-border/70 text-muted-foreground hover:text-foreground",
+              "flex items-center gap-2 rounded-2xl border p-1.5 pr-2.5 text-left text-[0.8125rem] font-semibold transition",
+              tpl === t.id ? "border-ink bg-mark-soft text-ink" : "border-rule text-ink-3 hover:text-ink",
             )}
           >
             <span className="relative grid size-8 shrink-0 place-items-center rounded-xl ring-1 ring-black/10" style={{ background: t.swatch }}>
@@ -60,9 +60,9 @@ export function ShareSheet({ open, onOpenChange, info }: { open: boolean; onOpen
         ))}
       </div>
       {url ? (
-        <img src={url} alt="打卡分享图" data-testid="share-img" data-tpl={tpl} className="mx-auto w-full max-w-[280px] rounded-2xl shadow-lg" />
+        <img src={url} alt="打卡分享图" data-testid="share-img" data-tpl={tpl} className="mx-auto w-full max-w-[280px] rounded-2xl" />
       ) : (
-        <div className="mx-auto aspect-[3/4] w-full max-w-[280px] animate-pulse rounded-2xl bg-secondary" />
+        <div className="mx-auto aspect-[3/4] w-full max-w-[280px] animate-pulse rounded-2xl bg-paper-2" />
       )}
       <div className="mt-5 flex gap-2" data-testid="share-actions" data-native={native ? 1 : 0}>
         {native && (
@@ -70,7 +70,7 @@ export function ShareSheet({ open, onOpenChange, info }: { open: boolean; onOpen
             type="button"
             onClick={share}
             data-testid="share-native"
-            className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-primary-foreground"
+            className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-2xl bg-ink font-semibold text-paper-3"
           >
             <Share2 className="size-4" /> 分享到微信 / QQ
           </button>
@@ -81,13 +81,13 @@ export function ShareSheet({ open, onOpenChange, info }: { open: boolean; onOpen
           data-testid="share-download"
           className={cn(
             "flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl font-semibold",
-            native ? "bg-secondary" : "bg-primary text-primary-foreground",
+            native ? "bg-paper-2" : "bg-ink text-paper-3",
           )}
         >
           <Download className="size-4" /> 保存图片
         </a>
       </div>
-      {!native && <p className="mt-2 text-center text-[12px] text-muted-foreground" data-testid="share-hint">这个浏览器不支持直接分享，保存后从相册发给好友</p>}
+      {!native && <p className="mt-2 text-center text-xs text-ink-3" data-testid="share-hint">这个浏览器不支持直接分享，保存后从相册发给好友</p>}
     </BottomSheet>
   );
 }

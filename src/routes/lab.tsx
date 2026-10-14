@@ -9,7 +9,7 @@ export const Route = createFileRoute("/lab")({ component: Lab });
 function Lab() {
   return (
     <div data-testid="lab-page">
-      <Link to="/advanced" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground" data-testid="lab-back">
+      <Link to="/advanced" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[0.8125rem] font-semibold text-ink-3 hover:text-ink" data-testid="lab-back">
         <ChevronLeft className="size-4" /> 高级
       </Link>
       <PageHeader title="算法实验室" sub="不懂可以不碰：默认设置就是大多数人最合适的" />

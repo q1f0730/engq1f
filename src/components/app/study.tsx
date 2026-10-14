@@ -114,10 +114,10 @@ function FitWord({ w, className, testid, style }: { w: string; className: string
 }
 
 function wordSize(w: string) {
-  if (w.length <= 7) return "text-[56px] md:text-[64px]";
-  if (w.length <= 10) return "text-[46px] md:text-[56px]";
-  if (w.length <= 14) return "text-[36px] md:text-[44px]";
-  return "text-[30px] md:text-[36px]";
+  if (w.length <= 7) return "text-[3.5rem] md:text-[4rem]";
+  if (w.length <= 10) return "text-[2.875rem] md:text-[3.5rem]";
+  if (w.length <= 14) return "text-[2.25rem] md:text-[2.75rem]";
+  return "text-[1.875rem] md:text-[2.25rem]";
 }
 
 /** 11.4 · 跨 0 点的宽限：停了这么久（或者过了这个钟点）再接着做，就记到新的一天 */
@@ -519,9 +519,9 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
   if (replaced)
     return (
       <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center px-6 text-center" data-testid="study-replaced">
-        <div className="text-[20px] font-extrabold">记录在另一个窗口被替换了</div>
-        <p className="mt-2 text-[14px] text-muted-foreground">这一组已经结束，刚才这一题没有写进新的记录。</p>
-        <button type="button" onClick={() => void router.navigate({ to: "/", replace: true })} className="mt-6 h-12 w-full rounded-2xl bg-primary font-bold text-primary-foreground">
+        <div className="text-xl font-semibold">记录在另一个窗口被替换了</div>
+        <p className="mt-2 text-sm text-ink-3">这一组已经结束，刚才这一题没有写进新的记录。</p>
+        <button type="button" onClick={() => void router.navigate({ to: "/", replace: true })} className="mt-6 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3">
           回首页
         </button>
       </div>
@@ -601,15 +601,15 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe md:py-6" data-testid="study" data-mode={mode}>
       {/* 顶栏：只留退出和进度（11.1 · 撤销 / 明天再说 / 收藏放到卡片下面，带文字） */}
       <div className="flex shrink-0 items-center gap-1.5 pt-3 pt-safe md:gap-2">
-        <button type="button" onClick={() => exitBack(router)} aria-label="退出" data-testid="study-quit" className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary md:size-10">
+        <button type="button" onClick={() => exitBack(router)} aria-label="退出" data-testid="study-quit" className="grid size-9 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2 md:size-10">
           <X className="size-5" />
         </button>
         <div className="flex-1">
-          <div className="h-2 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${(doneN / total) * 100}%` }} />
+          <div className="h-2 overflow-hidden rounded-full bg-paper-2">
+            <div className="h-full rounded-full bg-ink transition-all duration-500" style={{ width: `${(doneN / total) * 100}%` }} />
           </div>
         </div>
-        <span className="tnum min-w-11 text-center text-[13px] font-semibold text-muted-foreground" data-testid="progress">
+        <span className="tnum min-w-11 text-center text-[0.8125rem] font-semibold text-ink-3" data-testid="progress">
           {doneN}/{total}
         </span>
         {canFocus && fine && (
@@ -624,19 +624,19 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
         )}
       </div>
 
-      <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-[12px] font-medium text-muted-foreground">
+      <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-xs font-medium text-ink-3">
         <span className="max-w-[10em] truncate" data-testid="study-title">{mode === "list" && listName ? `词单 · ${listName}` : MODE_TITLE[mode]}</span>
-        {relearn && <span className="rounded-full bg-forget-soft px-2 py-px text-forget" data-testid="relearn-tag">再来一遍</span>}
-        {isQuiz && <span className="rounded-full bg-secondary px-2 py-px">{MODE_LABEL[shownItem.mode]}</span>}
-        {word.c && <span className="rounded-full bg-brand-soft px-2 py-px text-primary">核心</span>}
+        {relearn && <span className="rounded-lg bg-forget-soft px-2 py-px text-forget" data-testid="relearn-tag">再来一遍</span>}
+        {isQuiz && <span className="rounded-lg bg-paper-2 px-2 py-px">{MODE_LABEL[shownItem.mode]}</span>}
+        {word.c && <span className="rounded-lg bg-mark-soft px-2 py-px text-ink">核心</span>}
         {leech && (
-          <span className="rounded-full bg-forget px-2 py-px text-white" data-testid="leech-tag">
+          <span className="rounded-lg bg-forget px-2 py-px text-white" data-testid="leech-tag">
             顽固
           </span>
         )}
-        {practice && <span className="rounded-full bg-secondary px-2 py-px">不影响复习计划</span>}
+        {practice && <span className="rounded-lg bg-paper-2 px-2 py-px">不影响复习计划</span>}
         {resumed > 0 && doneN === 0 && (
-          <span className="rounded-full bg-know-soft px-2 py-px text-know" data-testid="resume-note">
+          <span className="rounded-lg bg-know-soft px-2 py-px text-know" data-testid="resume-note">
             刚才学的 {resumed} 个已保存 ✓
           </span>
         )}
@@ -724,12 +724,12 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
                     type="button"
                     onClick={mistake}
                     data-testid="mistake"
-                    className="h-14 w-[38%] rounded-2xl bg-secondary text-[15px] font-semibold text-muted-foreground transition active:scale-[0.98]"
+                    className="h-14 w-[38%] rounded-2xl bg-paper-2 text-[0.9375rem] font-semibold text-ink-3 transition active:scale-[0.98]"
                   >
                     记错了
                   </button>
                 ) : (
-                  <div className="flex h-14 w-[38%] items-center justify-center rounded-2xl bg-forget-soft text-[13px] font-semibold text-forget">
+                  <div className="flex h-14 w-[38%] items-center justify-center rounded-2xl bg-forget-soft text-[0.8125rem] font-semibold text-forget">
                     稍后再来
                   </div>
                 )}
@@ -737,9 +737,9 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
                   type="button"
                   onClick={next}
                   data-testid="next"
-                  className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25 transition active:scale-[0.98]"
+                  className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-ink text-base font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
                 >
-                  下一个 {fine && <span className="rounded-md bg-white/20 px-1.5 text-[11px] font-semibold" data-testid="kbd-hint">空格</span>}
+                  下一个 {fine && <span className="rounded-md bg-white/20 px-1.5 text-[0.6875rem] font-semibold" data-testid="kbd-hint">空格</span>}
                 </button>
               </div>
             )}
@@ -755,7 +755,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
 
 /** 11.1 · 卡片下面的小工具条：撤销 / 明天再说 / 收藏，带文字（原来挤在顶栏、只有图标） */
 function CardTools({ onUndo, canUndo, onBury, onStar, starred }: { onUndo: () => void; canUndo: boolean; onBury?: () => void; onStar: () => void; starred: boolean }) {
-  const cls = "flex h-8 items-center gap-1 rounded-full px-3 text-[12.5px] font-semibold text-muted-foreground transition hover:bg-secondary disabled:opacity-35";
+  const cls = "flex h-8 items-center gap-1 rounded-lg px-3 text-[0.7812rem] font-semibold text-ink-3 transition hover:bg-paper-2 disabled:opacity-35";
   return (
     <div className="flex shrink-0 items-center justify-center gap-1 pt-2" data-testid="card-tools">
       <button type="button" onClick={onUndo} disabled={!canUndo} data-testid="undo" aria-label="撤销" className={cls}>
@@ -804,14 +804,14 @@ function SpeedBtn({ tone, side, label, hint, onClick }: { tone: "know" | "forget
       onClick={onClick}
       data-testid={`speed-${tone}`}
       className={cn(
-        "flex h-16 items-center justify-center gap-2 rounded-2xl text-[16px] font-bold shadow-sm transition active:scale-[0.97]",
+        "flex h-16 items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.97]",
         tone === "know" ? "bg-know text-white shadow-know/25 dark:text-[oklch(0.2_0.02_170)]" : "bg-forget-soft text-forget",
       )}
     >
       {side === "left" && <ArrowLeft className="size-4" />}
       <span className="flex flex-col items-center leading-tight">
         {label}
-        {hint && <span className="tnum mt-0.5 text-[11px] font-semibold opacity-75">{hint}</span>}
+        {hint && <span className="tnum mt-0.5 text-[0.6875rem] font-semibold opacity-75">{hint}</span>}
       </span>
       {side === "right" && <ArrowRight className="size-4" />}
     </button>
@@ -869,7 +869,7 @@ function SpeedCard({
   return (
     <div className="relative min-h-0 flex-1 speed-in" data-testid="speed-card">
       <div
-        className="relative h-full touch-pan-y select-none overflow-hidden rounded-[32px] border border-border/70 bg-card shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]"
+        className="relative h-full touch-pan-y select-none overflow-hidden rounded-2xl border border-rule bg-paper-3"
         style={dx !== null ? { transform: `translateX(${dx}px) rotate(${dx / 24}deg)` } : { transition: "transform 160ms ease-out" }}
         onPointerDown={onDown}
         onPointerMove={onMove}
@@ -886,8 +886,8 @@ function SpeedCard({
         <div className="paper-grain absolute inset-0 opacity-60" />
         <div className="relative flex h-full flex-col items-center px-6 pb-14 pt-8 text-center">
           <div className="fs-card flex w-full max-w-full flex-1 flex-col items-center justify-center">
-            <FitWord w={word.w} className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
-            <div className="mt-3 flex items-center gap-2.5 text-[16px] text-muted-foreground">
+            <FitWord w={word.w} className={cn("font-display break-all font-semibold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
+            <div className="mt-3 flex items-center gap-2.5 text-base text-ink-3">
               {(frontIpa || reveal) && <Phonetic word={word} accent={accent} />}
               <button
                 type="button"
@@ -896,7 +896,7 @@ function SpeedCard({
                   e.stopPropagation();
                   speak(word.w, accent);
                 }}
-                className="grid size-9 place-items-center rounded-full bg-brand-soft text-primary active:scale-90"
+                className="grid size-9 place-items-center rounded-full bg-mark-soft text-ink active:scale-90"
               >
                 <Volume2 className="size-[18px]" />
               </button>
@@ -904,11 +904,11 @@ function SpeedCard({
           </div>
           <div className="fs-card w-full max-w-md shrink-0" data-testid="speed-meaning" data-revealed={reveal ? 1 : 0}>
             {reveal ? (
-              <div className="rounded-2xl bg-secondary/70 px-4 py-3 text-left">
+              <div className="rounded-2xl bg-paper-2 px-4 py-3 text-left">
                 <Meanings word={word} />
               </div>
             ) : (
-              <div className="flex h-16 items-center justify-center rounded-2xl border-2 border-dashed border-border text-[13px] font-medium text-muted-foreground">
+              <div className="flex h-16 items-center justify-center rounded-2xl border-2 border-dashed border-rule text-[0.8125rem] font-medium text-ink-3">
                 点一下看释义 · {swipeHint(swap)}
               </div>
             )}
@@ -921,12 +921,12 @@ function SpeedCard({
             onKill();
           }}
           data-testid="kill"
-          className="absolute bottom-3.5 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-secondary/90 px-3.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:text-know"
+          className="absolute bottom-3.5 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-lg bg-paper-2 px-3.5 py-1.5 text-xs font-semibold text-ink-3 hover:text-know"
         >
           <Swords className="size-3.5" /> 斩 · 我本来就会
         </button>
         {hint && (
-          <div className={cn("pointer-events-none absolute inset-0 grid place-items-center rounded-[32px] text-[28px] font-extrabold", hint === "know" ? "bg-know/15 text-know" : "bg-forget/15 text-forget")} data-testid="swipe-hint" data-rating={hint}>
+          <div className={cn("pointer-events-none absolute inset-0 grid place-items-center rounded-2xl text-[1.75rem] font-semibold", hint === "know" ? "bg-know/15 text-know" : "bg-forget/15 text-forget")} data-testid="swipe-hint" data-rating={hint}>
             {hint === "know" ? "认识" : "不认识"}
           </div>
         )}
@@ -964,7 +964,7 @@ function IconBtn({
       data-testid={testid}
       disabled={disabled}
       className={cn(
-        "grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary disabled:opacity-35 md:size-10",
+        "grid size-9 shrink-0 place-items-center rounded-full text-ink-3 transition hover:bg-paper-2 disabled:opacity-35 md:size-10",
         active && "text-vague",
         className,
       )}
@@ -976,7 +976,7 @@ function IconBtn({
 
 function RateBtn({ tone, label, k, hint, onClick, compact }: { tone: Grade4; label: string; k: string; hint?: string; onClick: () => void; compact?: boolean }) {
   const cls = {
-    easy: "bg-primary text-primary-foreground shadow-primary/25",
+    easy: "bg-ink text-paper-3 shadow-primary/25",
     know: "bg-know text-white shadow-know/25 dark:text-[oklch(0.2_0.02_170)]",
     vague: "bg-vague-soft text-vague",
     forget: "bg-forget-soft text-forget",
@@ -986,15 +986,15 @@ function RateBtn({ tone, label, k, hint, onClick, compact }: { tone: Grade4; lab
       type="button"
       onClick={onClick}
       data-testid={`rate-${tone}`}
-      className={cn("relative flex h-16 flex-col items-center justify-center rounded-2xl font-bold shadow-sm transition active:scale-[0.97]", compact ? "text-[15px]" : "text-[16px]", cls)}
+      className={cn("relative flex h-16 flex-col items-center justify-center rounded-2xl font-semibold transition active:scale-[0.97]", compact ? "text-[0.9375rem]" : "text-base", cls)}
     >
       <span className="leading-tight">{label}</span>
       {hint && (
-        <span className="tnum mt-0.5 text-[11px] font-semibold leading-none opacity-75" data-testid={`ivl-${tone}`}>
+        <span className="tnum mt-0.5 text-[0.6875rem] font-semibold leading-none opacity-75" data-testid={`ivl-${tone}`}>
           {hint}
         </span>
       )}
-      <span className="absolute right-2 top-1.5 hidden text-[10px] font-semibold opacity-60 fine:block">{k}</span>
+      <span className="absolute right-2 top-1.5 hidden text-[0.625rem] font-semibold opacity-60 fine:block">{k}</span>
     </button>
   );
 }
@@ -1093,12 +1093,12 @@ function FlipCard({
       {cnFirst ? (
         <div className="fs-card w-full max-w-md text-left">
           <Meanings word={word} size="lg" />
-          <p className="mt-6 text-center text-[13px] text-muted-foreground">想一想对应的英文单词</p>
+          <p className="mt-6 text-center text-[0.8125rem] text-ink-3">想一想对应的英文单词</p>
         </div>
       ) : (
         <div className="fs-card flex w-full max-w-full flex-col items-center">
-          <FitWord w={word.w} className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
-          <div className="mt-4 flex items-center gap-2.5 text-[17px] text-muted-foreground" data-testid="front-ipa" data-shown={frontIpa ? 1 : 0}>
+          <FitWord w={word.w} className={cn("font-display break-all font-semibold leading-[1.05] tracking-[-0.035em]", wordSize(word.w))} testid="card-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
+          <div className="mt-4 flex items-center gap-2.5 text-[1.0625rem] text-ink-3" data-testid="front-ipa" data-shown={frontIpa ? 1 : 0}>
             {frontIpa && <Phonetic word={word} accent={accent} />}
             <button
               type="button"
@@ -1107,12 +1107,12 @@ function FlipCard({
                 e.stopPropagation();
                 speak(word.w, accent);
               }}
-              className="grid size-10 place-items-center rounded-full bg-brand-soft text-primary active:scale-90"
+              className="grid size-10 place-items-center rounded-full bg-mark-soft text-ink active:scale-90"
             >
               <Volume2 className="size-5" />
             </button>
           </div>
-          <p className="mt-10 text-[13px] text-muted-foreground/80" data-testid="front-hint">{frontIpa ? "认识这个词吗？点卡片可以先看释义" : "先认词形 · 音标在背面"}</p>
+          <p className="mt-10 text-[0.8125rem] text-ink-3" data-testid="front-hint">{frontIpa ? "认识这个词吗？点卡片可以先看释义" : "先认词形 · 音标在背面"}</p>
         </div>
       )}
     </div>
@@ -1121,7 +1121,7 @@ function FlipCard({
   const ratingTag = last ? (
     <span
       className={cn(
-        "pop rounded-full px-2.5 py-1 text-[12px] font-bold",
+        "pop rounded-lg px-2.5 py-1 text-xs font-semibold",
         last.rating === "know" ? "bg-know-soft text-know" : last.rating === "vague" ? "bg-vague-soft text-vague" : "bg-forget-soft text-forget",
       )}
       data-testid="rated-tag"
@@ -1136,8 +1136,8 @@ function FlipCard({
       <div className="back-head flex items-start justify-between gap-3" data-testid="back-head">
         {/* 11.8 · 单词这一栏占满剩下的宽度（不按内容收缩）：按实际宽度缩字号时量到的是真正可用的宽度 */}
         <div className="min-w-0 flex-1">
-          <FitWord w={word.w} className="font-display break-words text-[34px] font-extrabold leading-tight tracking-tight" testid="back-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
-          <div className="mt-1 flex items-center gap-2 text-[15px] text-muted-foreground">
+          <FitWord w={word.w} className="font-display break-words text-[2.125rem] font-semibold leading-tight tracking-[-0.015em]" testid="back-word" style={{ "--wl": word.w.length } as React.CSSProperties} />
+          <div className="mt-1 flex items-center gap-2 text-[0.9375rem] text-ink-3">
             <Phonetic word={word} accent={accent} />
             <button
               type="button"
@@ -1146,7 +1146,7 @@ function FlipCard({
                 e.stopPropagation();
                 speak(word.w, accent);
               }}
-              className="grid size-8 place-items-center rounded-full bg-brand-soft text-primary"
+              className="grid size-8 place-items-center rounded-full bg-mark-soft text-ink"
             >
               <Volume2 className="size-4" />
             </button>
@@ -1154,7 +1154,7 @@ function FlipCard({
         </div>
         {ratingTag}
       </div>
-      <div className="back-rule my-5 h-px bg-border" />
+      <div className="back-rule my-5 h-px bg-rule" />
       {/* 11.6 · 横屏（高度 < 500）：单词在左、释义在右，释义第一行不用滚动就看得见；右栏放不下时底部渐隐 + 「上滑看更多」 */}
       <div className="back-body" data-testid="back-body" ref={bodyRef} onScroll={checkMore} data-more={more ? 1 : 0}>
         <Meanings word={word} size="lg" />
@@ -1201,7 +1201,7 @@ function FlipCard({
         <div className={cn("flip-inner h-full", flipped && "is-flipped")}>
           <div
             className={cn(
-              "flip-face relative h-full overflow-hidden rounded-[32px] border border-border/70 bg-card shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]",
+              "flip-face relative h-full overflow-hidden rounded-2xl border border-rule bg-paper-3 ",
             )}
             aria-hidden={flipped}
           >
@@ -1214,14 +1214,14 @@ function FlipCard({
                 onKill();
               }}
               data-testid="kill"
-              className="card-kill absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-secondary/90 px-3.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:text-know"
+              className="card-kill absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-lg bg-paper-2 px-3.5 py-1.5 text-xs font-semibold text-ink-3 hover:text-know"
             >
               <Swords className="size-3.5" /> 斩 · 我本来就会
             </button>}
             {hint && (
               <div
                 className={cn(
-                  "absolute inset-0 grid place-items-center rounded-[32px] text-[28px] font-extrabold",
+                  "absolute inset-0 grid place-items-center rounded-2xl text-[1.75rem] font-semibold",
                   hint === "know" ? "bg-know/15 text-know" : hint === "vague" ? "bg-vague/15 text-vague" : "bg-forget/15 text-forget",
                 )}
               >
@@ -1229,7 +1229,7 @@ function FlipCard({
               </div>
             )}
           </div>
-          <div className="flip-face flip-back h-full overflow-hidden rounded-[32px] border border-border/70 bg-card shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]" aria-hidden={!flipped}>
+          <div className="flip-face flip-back h-full overflow-hidden rounded-2xl border border-rule bg-paper-3" aria-hidden={!flipped}>
             {back}
           </div>
         </div>
@@ -1273,7 +1273,7 @@ function QuizView({
       <div className="shrink-0 pb-4 pt-3">
         {done ? (
           <div className={cn("flex gap-2.5", leftHand && "flex-row-reverse")} data-testid="quiz-actions">
-            <button type="button" onClick={onUndo} className="h-14 w-[30%] rounded-2xl bg-secondary text-[15px] font-semibold text-muted-foreground">
+            <button type="button" onClick={onUndo} className="h-14 w-[30%] rounded-2xl bg-paper-2 text-[0.9375rem] font-semibold text-ink-3">
               撤销
             </button>
             <button
@@ -1281,15 +1281,15 @@ function QuizView({
               onClick={onNext}
               data-testid="next"
               className={cn(
-                "flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl text-[16px] font-bold shadow-lg transition active:scale-[0.98]",
-                answered?.rating === "know" ? "bg-know text-white shadow-know/25" : "bg-primary text-primary-foreground shadow-primary/25",
+                "flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.98]",
+                answered?.rating === "know" ? "bg-know text-white shadow-know/25" : "bg-ink text-paper-3 shadow-primary/25",
               )}
             >
               {answered?.rating === "know" ? "答对了 · 下一个" : "记住它 · 下一个"}
             </button>
           </div>
         ) : (
-          <button type="button" onClick={onGiveUp} data-testid="give-up" className="h-11 w-full rounded-2xl text-[14px] font-semibold text-muted-foreground hover:bg-secondary">
+          <button type="button" onClick={onGiveUp} data-testid="give-up" className="h-11 w-full rounded-2xl text-sm font-semibold text-ink-3 hover:bg-paper-2">
             <CircleHelp className="mr-1.5 inline size-4" />
             不认识，看答案
           </button>
@@ -1309,7 +1309,7 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
   return (
     <div
       className={cn(
-        "relative flex flex-1 flex-col items-center justify-center overflow-y-auto rounded-[32px] border border-border/70 bg-card px-6 py-6 text-center shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]",
+        "relative flex flex-1 flex-col items-center justify-center overflow-y-auto rounded-2xl border border-rule bg-paper-3 px-6 py-6 text-center ",
         compact ? "min-h-[120px]" : "min-h-[150px]",
       )}
       data-testid="quiz-prompt"
@@ -1324,7 +1324,7 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
         <button
           type="button"
           onClick={() => speak(word.w, accent)}
-          className="grid size-24 place-items-center rounded-full bg-brand-soft text-primary transition active:scale-95"
+          className="grid size-24 place-items-center rounded-full bg-mark-soft text-ink transition active:scale-95"
           aria-label="再听一遍"
           data-testid="quiz-audio"
         >
@@ -1332,51 +1332,51 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
         </button>
       )}
       {mode === "phrase" && phrase && (
-        <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3 text-left" : "")} data-testid="quiz-phrase">
-          <div className={cn("font-display font-bold leading-snug tracking-tight", done ? "text-[16px]" : "text-[30px]")}>
+        <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-paper-2 px-4 py-3 text-left" : "")} data-testid="quiz-phrase">
+          <div className={cn("font-display font-semibold leading-snug tracking-[-0.015em]", done ? "text-base" : "text-[1.875rem]")}>
             <PhraseText phrase={phrase[0]} word={word.w} />
           </div>
-          {done ? <div className="mt-0.5 text-[14px] text-muted-foreground">{phrase[1]}</div> : null}
+          {done ? <div className="mt-0.5 text-sm text-ink-3">{phrase[1]}</div> : null}
         </div>
       )}
       {cloze && (
-        <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3 text-left" : "")} data-testid="quiz-cloze">
-          <div className={cn("font-display font-bold leading-snug tracking-tight", done ? "text-[16px]" : "text-[30px]")}>
+        <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-paper-2 px-4 py-3 text-left" : "")} data-testid="quiz-cloze">
+          <div className={cn("font-display font-semibold leading-snug tracking-[-0.015em]", done ? "text-base" : "text-[1.875rem]")}>
             {done ? <PhraseText phrase={cloze.phrase} word={word.w} /> : <ClozeText text={cloze.blanked} />}
           </div>
-          <div className={cn("text-muted-foreground", done ? "mt-0.5 text-[14px]" : "mt-2 text-[15px]")} data-testid="cloze-cn">
+          <div className={cn("text-ink-3", done ? "mt-0.5 text-sm" : "mt-2 text-[0.9375rem]")} data-testid="cloze-cn">
             {cloze.cn}
           </div>
         </div>
       )}
       {ex && (
-        <div className={cn("w-full max-w-md text-left", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3" : "")} data-testid="quiz-example">
-          {!done && <div className="mb-2 text-[12px] font-bold tracking-wider text-muted-foreground">例句</div>}
-          <div className={cn("leading-relaxed", done ? "text-[14px] text-foreground/85" : "font-display text-[21px] font-semibold tracking-tight")}>
+        <div className={cn("w-full max-w-md text-left", done ? "order-last mt-4 rounded-2xl bg-paper-2 px-4 py-3" : "")} data-testid="quiz-example">
+          {!done && <div className="mb-2 text-xs font-semibold tracking-wider text-ink-3">例句</div>}
+          <div className={cn("leading-relaxed", done ? "text-sm text-ink" : "font-display text-[1.3125rem] font-semibold tracking-[-0.015em]")}>
             {done ? (
               <>
                 {ex.blanked.split("____")[0]}
-                <b className="font-semibold text-primary">{ex.form}</b>
+                <b className="font-semibold text-ink">{ex.form}</b>
                 {ex.blanked.split("____").slice(1).join("____")}
               </>
             ) : (
               <ClozeText text={ex.blanked} />
             )}
           </div>
-          {!done && ex.form.toLowerCase() !== word.w.toLowerCase() && <div className="mt-2 text-[12px] text-muted-foreground" data-testid="example-form-hint">空格处是这个词的变形</div>}
+          {!done && ex.form.toLowerCase() !== word.w.toLowerCase() && <div className="mt-2 text-xs text-ink-3" data-testid="example-form-hint">空格处是这个词的变形</div>}
         </div>
       )}
       {cnph && (
-        <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-secondary/70 px-4 py-3 text-left" : "")} data-testid="quiz-cnphrase">
+        <div className={cn("w-full max-w-md", done ? "order-last mt-4 rounded-2xl bg-paper-2 px-4 py-3 text-left" : "")} data-testid="quiz-cnphrase">
           {done ? (
             <>
-              <div className="font-display text-[16px] font-bold leading-snug tracking-tight">
+              <div className="font-display text-base font-semibold leading-snug tracking-[-0.015em]">
                 <PhraseText phrase={cnph[0]} word={word.w} />
               </div>
-              <div className="mt-0.5 text-[14px] text-muted-foreground">{cnph[1]}</div>
+              <div className="mt-0.5 text-sm text-ink-3">{cnph[1]}</div>
             </>
           ) : (
-            <div className="text-[28px] font-bold leading-snug" data-testid="cnphrase-cn">
+            <div className="text-[1.75rem] font-semibold leading-snug" data-testid="cnphrase-cn">
               {cnph[1]}
             </div>
           )}
@@ -1384,10 +1384,10 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
       )}
       {revealWord && (
         <>
-          <FitWord w={word.w} className={cn("font-display break-all font-extrabold leading-[1.05] tracking-[-0.035em]", done ? "text-[38px]" : wordSize(word.w))} testid="quiz-word" />
-          <div className="mt-2 flex items-center gap-2 text-[16px] text-muted-foreground">
+          <FitWord w={word.w} className={cn("font-display break-all font-semibold leading-[1.05] tracking-[-0.035em]", done ? "text-[2.375rem]" : wordSize(word.w))} testid="quiz-word" />
+          <div className="mt-2 flex items-center gap-2 text-base text-ink-3">
             <Phonetic word={word} accent={accent} />
-            <button type="button" aria-label="播放发音" onClick={() => speak(word.w, accent)} className="grid size-9 place-items-center rounded-full bg-brand-soft text-primary">
+            <button type="button" aria-label="播放发音" onClick={() => speak(word.w, accent)} className="grid size-9 place-items-center rounded-full bg-mark-soft text-ink">
               <Volume2 className="size-[18px]" />
             </button>
           </div>
@@ -1403,7 +1403,7 @@ export function QuizPrompt({ word, mode, accent, seed, done, compact }: { word: 
           <Phrases word={word} max={3} />
         </div>
       ) : null}
-      {!done && <p className="mt-5 text-[13px] text-muted-foreground" data-testid="quiz-hint">{MODE_HINT[mode] ?? "选出正确的意思"}</p>}
+      {!done && <p className="mt-5 text-[0.8125rem] text-ink-3" data-testid="quiz-hint">{MODE_HINT[mode] ?? "选出正确的意思"}</p>}
       </div>
     </div>
   );
@@ -1443,18 +1443,18 @@ export function ChoiceList({
             data-testid={`opt-${k + 1}`}
             data-correct={isCorrect ? 1 : 0}
             className={cn(
-              "flex min-h-[52px] w-full min-w-0 items-center gap-3 rounded-2xl border px-4 py-2.5 text-left text-[15px] transition active:scale-[0.99]",
-              !done && "border-border/80 bg-card hover:border-primary/50",
-              done && isCorrect && "border-know bg-know-soft text-foreground",
+              "flex min-h-[52px] w-full min-w-0 items-center gap-3 rounded-2xl border px-4 py-2.5 text-left text-[0.9375rem] transition active:scale-[0.99]",
+              !done && "border-rule bg-paper-3 hover:border-ink",
+              done && isCorrect && "border-know bg-know-soft text-ink",
               done && picked && !isCorrect && "border-forget bg-forget-soft",
-              done && !isCorrect && !picked && "border-border/60 bg-card opacity-55",
+              done && !isCorrect && !picked && "border-rule bg-paper-3 opacity-55",
             )}
           >
             {(fine || (done && (isCorrect || picked))) && (
               <span
                 data-testid="choice-badge"
                 className={cn(
-                  "grid size-6 shrink-0 place-items-center rounded-lg bg-secondary text-[12px] font-bold text-muted-foreground",
+                  "grid size-6 shrink-0 place-items-center rounded-lg bg-paper-2 text-xs font-semibold text-ink-3",
                   done && isCorrect && "bg-know text-white",
                   done && picked && !isCorrect && "bg-forget text-white",
                 )}
@@ -1462,10 +1462,10 @@ export function ChoiceList({
                 {done && isCorrect ? <Check className="size-3.5" /> : done && picked ? <X className="size-3.5" /> : k + 1}
               </span>
             )}
-            <span className={cn("fs-card min-w-0 flex-1 leading-snug", o.en ? "font-display text-[17px] font-semibold" : "line-clamp-2")}>
+            <span className={cn("fs-card min-w-0 flex-1 leading-snug", o.en ? "font-display text-[1.0625rem] font-semibold" : "line-clamp-2")}>
               {o.text}
               {done && o.sub && (
-                <span className="mt-0.5 block truncate font-sans text-[12px] font-normal text-muted-foreground" data-testid={subTestId}>
+                <span className="mt-0.5 block truncate font-sans text-xs font-normal text-ink-3" data-testid={subTestId}>
                   {o.sub}
                 </span>
               )}
@@ -1484,7 +1484,7 @@ function ClozeText({ text }: { text: string }) {
       {parts.map((p, k) => (
         <span key={k}>
           {p}
-          {k < parts.length - 1 && <span className="mx-1 inline-block w-20 border-b-[3px] border-primary align-baseline" data-testid="cloze-blank" />}
+          {k < parts.length - 1 && <span className="mx-1 inline-block w-20 border-b-[3px] border-ink align-baseline" data-testid="cloze-blank" />}
         </span>
       ))}
     </>
@@ -1497,7 +1497,7 @@ function PhraseText({ phrase, word }: { phrase: string; word: string }) {
   return (
     <>
       {phrase.slice(0, i)}
-      <span className="text-primary">{phrase.slice(i, i + word.length)}</span>
+      <span className="text-ink">{phrase.slice(i, i + word.length)}</span>
       {phrase.slice(i + word.length)}
     </>
   );
@@ -1523,9 +1523,9 @@ function Empty({ mode }: { mode: StudyMode }) {
       <div className="pop grid size-20 place-items-center rounded-full bg-know-soft text-know">
         <Check className="size-9" />
       </div>
-      <h1 className="mt-6 text-[22px] font-extrabold">{text[mode][0]}</h1>
-      <p className="mt-2 text-[15px] text-muted-foreground">{text[mode][1]}</p>
-      <Link to="/" className="mt-8 flex h-12 items-center rounded-2xl bg-primary px-8 font-semibold text-primary-foreground">
+      <h1 className="mt-6 text-[1.375rem] font-semibold">{text[mode][0]}</h1>
+      <p className="mt-2 text-[0.9375rem] text-ink-3">{text[mode][1]}</p>
+      <Link to="/" className="mt-8 flex h-12 items-center rounded-2xl bg-ink px-8 font-semibold text-paper-3">
         回到今日
       </Link>
     </div>
@@ -1576,34 +1576,34 @@ function Summary({
   return (
     <div className="mx-auto min-h-dvh max-w-xl px-4 pb-10 pt-safe" data-testid="summary">
       <div className="flex items-center pt-3">
-        <button type="button" onClick={() => exitBack(router)} aria-label="关闭" data-testid="summary-close" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+        <button type="button" onClick={() => exitBack(router)} aria-label="关闭" data-testid="summary-close" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
           <X className="size-5" />
         </button>
       </div>
       <div className="flex flex-col items-center pt-4 text-center">
-        <div className="pop grid size-20 place-items-center rounded-[28px] bg-primary text-primary-foreground shadow-xl shadow-primary/30">
+        <div className="pop grid size-20 place-items-center rounded-2xl bg-ink text-paper-3 shadow-primary/30">
           <Check className="size-10" strokeWidth={3} />
         </div>
-        <h1 className="mt-5 font-display text-[28px] font-extrabold tracking-tight" data-testid="summary-title">
+        <h1 className="mt-5 font-display text-[1.75rem] font-semibold tracking-[-0.015em]" data-testid="summary-title">
           {firstEver ? "第一组 ✓" : "本组完成！"}
         </h1>
         {firstEver && (
-          <p className="mt-1 text-[14px] font-semibold text-primary" data-testid="first-group">
+          <p className="mt-1 text-sm font-semibold text-ink" data-testid="first-group">
             好的开始！{comeBackLine(words.filter(([w]) => !st.cards[w]?.k).map(([w]) => st.cards[w]?.d).filter((d): d is string => !!d), day, words.length)}
           </p>
         )}
-        <p className="mt-1 text-[15px] text-muted-foreground">
+        <p className="mt-1 text-[0.9375rem] text-ink-3">
           {MODE_TITLE[mode]} {words.length} 词 · 首次正确率 {acc}% · 用时 {Math.max(1, Math.round(ms / 60000))} 分钟
         </p>
       </div>
 
       {/* 11.3 · 第一组学完就说清楚：数据只存在本机 */}
       {firstEver && (
-        <div className="mt-5 flex gap-3 rounded-3xl border border-vague/30 bg-vague-soft px-4 py-3.5 text-left" data-testid="local-only-warning">
+        <div className="mt-5 flex gap-3 rounded-2xl border border-vague/30 bg-vague-soft px-4 py-3.5 text-left" data-testid="local-only-warning">
           <HardDriveDownload className="mt-0.5 size-5 shrink-0 text-vague" />
-          <div className="min-w-0 text-[13px] leading-snug">
-            <b className="block text-[14px] text-vague">数据只存在本机，卸载 / 清除会丢失</b>
-            <span className="text-muted-foreground">不用注册、不上传。删掉桌面图标、卸载或清理浏览器，学习记录会一起删掉。学几天后记得在「我的 → 数据与备份」导出一份。</span>
+          <div className="min-w-0 text-[0.8125rem] leading-snug">
+            <b className="block text-sm text-vague">数据只存在本机，卸载 / 清除会丢失</b>
+            <span className="text-ink-3">不用注册、不上传。删掉桌面图标、卸载或清理浏览器，学习记录会一起删掉。学几天后记得在「我的 → 数据与备份」导出一份。</span>
           </div>
         </div>
       )}
@@ -1636,7 +1636,7 @@ function Summary({
             // 11.1 · 不自动弹分享图：想分享再点
             celebrate(r.milestone);
           }}
-          className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25"
+          className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-base font-semibold text-paper-3 shadow-primary/25"
         >
           <Flame className="size-5" /> 今日任务完成，打卡
         </button>
@@ -1647,22 +1647,22 @@ function Summary({
           type="button"
           data-testid="summary-share"
           onClick={() => setShare(true)}
-          className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-[15px] font-semibold"
+          className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-paper-2 text-[0.9375rem] font-semibold"
         >
-          <Flame className="size-4 text-primary" /> 今日已打卡 · 生成分享图
+          <Flame className="size-4 text-ink" /> 今日已打卡 · 生成分享图
         </button>
       )}
 
       {postRes && postN > 0 && (
-        <div className="mt-5 flex items-center gap-3 rounded-3xl border border-know/25 bg-know-soft px-4 py-3.5" data-testid="post-result" data-ok={postOk} data-n={postN}>
+        <div className="mt-5 flex items-center gap-3 rounded-2xl border border-know/25 bg-know-soft px-4 py-3.5" data-testid="post-result" data-ok={postOk} data-n={postN}>
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-know text-white dark:text-[oklch(0.2_0.02_170)]">
             <ClipboardCheck className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-bold text-know">
+            <span className="block text-[0.9375rem] font-semibold text-know">
               学后速测 {postOk}/{postN} · {postPct}%
             </span>
-            <span className="block truncate text-[12px] text-muted-foreground">{postWrong.length ? `没记住：${postWrong.join("、")}` : "刚学的词全部答对，记得很牢"}</span>
+            <span className="block truncate text-xs text-ink-3">{postWrong.length ? `没记住：${postWrong.join("、")}` : "刚学的词全部答对，记得很牢"}</span>
           </span>
         </div>
       )}
@@ -1672,14 +1672,14 @@ function Summary({
           type="button"
           data-testid="post-quiz-start"
           onClick={onPostQuiz}
-          className="mt-5 flex w-full items-center gap-3 rounded-3xl border border-know/25 bg-know-soft px-4 py-3.5 text-left transition active:scale-[0.99]"
+          className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-know/25 bg-know-soft px-4 py-3.5 text-left transition active:scale-[0.99]"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-know text-white dark:text-[oklch(0.2_0.02_170)]">
             <ClipboardCheck className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-bold text-know">学后速测 {words.filter(([w]) => !st.cards[w]?.k).length} 题</span>
-            <span className="block truncate text-[12px] text-muted-foreground">刚学的词马上四选一检验，结果计入小结</span>
+            <span className="block text-[0.9375rem] font-semibold text-know">学后速测 {words.filter(([w]) => !st.cards[w]?.k).length} 题</span>
+            <span className="block truncate text-xs text-ink-3">刚学的词马上四选一检验，结果计入小结</span>
           </span>
           <ArrowRight className="size-5 shrink-0 text-know" />
         </button>
@@ -1690,19 +1690,19 @@ function Summary({
           type="button"
           data-testid="retry-wrong"
           onClick={() => replaceStudy(router, { mode: "practice", words: missed.join(","), t: Date.now() })}
-          className="mt-5 flex w-full items-center gap-3 rounded-3xl border border-forget/25 bg-forget-soft px-4 py-3.5 text-left transition active:scale-[0.99]"
+          className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-forget/25 bg-forget-soft px-4 py-3.5 text-left transition active:scale-[0.99]"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-forget text-white">
             <Dumbbell className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-bold text-forget">{mode === "practice" ? "还有错的，再练一遍" : "错词再练"} {missed.length}</span>
-            <span className="block truncate text-[12px] text-muted-foreground">换成选择题再过一遍，不影响复习计划</span>
+            <span className="block text-[0.9375rem] font-semibold text-forget">{mode === "practice" ? "还有错的，再练一遍" : "错词再练"} {missed.length}</span>
+            <span className="block truncate text-xs text-ink-3">换成选择题再过一遍，不影响复习计划</span>
           </span>
         </button>
       )}
 
-      <div className="mt-6 rounded-3xl border border-border/70 bg-card p-2">
+      <div className="mt-6 rounded-2xl border border-rule bg-paper-3 p-2">
         {words.map(([w, r]) => {
           const word = index.map.get(w);
           return (
@@ -1713,11 +1713,11 @@ function Summary({
                   r === "know" ? "bg-know" : r === "vague" ? "bg-vague" : "bg-forget",
                 )}
               />
-              <span className="font-display w-28 shrink-0 truncate text-[16px] font-bold">{w}</span>
-              <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">{word ? shortMeaning(word, 1) : ""}</span>
+              <span className="font-display w-28 shrink-0 truncate text-base font-semibold">{w}</span>
+              <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-3">{word ? shortMeaning(word, 1) : ""}</span>
               {postRes && w in postRes && (
                 <span
-                  className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold", postRes[w] ? "bg-know-soft text-know" : "bg-forget-soft text-forget")}
+                  className={cn("shrink-0 rounded-[3px] px-2 py-0.5 text-[0.6875rem] font-semibold", postRes[w] ? "bg-know-soft text-know" : "bg-forget-soft text-forget")}
                   data-testid="post-mark"
                   data-ok={postRes[w] ? 1 : 0}
                 >
@@ -1735,7 +1735,7 @@ function Summary({
             type="button"
             onClick={() => restart("new")}
             data-testid="again"
-            className="flex h-13 flex-1 items-center justify-center gap-2 rounded-2xl bg-secondary py-3.5 font-semibold"
+            className="flex h-13 flex-1 items-center justify-center gap-2 rounded-2xl bg-paper-2 py-3.5 font-semibold"
           >
             <RotateCcw className="size-4" />
             {sum.remainingGoal > 0 ? "下一组" : "再学一组"}
@@ -1746,7 +1746,7 @@ function Summary({
             type="button"
             onClick={() => replaceStudy(router, { mode: "list", list: listId, t: Date.now() })}
             data-testid="list-again"
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-secondary py-3.5 font-semibold"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-paper-2 py-3.5 font-semibold"
           >
             <RotateCcw className="size-4" /> 继续词单
           </button>
@@ -1755,12 +1755,12 @@ function Summary({
             type="button"
             onClick={() => restart(mode === "speed" ? "speed" : "review")}
             data-testid="go-review"
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-secondary py-3.5 font-semibold"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-paper-2 py-3.5 font-semibold"
           >
             {mode === "speed" ? "继续速刷" : "去复习"} {sum.due}
           </button>
         ) : null}
-        <Link to="/" data-testid="back-home" className="flex flex-1 items-center justify-center rounded-2xl bg-primary py-3.5 font-semibold text-primary-foreground">
+        <Link to="/" data-testid="back-home" className="flex flex-1 items-center justify-center rounded-2xl bg-ink py-3.5 font-semibold text-paper-3">
           回到今日
         </Link>
       </div>
@@ -1771,9 +1771,9 @@ function Summary({
 
 function MiniStat({ label, value, testid }: { label: string; value: string; testid?: string }) {
   return (
-    <div className="rounded-2xl bg-secondary/80 px-2 py-3" data-testid={testid}>
-      <div className="tnum truncate text-[20px] font-extrabold">{value}</div>
-      <div className="mt-0.5 text-[12px] text-muted-foreground">{label}</div>
+    <div className="rounded-2xl bg-paper-2 px-2 py-3" data-testid={testid}>
+      <div className="tnum truncate text-xl font-semibold">{value}</div>
+      <div className="mt-0.5 text-xs text-ink-3">{label}</div>
     </div>
   );
 }

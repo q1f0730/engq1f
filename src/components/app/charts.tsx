@@ -58,14 +58,14 @@ export function Bars({
     <div className={cn("flex items-end gap-2", className)} style={{ height: height + 40 }} data-testid={testid}>
       {data.map((d, k) => (
         <div key={k} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-          <span className={cn("tnum text-[11px] font-semibold", d.strong ? "text-primary" : "text-muted-foreground")}>{d.value}</span>
+          <span className={cn("tnum text-[0.6875rem] font-semibold", d.strong ? "text-ink" : "text-ink-3")}>{d.value}</span>
           <div className="flex w-full justify-center" style={{ height }}>
             <div
-              className={cn("w-full max-w-9 self-end rounded-t-lg rounded-b-sm", d.strong ? "bg-primary" : "bg-primary/25")}
+              className={cn("w-full max-w-9 self-end rounded-t-lg rounded-b-sm", d.strong ? "bg-ink" : "bg-ink")}
               style={{ height: `${Math.max(d.value ? 6 : 2, (d.value / max) * height)}px`, transition: "height 600ms ease" }}
             />
           </div>
-          <span className={cn("truncate text-[11px]", d.strong ? "font-bold text-foreground" : "text-muted-foreground")}>{d.label}</span>
+          <span className={cn("truncate text-[0.6875rem]", d.strong ? "font-semibold text-ink" : "text-ink-3")}>{d.label}</span>
         </div>
       ))}
     </div>
@@ -123,9 +123,9 @@ export function Curve({ logs, firstDays, today, days = 30 }: { logs: Record<stri
           今天
         </text>
       </svg>
-      <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-muted-foreground">
+      <div className="mt-2 flex flex-wrap gap-4 text-xs text-ink-3">
         <span className="flex items-center gap-1.5">
-          <i className="inline-block h-[3px] w-4 rounded bg-primary" />
+          <i className="inline-block h-[3px] w-4 rounded bg-ink" />
           累计学过 {cum[cum.length - 1]} 词
         </span>
         <span className="flex items-center gap-1.5">
@@ -179,7 +179,7 @@ export function Heatmap({
     if (v < 60) return 3;
     return 4;
   };
-  const shade = ["bg-secondary", "bg-primary/25", "bg-primary/45", "bg-primary/70", "bg-primary"];
+  const shade = ["bg-paper-2", "bg-ink", "bg-ink", "bg-ink", "bg-ink"];
   const months: { col: number; label: string }[] = [];
   cols.forEach((c, k) => {
     const first = c.find((d) => d.endsWith("-01"));
@@ -192,7 +192,7 @@ export function Heatmap({
     <div data-testid="heatmap" ref={box}>
       <div className="flex justify-center overflow-hidden px-[2px] py-[2px]">
         <div className="shrink-0">
-          <div className="relative mb-1 h-4 text-[10px] text-muted-foreground">
+          <div className="relative mb-1 h-4 text-[0.625rem] text-ink-3">
             {months.map((m) => (
               <span key={m.col} className="absolute" style={{ left: m.col * 17 }}>
                 {m.label}
@@ -217,8 +217,8 @@ export function Heatmap({
                       onClick={onPick && !future ? () => onPick(d) : undefined}
                       className={cn(
                         "relative size-[14px] rounded-[4px]",
-                        onPick && !future && "cursor-pointer hover:ring-2 hover:ring-primary/50",
-                        future ? "bg-transparent" : checked && !lv ? "bg-primary/45" : shade[lv],
+                        onPick && !future && "cursor-pointer hover:ring-2 hover:ring-ink",
+                        future ? "bg-transparent" : checked && !lv ? "bg-ink" : shade[lv],
                         d === today && "ring-2 ring-foreground/70 ring-offset-1 ring-offset-card",
                       )}
                     >
@@ -231,9 +231,9 @@ export function Heatmap({
           </div>
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+      <div className="mt-3 flex items-center justify-between text-[0.6875rem] text-ink-3">
         <span className="flex items-center gap-1.5">
-          <span className="relative inline-block size-3 rounded-[3px] bg-primary">
+          <span className="relative inline-block size-3 rounded-[3px] bg-ink">
             <span className="absolute inset-[3.5px] rounded-full bg-white/90" />
           </span>
           已打卡
@@ -289,20 +289,20 @@ export function WeekStrip({
         const isRest = !checked && (isExam || sk === "rest" || (rest >= 0 && new Date(d + "T12:00:00").getDay() === rest) || (!!pause && d >= pause.from && (!pause.until || d < pause.until) && d <= today));
         return (
           <div key={d} className="flex min-w-0 flex-col items-center gap-1.5" data-day={d} data-state={isPatch ? "patched" : checked ? "checked" : isExam ? "exam" : isRest ? "rest" : studied ? "studied" : "none"}>
-            <span className={cn("text-[11px]", isToday ? "font-bold text-foreground" : "text-muted-foreground")}>{n}</span>
+            <span className={cn("text-[0.6875rem]", isToday ? "font-semibold text-ink" : "text-ink-3")}>{n}</span>
             <span
               className={cn(
-                "grid aspect-square w-[calc(100%-2px)] max-w-9 place-items-center rounded-full text-[12px] font-semibold tnum",
+                "grid aspect-square w-[calc(100%-2px)] max-w-9 place-items-center rounded-full text-xs font-semibold tnum",
                 isPatch
-                  ? "bg-primary/60 text-primary-foreground"
+                  ? "bg-ink text-paper-3"
                   : checked
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-ink text-paper-3"
                   : isRest
                   ? "border-2 border-dashed border-know/50 bg-know-soft text-know"
                   : studied
-                    ? "bg-brand-soft text-primary"
-                    : "bg-secondary text-muted-foreground",
-                isToday && !checked && "ring-2 ring-primary/60",
+                    ? "bg-mark-soft text-ink"
+                    : "bg-paper-2 text-ink-3",
+                isToday && !checked && "ring-2 ring-ink",
               )}
             >
               {isPatch ? "补" : checked ? "✓" : isExam ? "考" : isRest ? "休" : Number(d.slice(8))}

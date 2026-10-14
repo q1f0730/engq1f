@@ -8,11 +8,11 @@ const GRADE_TONE: Record<number, string> = {
   1: "bg-vague text-white dark:text-[oklch(0.2_0.02_80)]",
   2: "bg-know text-white dark:text-[oklch(0.2_0.02_170)]",
   3: "bg-foreground text-background",
-  4: "bg-primary text-primary-foreground",
+  4: "bg-ink text-paper-3",
 };
 
 export function GradeChip({ g, className }: { g: number; className?: string }) {
-  return <span className={cn("inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[11px] font-bold", GRADE_TONE[g], className)}>{GRADE_LABEL[g as 0]}</span>;
+  return <span className={cn("inline-flex h-5 shrink-0 items-center rounded-[3px] px-2 text-[0.6875rem] font-semibold", GRADE_TONE[g], className)}>{GRADE_LABEL[g as 0]}</span>;
 }
 
 export function hm(t: number) {
@@ -28,17 +28,17 @@ export function kindOf(e: RevEntry) {
 export function WordTrack({ entries, max = 12, testid }: { entries: RevEntry[]; max?: number; testid?: string }) {
   const shown = entries.slice(-max).reverse();
   return (
-    <ol className="relative ml-1.5 space-y-2.5 border-l-2 border-border pl-4" data-testid={testid} data-count={entries.length}>
+    <ol className="relative ml-1.5 space-y-2.5 border-l-2 border-rule pl-4" data-testid={testid} data-count={entries.length}>
       {shown.map((e, k) => (
         <li key={`${e[1]}-${k}`} className="relative" data-testid="track-item" data-grade={e[2]}>
           <span className={cn("absolute -left-[23px] top-1 size-3 rounded-full ring-[3px] ring-secondary", GRADE_TONE[e[2]].split(" ")[0])} />
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="tnum text-[13px] font-semibold">
-              {entryDay(e).slice(5).replace("-", "/")} <span className="font-normal text-muted-foreground">{hm(e[1])}</span>
+            <span className="tnum text-[0.8125rem] font-semibold">
+              {entryDay(e).slice(5).replace("-", "/")} <span className="font-normal text-ink-3">{hm(e[1])}</span>
             </span>
             <GradeChip g={e[2]} />
-            <span className="text-[12px] text-muted-foreground">{kindOf(e)}</span>
-            {e[4] >= 0 && e[2] !== 3 && <span className="tnum ml-auto text-[12px] text-muted-foreground">→ {intervalLabel(e[4])}</span>}
+            <span className="text-xs text-ink-3">{kindOf(e)}</span>
+            {e[4] >= 0 && e[2] !== 3 && <span className="tnum ml-auto text-xs text-ink-3">→ {intervalLabel(e[4])}</span>}
           </div>
         </li>
       ))}

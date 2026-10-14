@@ -26,11 +26,11 @@ function AlgoPage() {
   const { index, error } = useWords();
   const { tab = "how", n } = Route.useSearch();
   const navigate = useNavigate();
-  if (error) return <div className="p-8 text-center text-sm text-muted-foreground">{error}</div>;
+  if (error) return <div className="p-8 text-center text-sm text-ink-3">{error}</div>;
   if (!index) return <Spinner />;
   return (
     <div data-testid="algo" data-tab={tab}>
-      <Link to="/me" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground" data-testid="algo-back">
+      <Link to="/me" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[0.8125rem] font-semibold text-ink-3 hover:text-ink" data-testid="algo-back">
         <ChevronLeft className="size-4" /> 我的
       </Link>
       <PageHeader title="记忆算法" sub="全部在这台手机上计算，不联网" />
@@ -55,8 +55,8 @@ const IVL_OPTIONS = [-1, 1, 3, 7, 15, 30];
 const EASE_OPTIONS = [2.1, 2.5, 2.8];
 const EASE_CN: Record<number, string> = { 2.1: "难词", 2.5: "一般", 2.8: "易词" };
 const G_CN: Record<Grade4, string> = { forget: "不认识", vague: "模糊", know: "认识", easy: "简单" };
-const G_TONE: Record<Grade4, string> = { forget: "bg-forget", vague: "bg-vague", know: "bg-know", easy: "bg-primary" };
-const G_TEXT: Record<Grade4, string> = { forget: "text-forget", vague: "text-vague", know: "text-know", easy: "text-primary" };
+const G_TONE: Record<Grade4, string> = { forget: "bg-forget", vague: "bg-vague", know: "bg-know", easy: "bg-ink" };
+const G_TEXT: Record<Grade4, string> = { forget: "text-forget", vague: "text-vague", know: "text-know", easy: "text-ink" };
 
 function HowTab() {
   const st = useApp();
@@ -104,14 +104,14 @@ function HowTab() {
     <>
       {/* 11.1 · 第一句讲人话；参数和公式收在「看细节」里 */}
       <Panel data-testid="algo-plain" className="mb-4">
-        <p className="text-[17px] font-extrabold leading-snug">答错的词明天再来，答对的越隔越久。</p>
-        <ul className="mt-3 space-y-1.5 text-[14px] leading-relaxed text-muted-foreground">
+        <p className="text-[1.0625rem] font-semibold leading-snug">答错的词明天再来，答对的越隔越久。</p>
+        <ul className="mt-3 space-y-1.5 text-sm leading-relaxed text-ink-3">
           <li>· 不认识：今天这一组里再来一遍，明天再复习。</li>
           <li>· 认识：下次隔得更久（1 天 → 3 天 → 一周 → 半个月……），越熟越少打扰你。</li>
           <li>· 连续隔 21 天还记得，就算掌握了；本来就会的词点「斩」直接跳过。</li>
           <li>· 每天要复习的量会自动摊平，不会某天突然堆一大堆。</li>
         </ul>
-        <button type="button" data-testid="algo-details" aria-expanded={details} onClick={() => setDetails(!details)} className="mt-3 text-[13px] font-semibold text-primary">
+        <button type="button" data-testid="algo-details" aria-expanded={details} onClick={() => setDetails(!details)} className="mt-3 text-[0.8125rem] font-semibold text-ink">
           {details ? "收起细节" : "看细节：间隔具体怎么算"}
         </button>
       </Panel>
@@ -119,9 +119,9 @@ function HowTab() {
     <div className="grid gap-4 md:grid-cols-2 md:gap-5">
       <Panel data-testid="algo-effects">
         <PanelTitle>一次评分，间隔怎么变</PanelTitle>
-        <div className="mb-1.5 text-[12px] font-bold tracking-wider text-muted-foreground">这张卡现在的间隔</div>
+        <div className="mb-1.5 text-xs font-semibold tracking-wider text-ink-3">这张卡现在的间隔</div>
         <Segmented<number> value={ivl} onChange={setIvl} testid="eff-ivl" options={IVL_OPTIONS.map((v) => ({ value: v, label: v < 0 ? "新词" : `${v}天` }))} />
-        <div className="mb-1.5 mt-3 text-[12px] font-bold tracking-wider text-muted-foreground">这个词难不难</div>
+        <div className="mb-1.5 mt-3 text-xs font-semibold tracking-wider text-ink-3">这个词难不难</div>
         <Segmented<number> value={ease} onChange={setEase} testid="eff-ease" options={EASE_OPTIONS.map((v) => ({ value: v, label: `${EASE_CN[v]} ${v.toFixed(1)}` }))} />
         <div className="mt-4 space-y-2.5" data-testid="eff-bars">
           {order.map((g) => {
@@ -129,16 +129,16 @@ function HowTab() {
             const dim = g === "easy" && !s.fourKey;
             return (
               <div key={g} className={cn("flex items-center gap-3", dim && "opacity-45")} data-testid={`eff-${g}`} data-days={d}>
-                <span className={cn("w-12 shrink-0 text-[13px] font-bold", G_TEXT[g])}>{G_CN[g]}</span>
-                <div className="relative h-7 flex-1 overflow-hidden rounded-lg bg-secondary">
+                <span className={cn("w-12 shrink-0 text-[0.8125rem] font-semibold", G_TEXT[g])}>{G_CN[g]}</span>
+                <div className="relative h-7 flex-1 overflow-hidden rounded-lg bg-paper-2">
                   <div className={cn("h-full rounded-lg transition-all duration-500", G_TONE[g])} style={{ width: `${d ? Math.max(6, (d / max) * 100) : 0}%`, opacity: 0.85 }} />
                 </div>
-                <span className="tnum w-14 shrink-0 text-right text-[14px] font-bold">{d === 0 ? "今天" : intervalLabel(d)}</span>
+                <span className="tnum w-14 shrink-0 text-right text-sm font-semibold">{d === 0 ? "今天" : intervalLabel(d)}</span>
               </div>
             );
           })}
         </div>
-        <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground" data-testid="eff-note">
+        <p className="mt-3 text-xs leading-relaxed text-ink-3" data-testid="eff-note">
           {ivl < 0
             ? "新词第一次就认识 → 2 天后；模糊 / 不认识 → 本组里再来一遍，直到认识。"
             : `认识：${ivl} × ${ease.toFixed(1)}${ret !== 90 ? ` × ${retentionScale(ret).toFixed(2)}` : ""}；模糊：×1.2 且系数 −0.15；不认识：当天重学，系数 −0.2。`}
@@ -149,7 +149,7 @@ function HowTab() {
       <Panel data-testid="algo-growth">
         <PanelTitle>一直答「认识」，间隔这样涨</PanelTitle>
         <GrowthChart series={series} />
-        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-xs leading-relaxed text-ink-3">
           间隔到 {MASTER_DAYS} 天算「已掌握」。系数越高涨得越快；答「模糊」「不认识」会压低系数，所以难词复习更勤。
         </p>
       </Panel>
@@ -157,7 +157,7 @@ function HowTab() {
       <Panel data-testid="algo-rules" className="md:col-span-2">
         <PanelTitle
           right={
-            <Link to="/me" className="flex items-center text-[13px] text-muted-foreground hover:text-foreground">
+            <Link to="/me" className="flex items-center text-[0.8125rem] text-ink-3 hover:text-ink">
               去设置 <ChevronRight className="size-4" />
             </Link>
           }
@@ -167,10 +167,10 @@ function HowTab() {
         <ul className="divide-y divide-border/60">
           {rules.map((r) => (
             <li key={r.k} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0" data-testid={`rule-${r.k}`} data-on={r.on ? 1 : 0}>
-              <span className={cn("mt-0.5 w-10 shrink-0 rounded-full py-px text-center text-[11px] font-bold", r.on ? "bg-know-soft text-know" : "bg-secondary text-muted-foreground")}>{r.on ? "已开" : "关"}</span>
+              <span className={cn("mt-0.5 w-10 shrink-0 rounded-full py-px text-center text-[0.6875rem] font-semibold", r.on ? "bg-know-soft text-know" : "bg-paper-2 text-ink-3")}>{r.on ? "已开" : "关"}</span>
               <div className="min-w-0">
-                <div className="text-[14px] font-semibold">{r.title}</div>
-                <div className="text-[12px] leading-relaxed text-muted-foreground">{r.text}</div>
+                <div className="text-sm font-semibold">{r.title}</div>
+                <div className="text-xs leading-relaxed text-ink-3">{r.text}</div>
               </div>
             </li>
           ))}
@@ -226,7 +226,7 @@ function GrowthChart({ series }: { series: number[][] }) {
           </text>
         ))}
       </svg>
-      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-3">
         {EASE_OPTIONS.map((e, si) => (
           <span key={e} className="flex items-center gap-1.5">
             <i className="inline-block h-[3px] w-4 rounded" style={{ background: SERIES_COLOR[si] }} />
@@ -260,12 +260,12 @@ function SimTab({ n0 }: { n0?: number }) {
         <PanelTitle>每天学多少新词？</PanelTitle>
         <div className="flex items-end justify-between gap-3">
           <div className="flex items-baseline gap-1.5">
-            <span className="tnum font-display text-[52px] font-extrabold leading-none tracking-tight text-primary" data-testid="sim-n">
+            <span className="tnum font-display text-[3.25rem] font-semibold leading-none tracking-[-0.015em] text-ink" data-testid="sim-n">
               {n}
             </span>
-            <span className="text-[15px] font-bold text-muted-foreground">词 / 天</span>
+            <span className="text-[0.9375rem] font-semibold text-ink-3">词 / 天</span>
           </div>
-          <div className="pb-1 text-right text-[12px] leading-tight text-muted-foreground" data-testid="sim-finish">
+          <div className="pb-1 text-right text-xs leading-tight text-ink-3" data-testid="sim-finish">
             {newLeft === 0 ? "词书已学完" : daysToFinish ? `剩 ${newLeft} 词 · 约 ${daysToFinish} 天学完` : `剩 ${newLeft} 词 · 不学新词`}
           </div>
         </div>
@@ -280,16 +280,16 @@ function SimTab({ n0 }: { n0?: number }) {
           data-testid="sim-range"
           className="mt-4 w-full accent-[var(--primary)]"
         />
-        <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+        <div className="mt-1 flex justify-between text-[0.6875rem] text-ink-3">
           <span>{SIM_MIN}</span>
           <span>50</span>
           <span>{SIM_MAX}</span>
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <button type="button" data-testid="sim-minus" aria-label="减 5" onClick={() => setN((v) => Math.max(SIM_MIN, v - SIM_STEP))} className="h-10 w-12 rounded-xl bg-secondary text-[18px] font-bold">
+          <button type="button" data-testid="sim-minus" aria-label="减 5" onClick={() => setN((v) => Math.max(SIM_MIN, v - SIM_STEP))} className="h-10 w-12 rounded-xl bg-paper-2 text-lg font-semibold">
             −
           </button>
-          <button type="button" data-testid="sim-plus" aria-label="加 5" onClick={() => setN((v) => Math.min(SIM_MAX, v + SIM_STEP))} className="h-10 w-12 rounded-xl bg-secondary text-[18px] font-bold">
+          <button type="button" data-testid="sim-plus" aria-label="加 5" onClick={() => setN((v) => Math.min(SIM_MAX, v + SIM_STEP))} className="h-10 w-12 rounded-xl bg-paper-2 text-lg font-semibold">
             +
           </button>
           <button
@@ -300,7 +300,7 @@ function SimTab({ n0 }: { n0?: number }) {
               setSettings({ daily: n });
               toast.success(`每日新词改为 ${n}`);
             }}
-            className="h-10 flex-1 rounded-xl bg-primary text-[14px] font-bold text-primary-foreground transition disabled:bg-secondary disabled:text-muted-foreground"
+            className="h-10 flex-1 rounded-xl bg-ink text-sm font-semibold text-paper-3 transition disabled:bg-paper-2 disabled:text-ink-3"
           >
             {n === daily ? `就是现在的计划（${daily}）` : `设为每日新词（现在 ${daily}）`}
           </button>
@@ -308,14 +308,14 @@ function SimTab({ n0 }: { n0?: number }) {
       </Panel>
 
       <Panel data-testid="sim-result">
-        <PanelTitle right={<span className="text-[12px] text-muted-foreground">按记住率 {ret}% 估算</span>}>未来 30 天</PanelTitle>
+        <PanelTitle right={<span className="text-xs text-ink-3">按记住率 {ret}% 估算</span>}>未来 30 天</PanelTitle>
         <div className="grid grid-cols-3 gap-2">
           <Stat testid="sim-tail" label="第 4 周日均" value={res.tail} hint={cur ? diffHint(res.tail, cur.tail) : "复习 / 天"} />
           <Stat testid="sim-peak" label="最忙一天" value={res.peak} hint={`第 ${res.peakDay + 1} 天`} />
           <Stat testid="sim-total" label="30 天总复习" value={res.total} hint={`新学 ${res.learned}`} />
         </div>
         <SimBars res={res} cur={cur} />
-        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground" data-testid="sim-note">
+        <p className="mt-2 text-xs leading-relaxed text-ink-3" data-testid="sim-note">
           含你现有的 {Object.values(st.cards).filter((c) => !c.k).length} 个学习记录；每次复习按 {ret}% 记得、其余第二天重学来估，和实际会有出入。
           {res.tail > 150 && " 每天要复习 150 个以上，很难坚持，建议少学一点。"}
         </p>
@@ -331,10 +331,10 @@ function diffHint(a: number, b: number) {
 
 function Stat({ label, value, hint, testid }: { label: string; value: number; hint: string; testid: string }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-secondary/70 px-3 py-2.5" data-testid={testid} data-value={value}>
-      <div className="truncate text-[11px] font-semibold text-muted-foreground">{label}</div>
-      <div className="tnum font-display text-[24px] font-extrabold leading-tight">{value}</div>
-      <div className="truncate text-[11px] text-muted-foreground">{hint}</div>
+    <div className="min-w-0 rounded-2xl bg-paper-2 px-3 py-2.5" data-testid={testid} data-value={value}>
+      <div className="truncate text-[0.6875rem] font-semibold text-ink-3">{label}</div>
+      <div className="tnum font-display text-2xl font-semibold leading-tight">{value}</div>
+      <div className="truncate text-[0.6875rem] text-ink-3">{hint}</div>
     </div>
   );
 }
@@ -367,9 +367,9 @@ function SimBars({ res, cur }: { res: ReturnType<typeof simulatePlan>; cur: Retu
           第 30 天
         </text>
       </svg>
-      <div className="mt-1 flex flex-wrap gap-4 text-[12px] text-muted-foreground">
+      <div className="mt-1 flex flex-wrap gap-4 text-xs text-ink-3">
         <span className="flex items-center gap-1.5">
-          <i className="inline-block size-2.5 rounded-sm bg-primary/50" />
+          <i className="inline-block size-2.5 rounded-sm bg-ink" />
           每日复习量
         </span>
         {cur && (

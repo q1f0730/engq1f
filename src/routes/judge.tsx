@@ -19,7 +19,7 @@ export const Route = createFileRoute("/judge")({ component: JudgePage });
 
 function JudgePage() {
   const { index, error } = useWords();
-  if (error) return <div className="p-8 text-center text-sm text-muted-foreground">{error}</div>;
+  if (error) return <div className="p-8 text-center text-sm text-ink-3">{error}</div>;
   if (!index) return <Spinner />;
   return <JudgeGame index={index} />;
 }
@@ -143,18 +143,18 @@ function JudgeGame({ index }: { index: WordIndex }) {
       {phase === "run" && cur && word && (
         <>
           <div className="flex shrink-0 items-center gap-2 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+            <button type="button" onClick={quit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
               <X className="size-5" />
             </button>
             <div className="flex-1">
-              <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${(pos / items.length) * 100}%` }} />
+              <div className="h-2 overflow-hidden rounded-full bg-paper-2">
+                <div className="h-full rounded-full bg-ink transition-all duration-300" style={{ width: `${(pos / items.length) * 100}%` }} />
               </div>
             </div>
-            <span className="tnum min-w-12 text-center text-[13px] font-semibold text-muted-foreground" data-testid="judge-progress">
+            <span className="tnum min-w-12 text-center text-[0.8125rem] font-semibold text-ink-3" data-testid="judge-progress">
               {Math.min(pos + (shown ? 0 : 1), items.length)}/{items.length}
             </span>
-            <span className="tnum flex items-center gap-1 rounded-full bg-know-soft px-2.5 py-1 text-[13px] font-bold text-know" data-testid="judge-ok">
+            <span className="tnum flex items-center gap-1 rounded-lg bg-know-soft px-2.5 py-1 text-[0.8125rem] font-semibold text-know" data-testid="judge-ok">
               <Check className="size-3.5" strokeWidth={3} /> {okN}
             </span>
           </div>
@@ -165,9 +165,9 @@ function JudgeGame({ index }: { index: WordIndex }) {
                 type="button"
                 onClick={advance}
                 data-testid="judge-next"
-                className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25 transition active:scale-[0.98]"
+                className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-base font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
               >
-                记住了 · 继续 <span className="hidden rounded-md bg-white/20 px-1.5 text-[11px] font-semibold fine:inline">空格</span>
+                记住了 · 继续 <span className="hidden rounded-md bg-white/20 px-1.5 text-[0.6875rem] font-semibold fine:inline">空格</span>
               </button>
             ) : (
               <div className="grid grid-cols-2 gap-2.5" data-testid="judge-buttons" data-order={sides.map((b) => (b ? "yes" : "no")).join(",")}>
@@ -179,7 +179,7 @@ function JudgeGame({ index }: { index: WordIndex }) {
                     onClick={() => judge(yes)}
                     data-testid={yes ? "judge-yes" : "judge-no"}
                     className={cn(
-                      "flex h-16 items-center justify-center gap-2 rounded-2xl text-[17px] font-bold shadow-sm transition active:scale-[0.97] disabled:opacity-60",
+                      "flex h-16 items-center justify-center gap-2 rounded-2xl text-[1.0625rem] font-semibold transition active:scale-[0.97] disabled:opacity-60",
                       yes ? "bg-know text-white shadow-know/25 dark:text-[oklch(0.2_0.02_170)]" : "bg-forget-soft text-forget",
                     )}
                   >
@@ -272,7 +272,7 @@ function JudgeCard({
   return (
     <div className="relative mt-3 min-h-0 flex-1 card-in" data-testid="judge-card" data-truth={item.truth ? 1 : 0} data-w={item.w}>
       <div
-        className="relative flex h-full touch-pan-y select-none flex-col overflow-hidden rounded-[32px] border border-border/70 bg-card shadow-[0_18px_50px_-24px_rgba(60,30,20,0.35)]"
+        className="relative flex h-full touch-pan-y select-none flex-col overflow-hidden rounded-2xl border border-rule bg-paper-3"
         style={dx !== null ? { transform: `translateX(${dx}px) rotate(${dx / 24}deg)` } : { transition: "transform 160ms ease-out" }}
         onPointerDown={onDown}
         onPointerMove={onMove}
@@ -281,10 +281,10 @@ function JudgeCard({
       >
         <div className="paper-grain absolute inset-0 opacity-60" />
         <div className="relative flex flex-1 flex-col items-center justify-center px-6 text-center">
-          <h2 className="fs-card font-display break-all text-[46px] font-extrabold leading-[1.05] tracking-[-0.035em]" data-testid="judge-word">
+          <h2 className="fs-card font-display break-all text-[2.875rem] font-semibold leading-[1.05] tracking-[-0.035em]" data-testid="judge-word">
             {word.w}
           </h2>
-          <div className="mt-2 flex items-center gap-2 text-[15px] text-muted-foreground">
+          <div className="mt-2 flex items-center gap-2 text-[0.9375rem] text-ink-3">
             <Phonetic word={word} accent={accent} />
             <button
               type="button"
@@ -293,18 +293,18 @@ function JudgeCard({
                 e.stopPropagation();
                 speak(word.w, accent);
               }}
-              className="grid size-9 place-items-center rounded-full bg-brand-soft text-primary active:scale-90"
+              className="grid size-9 place-items-center rounded-full bg-mark-soft text-ink active:scale-90"
             >
               <Volume2 className="size-[18px]" />
             </button>
           </div>
-          <div className="my-6 flex w-full max-w-xs items-center gap-3 text-[12px] font-bold tracking-wider text-muted-foreground">
-            <span className="h-px flex-1 bg-border" /> 是这个意思吗？ <span className="h-px flex-1 bg-border" />
+          <div className="my-6 flex w-full max-w-xs items-center gap-3 text-xs font-semibold tracking-wider text-ink-3">
+            <span className="h-px flex-1 bg-rule" /> 是这个意思吗？ <span className="h-px flex-1 bg-rule" />
           </div>
           <div
             className={cn(
-              "fs-card w-full max-w-sm rounded-2xl px-4 py-4 text-[18px] font-semibold leading-snug transition-colors",
-              !shown && "bg-secondary/80",
+              "fs-card w-full max-w-sm rounded-2xl px-4 py-4 text-lg font-semibold leading-snug transition-colors",
+              !shown && "bg-paper-2",
               shown && item.truth && "bg-know-soft text-know",
               shown && !item.truth && "bg-forget-soft text-forget line-through decoration-2",
             )}
@@ -313,20 +313,20 @@ function JudgeCard({
             {item.shown}
           </div>
           {shown && (
-            <div className="pop mt-4 w-full max-w-sm text-[14px]" data-testid="judge-feedback" data-ok={shown.ok ? 1 : 0}>
-              <div className={cn("font-extrabold", shown.ok ? "text-know" : "text-forget")}>{shown.ok ? "✓ 判断正确" : "✗ 判断错了"}</div>
+            <div className="pop mt-4 w-full max-w-sm text-sm" data-testid="judge-feedback" data-ok={shown.ok ? 1 : 0}>
+              <div className={cn("font-semibold", shown.ok ? "text-know" : "text-forget")}>{shown.ok ? "✓ 判断正确" : "✗ 判断错了"}</div>
               {!item.truth && (
-                <div className="mt-2 rounded-2xl bg-secondary/70 px-4 py-2.5 text-left text-[14px] leading-relaxed">
+                <div className="mt-2 rounded-2xl bg-paper-2 px-4 py-2.5 text-left text-sm leading-relaxed">
                   <b className="font-display">{word.w}</b> 是：{optionMeaning(word)}
-                  {from && <div className="text-[12px] text-muted-foreground">上面那个是 {from.w} 的意思</div>}
+                  {from && <div className="text-xs text-ink-3">上面那个是 {from.w} 的意思</div>}
                 </div>
               )}
             </div>
           )}
         </div>
-        {!shown && <p className="relative pb-4 text-center text-[12px] text-muted-foreground">{swap ? "左滑 = 对 · 右滑 = 不对" : "右滑 = 对 · 左滑 = 不对"}</p>}
+        {!shown && <p className="relative pb-4 text-center text-xs text-ink-3">{swap ? "左滑 = 对 · 右滑 = 不对" : "右滑 = 对 · 左滑 = 不对"}</p>}
         {hint !== null && (
-          <div className={cn("pointer-events-none absolute inset-0 grid place-items-center rounded-[32px] text-[30px] font-extrabold", hint ? "bg-know/15 text-know" : "bg-forget/15 text-forget")} data-testid="judge-hint" data-yes={hint ? 1 : 0}>
+          <div className={cn("pointer-events-none absolute inset-0 grid place-items-center rounded-2xl text-[1.875rem] font-semibold", hint ? "bg-know/15 text-know" : "bg-forget/15 text-forget")} data-testid="judge-hint" data-yes={hint ? 1 : 0}>
             {hint ? "对" : "不对"}
           </div>
         )}

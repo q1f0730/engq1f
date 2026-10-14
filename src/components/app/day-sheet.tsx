@@ -43,14 +43,14 @@ export function DaySheet({
             data-testid="day-status"
             data-state={patched ? "patched" : checked ? "checked" : rest ? "rest" : "none"}
             className={cn(
-              "flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold",
-              patched ? "bg-vague-soft text-vague" : checked ? "bg-brand-soft text-primary" : rest ? "bg-know-soft text-know" : "bg-secondary text-muted-foreground",
+              "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold",
+              patched ? "bg-vague-soft text-vague" : checked ? "bg-mark-soft text-ink" : rest ? "bg-know-soft text-know" : "bg-paper-2 text-ink-3",
             )}
           >
             {patched ? <Ticket className="size-3.5" /> : rest ? <Coffee className="size-3.5" /> : <CalendarCheck className="size-3.5" />}
             {patched ? "补卡" : checked ? "已打卡" : rest ? "休息日" : "未打卡"}
           </span>
-          <span className="text-[12px] text-muted-foreground">{d.replace(/-/g, "/")}</span>
+          <span className="text-xs text-ink-3">{d.replace(/-/g, "/")}</span>
         </div>
         <div className="mt-3 grid grid-cols-4 gap-1.5 text-center">
           <Mini label="新学" value={String(log.n)} testid="day-n" />
@@ -69,7 +69,7 @@ export function DaySheet({
             <Row key={r.w} w={r.w} meaning={shortMeaning(index.map.get(r.w)!, 1)} onClick={() => onOpenWord(r.w)} right={<GradeChip g={r.g} />} />
           ))}
         </Section>
-        {!st.revlog?.length && learned.length > 0 && <p className="mt-3 text-[12px] text-muted-foreground">v6 之前的复习没有日志，只能看到新学的词。</p>}
+        {!st.revlog?.length && learned.length > 0 && <p className="mt-3 text-xs text-ink-3">v6 之前的复习没有日志，只能看到新学的词。</p>}
       </div>
     </BottomSheet>
   );
@@ -77,9 +77,9 @@ export function DaySheet({
 
 function Mini({ label, value, testid }: { label: string; value: string; testid?: string }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-secondary/70 px-1 py-2" data-testid={testid} data-value={value}>
-      <div className="tnum truncate text-[16px] font-extrabold leading-tight">{value}</div>
-      <div className="mt-0.5 text-[11px] text-muted-foreground">{label}</div>
+    <div className="min-w-0 rounded-2xl bg-paper-2 px-1 py-2" data-testid={testid} data-value={value}>
+      <div className="tnum truncate text-base font-semibold leading-tight">{value}</div>
+      <div className="mt-0.5 text-[0.6875rem] text-ink-3">{label}</div>
     </div>
   );
 }
@@ -87,20 +87,20 @@ function Mini({ label, value, testid }: { label: string; value: string; testid?:
 function Section({ title, n, testid, empty, children }: { title: string; n: number; testid: string; empty: string; children: React.ReactNode }) {
   return (
     <div className="mt-4" data-testid={testid} data-n={n}>
-      <div className="mb-1 flex items-baseline gap-1.5 text-[13px] font-bold">
+      <div className="mb-1 flex items-baseline gap-1.5 text-[0.8125rem] font-semibold">
         {title}
-        <span className="tnum text-[12px] font-semibold text-muted-foreground">{n}</span>
+        <span className="tnum text-xs font-semibold text-ink-3">{n}</span>
       </div>
-      {n ? <div className="divide-y divide-border/60 rounded-2xl border border-border/70">{children}</div> : <p className="rounded-2xl bg-secondary/50 px-3 py-3 text-[13px] text-muted-foreground">{empty}</p>}
+      {n ? <div className="divide-y divide-rule rounded-2xl border border-rule">{children}</div> : <p className="rounded-2xl bg-paper-2 px-3 py-3 text-[0.8125rem] text-ink-3">{empty}</p>}
     </div>
   );
 }
 
 function Row({ w, meaning, onClick, right }: { w: string; meaning: string; onClick: () => void; right?: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} data-testid="day-word" data-word={w} className="flex w-full items-center gap-3 px-3 py-2.5 text-left first:rounded-t-2xl last:rounded-b-2xl hover:bg-secondary/60">
-      <span className="w-[38%] shrink-0 truncate text-[15px] font-semibold">{w}</span>
-      <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">{meaning}</span>
+    <button type="button" onClick={onClick} data-testid="day-word" data-word={w} className="flex w-full items-center gap-3 px-3 py-2.5 text-left first:rounded-t-2xl last:rounded-b-2xl hover:bg-paper-2">
+      <span className="w-[38%] shrink-0 truncate text-[0.9375rem] font-semibold">{w}</span>
+      <span className="min-w-0 flex-1 truncate text-[0.7812rem] text-ink-3">{meaning}</span>
       {right}
     </button>
   );

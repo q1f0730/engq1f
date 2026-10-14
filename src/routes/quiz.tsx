@@ -34,7 +34,7 @@ export const Route = createFileRoute("/quiz")({
 function QuizPage() {
   const { index, error } = useWords();
   const { t } = Route.useSearch();
-  if (error) return <div className="p-8 text-center text-sm text-muted-foreground">{error}</div>;
+  if (error) return <div className="p-8 text-center text-sm text-ink-3">{error}</div>;
   if (!index) return <Spinner />;
   return <MockQuiz key={t ?? 0} index={index} autoStart={!!t} />;
 }
@@ -155,21 +155,21 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
       {phase === "run" && cur && word && (
         <>
           <div className="flex shrink-0 items-center gap-2 pt-3">
-            <button type="button" onClick={quit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+            <button type="button" onClick={quit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
               <X className="size-5" />
             </button>
             <div className="flex-1">
-              <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${(pos / items.length) * 100}%` }} />
+              <div className="h-2 overflow-hidden rounded-full bg-paper-2">
+                <div className="h-full rounded-full bg-ink transition-all duration-300" style={{ width: `${(pos / items.length) * 100}%` }} />
               </div>
             </div>
-            <span className="tnum min-w-12 text-center text-[13px] font-semibold text-muted-foreground" data-testid="mock-progress">
+            <span className="tnum min-w-12 text-center text-[0.8125rem] font-semibold text-ink-3" data-testid="mock-progress">
               {pos + 1}/{items.length}
             </span>
             <span
               className={cn(
-                "tnum flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-bold",
-                left < 60000 ? "bg-forget-soft text-forget" : "bg-secondary text-foreground",
+                "tnum flex items-center gap-1 rounded-lg px-2.5 py-1 text-[0.8125rem] font-semibold",
+                left < 60000 ? "bg-forget-soft text-forget" : "bg-paper-2 text-ink",
               )}
               data-testid="mock-timer"
             >
@@ -177,9 +177,9 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
               {fmtClock(left)}
             </span>
           </div>
-          <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-[12px] font-medium text-muted-foreground">
+          <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-xs font-medium text-ink-3">
             <span>模拟小测</span>
-            <span className="rounded-full bg-secondary px-2 py-px" data-testid="mock-mode" data-mode={cur.mode}>
+            <span className="rounded-lg bg-paper-2 px-2 py-px" data-testid="mock-mode" data-mode={cur.mode}>
               {MODE_LABEL[cur.mode]}
             </span>
           </div>
@@ -188,7 +188,7 @@ function MockQuiz({ index, autoStart }: { index: WordIndex; autoStart: boolean }
             <ChoiceList choices={cur.choices} done={false} onPick={pick} />
           </div>
           <div className="shrink-0 pb-4 pt-3">
-            <button type="button" onClick={() => pick(-1)} data-testid="mock-skip" className="h-11 w-full rounded-2xl text-[14px] font-semibold text-muted-foreground hover:bg-secondary">
+            <button type="button" onClick={() => pick(-1)} data-testid="mock-skip" className="h-11 w-full rounded-2xl text-sm font-semibold text-ink-3 hover:bg-paper-2">
               不会，跳过
             </button>
           </div>
@@ -223,23 +223,23 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
   return (
     <div className="flex flex-1 flex-col" data-testid="mock-intro">
       <div className="flex h-14 shrink-0 items-center">
-        <button type="button" onClick={onQuit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+        <button type="button" onClick={onQuit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
           <X className="size-5" />
         </button>
-        <div className="flex-1 text-center text-[15px] font-bold">模拟小测</div>
+        <div className="flex-1 text-center text-[0.9375rem] font-semibold">模拟小测</div>
         <span className="w-10" />
       </div>
       <div className="card-in flex flex-1 flex-col justify-center pb-6 text-center">
-        <div className="mx-auto grid size-20 place-items-center rounded-[28px] bg-brand-soft text-primary">
+        <div className="mx-auto grid size-20 place-items-center rounded-2xl bg-mark-soft text-ink">
           <ClipboardCheck className="size-10" />
         </div>
-        <h1 className="mt-6 font-display text-[30px] font-extrabold tracking-tight">{MOCK_SIZE} 题 · 5 分钟</h1>
-        <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
+        <h1 className="mt-6 font-display text-[1.875rem] font-semibold tracking-[-0.015em]">{MOCK_SIZE} 题 · 5 分钟</h1>
+        <p className="mx-auto mt-3 max-w-sm text-[0.9375rem] leading-relaxed text-ink-3">
           混合 8 种题型，学过的词优先出题。中途不显示对错，交卷后逐题回顾，错题一键进生词本。小测不影响复习计划。
         </p>
         <div className="mx-auto mt-5 flex max-w-sm flex-wrap justify-center gap-1.5" data-testid="mock-types">
           {types.map((t) => (
-            <span key={t} className="rounded-full bg-secondary px-2.5 py-1 text-[12px] font-semibold text-muted-foreground">
+            <span key={t} className="rounded-lg bg-paper-2 px-2.5 py-1 text-xs font-semibold text-ink-3">
               {t}
             </span>
           ))}
@@ -255,7 +255,7 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
           type="button"
           onClick={onStart}
           data-testid="mock-start"
-          className="mx-auto mt-8 flex h-14 w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-primary text-[17px] font-bold text-primary-foreground shadow-xl shadow-primary/25 transition active:scale-[0.98]"
+          className="mx-auto mt-8 flex h-14 w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-ink text-[1.0625rem] font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
         >
           <Timer className="size-5" /> 开始计时
         </button>
@@ -266,9 +266,9 @@ function Intro({ onStart, onQuit, stats }: { onStart: () => void; onQuit: () => 
 
 function Mini({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-secondary/80 px-2 py-2.5">
-      <div className="tnum text-[18px] font-extrabold">{value}</div>
-      <div className="text-[11px] text-muted-foreground">{label}</div>
+    <div className="rounded-2xl bg-paper-2 px-2 py-2.5">
+      <div className="tnum text-lg font-semibold">{value}</div>
+      <div className="text-[0.6875rem] text-ink-3">{label}</div>
     </div>
   );
 }
@@ -304,24 +304,24 @@ function Result({
   return (
     <div className="-mx-4 flex-1 overflow-y-auto px-4 pb-8" data-testid="mock-result">
       <div className="flex h-14 items-center">
-        <Link to="/" aria-label="关闭" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+        <Link to="/" aria-label="关闭" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
           <X className="size-5" />
         </Link>
-        <div className="flex-1 text-center text-[15px] font-bold">小测成绩</div>
+        <div className="flex-1 text-center text-[0.9375rem] font-semibold">小测成绩</div>
         <span className="w-10" />
       </div>
-      <section className="hero-gradient card-in relative overflow-hidden rounded-[32px] p-6 text-white shadow-[0_24px_60px_-28px_rgba(200,60,30,0.65)]">
+      <section className="hero-gradient card-in relative overflow-hidden rounded-2xl p-6 text-white">
         <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-white/[0.08]" />
         <div className="relative flex items-end justify-between gap-4">
           <div>
-            <div className="text-[13px] font-semibold text-white/80">得分</div>
+            <div className="text-[0.8125rem] font-semibold text-white/80">得分</div>
             <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="tnum font-display text-[64px] font-extrabold leading-none" data-testid="mock-score">
+              <span className="tnum font-display text-[4rem] font-semibold leading-none" data-testid="mock-score">
                 {score}
               </span>
-              <span className="text-[18px] font-bold text-white/75">分</span>
+              <span className="text-lg font-semibold text-white/75">分</span>
             </div>
-            <div className="mt-2 text-[14px] font-semibold text-white/90">{verdict}</div>
+            <div className="mt-2 text-sm font-semibold text-white/90">{verdict}</div>
           </div>
           <Trophy className="size-14 shrink-0 text-white/30" />
         </div>
@@ -337,7 +337,7 @@ function Result({
           type="button"
           onClick={onAgain}
           data-testid="mock-again"
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-secondary text-[15px] font-bold"
+          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-paper-2 text-[0.9375rem] font-semibold"
         >
           <RotateCcw className="size-4" /> 再来一套
         </button>
@@ -350,7 +350,7 @@ function Result({
               toast.success(`${unstarred.length} 个错题词已加入生词本`);
             }}
             data-testid="mock-star-all"
-            className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20 disabled:bg-vague-soft disabled:text-vague disabled:shadow-none"
+            className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20 disabled:bg-vague-soft disabled:text-vague"
           >
             <Star className={cn("size-4", !unstarred.length && "fill-current")} />
             {unstarred.length ? `错题加入生词本 ${unstarred.length}` : "错题已在生词本"}
@@ -359,8 +359,8 @@ function Result({
       </div>
 
       <div className="mt-6 flex items-center justify-between">
-        <h2 className="text-[15px] font-bold">逐题回顾</h2>
-        <div className="flex gap-1 rounded-full bg-secondary p-1 text-[12px] font-semibold" role="radiogroup" data-testid="mock-filter">
+        <h2 className="text-[0.9375rem] font-semibold">逐题回顾</h2>
+        <div className="flex gap-1 rounded-full bg-paper-2 p-1 text-xs font-semibold" role="radiogroup" data-testid="mock-filter">
           {(
             [
               ["wrong", `错题 ${items.length - ok}`],
@@ -373,7 +373,7 @@ function Result({
               role="radio"
               aria-checked={filter === v}
               onClick={() => setFilter(v)}
-              className={cn("rounded-full px-3 py-1", filter === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}
+              className={cn("rounded-lg px-3 py-1", filter === v ? "bg-paper-3 text-ink " : "text-ink-3")}
             >
               {label}
             </button>
@@ -381,7 +381,7 @@ function Result({
         </div>
       </div>
       {ok === items.length && (
-        <div className="mt-3 flex items-center justify-center gap-2 rounded-3xl bg-know-soft p-4 text-[14px] font-semibold text-know" data-testid="mock-perfect">
+        <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-know-soft p-4 text-sm font-semibold text-know" data-testid="mock-perfect">
           <Check className="size-5" strokeWidth={3} /> 全部答对，没有错题
         </div>
       )}
@@ -395,41 +395,41 @@ function Result({
             const expanded = open === k;
             const starred = !!st.star[q.w];
             return (
-              <li key={k} className="overflow-hidden rounded-3xl border border-border/70 bg-card" data-testid="mock-review-item" data-ok={good ? 1 : 0}>
+              <li key={k} className="overflow-hidden rounded-2xl border border-rule bg-paper-3" data-testid="mock-review-item" data-ok={good ? 1 : 0}>
                 <button type="button" onClick={() => setOpen(expanded ? null : k)} className="flex w-full items-start gap-3 px-4 py-3 text-left" data-testid="mock-review-toggle">
                   <span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-lg text-white", good ? "bg-know" : "bg-forget")}>
                     {good ? <Check className="size-3.5" strokeWidth={3} /> : <X className="size-3.5" strokeWidth={3} />}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline gap-2">
-                      <span className="font-display truncate text-[17px] font-bold">{q.w}</span>
-                      <span className="shrink-0 rounded-full bg-secondary px-2 py-px text-[11px] font-semibold text-muted-foreground">{MODE_LABEL[q.mode]}</span>
+                      <span className="font-display truncate text-[1.0625rem] font-semibold">{q.w}</span>
+                      <span className="shrink-0 rounded-[3px] bg-paper-2 px-2 py-px text-[0.6875rem] font-semibold text-ink-3">{MODE_LABEL[q.mode]}</span>
                     </span>
                     {!good && (
-                      <span className="mt-1 block text-[13px] leading-snug">
+                      <span className="mt-1 block text-[0.8125rem] leading-snug">
                         <span className="text-forget line-through decoration-forget/50" data-testid="mock-your">
                           {a >= 0 ? q.choices[a]?.text : "未作答"}
                         </span>
-                        <span className="mx-1.5 text-muted-foreground">→</span>
-                        {q.mode === "poly" && <span className="text-muted-foreground">不属于的是 </span>}
+                        <span className="mx-1.5 text-ink-3">→</span>
+                        {q.mode === "poly" && <span className="text-ink-3">不属于的是 </span>}
                         <span className="font-semibold text-know" data-testid="mock-right">
                           {right?.text}
                         </span>
                       </span>
                     )}
-                    {good && <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">{right?.text}</span>}
+                    {good && <span className="mt-0.5 block truncate text-[0.8125rem] text-ink-3">{right?.text}</span>}
                   </span>
-                  <ChevronDown className={cn("mt-1 size-4 shrink-0 text-muted-foreground transition", expanded && "rotate-180")} />
+                  <ChevronDown className={cn("mt-1 size-4 shrink-0 text-ink-3 transition", expanded && "rotate-180")} />
                 </button>
                 {expanded && (
-                  <div className="border-t border-border/60 px-4 pb-4 pt-3" data-testid="mock-review-detail">
-                    {right?.sub && q.mode === "poly" && <p className="mb-2 text-[13px] text-muted-foreground">「{right.text}」{right.sub.replace("这是", "是")}</p>}
+                  <div className="border-t border-rule px-4 pb-4 pt-3" data-testid="mock-review-detail">
+                    {right?.sub && q.mode === "poly" && <p className="mb-2 text-[0.8125rem] text-ink-3">「{right.text}」{right.sub.replace("这是", "是")}</p>}
                     <Meanings word={word} />
                     <div className="mt-3 flex gap-2">
                       <button
                         type="button"
                         onClick={() => speak(q.w, st.settings.accent)}
-                        className="h-9 rounded-full bg-brand-soft px-3.5 text-[13px] font-semibold text-primary"
+                        className="h-9 rounded-lg bg-mark-soft px-3.5 text-[0.8125rem] font-semibold text-ink"
                       >
                         听发音
                       </button>
@@ -440,7 +440,7 @@ function Result({
                           toast(starred ? "已移出生词本" : "已加入生词本");
                         }}
                         data-testid="mock-star-one"
-                        className={cn("flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold", starred ? "bg-vague-soft text-vague" : "bg-secondary text-muted-foreground")}
+                        className={cn("flex h-9 items-center gap-1.5 rounded-lg px-3.5 text-[0.8125rem] font-semibold", starred ? "bg-vague-soft text-vague" : "bg-paper-2 text-ink-3")}
                       >
                         <Star className={cn("size-3.5", starred && "fill-current")} />
                         {starred ? "在生词本" : "加入生词本"}
@@ -453,7 +453,7 @@ function Result({
           })}
         </ul>
       )}
-      <Link to="/" data-testid="mock-home" className="mt-6 flex h-13 items-center justify-center rounded-2xl bg-primary py-3.5 text-[16px] font-bold text-primary-foreground">
+      <Link to="/" data-testid="mock-home" className="mt-6 flex h-13 items-center justify-center rounded-2xl bg-ink py-3.5 text-base font-semibold text-paper-3">
         回到今日
       </Link>
     </div>
@@ -463,10 +463,10 @@ function Result({
 function HeroStat({ label, value, testid }: { label: string; value: string; testid?: string }) {
   return (
     <div className="rounded-2xl bg-white/14 px-2 py-2.5 ring-1 ring-white/15">
-      <div className="tnum text-[18px] font-extrabold" data-testid={testid}>
+      <div className="tnum text-lg font-semibold" data-testid={testid}>
         {value}
       </div>
-      <div className="text-[11px] font-semibold text-white/75">{label}</div>
+      <div className="text-[0.6875rem] font-semibold text-white/75">{label}</div>
     </div>
   );
 }

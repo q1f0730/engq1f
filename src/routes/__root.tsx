@@ -212,9 +212,9 @@ function UpdatePrompt({ bare }: { bare: boolean }) {
         type="button"
         onClick={applyUpdate}
         data-testid="sw-update"
-        className="pop pointer-events-auto flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-2.5 text-[13px] font-semibold shadow-[0_10px_30px_-12px_rgba(40,20,10,0.35)]"
+        className="pop pointer-events-auto flex items-center gap-2 rounded-lg border border-rule bg-paper-3 px-4 py-2.5 text-[0.8125rem] font-semibold"
       >
-        <RefreshCw className="size-4 text-primary" />
+        <RefreshCw className="size-4 text-ink" />
         有新版本，点击刷新
       </button>
     </div>

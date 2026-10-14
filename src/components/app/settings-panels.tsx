@@ -73,7 +73,7 @@ export function AdvancedBody({ full, onHelp }: { full?: boolean; onHelp: () => v
                     { value: "random", label: "乱序" },
                   ]}
                 />
-                <p className="mt-2 text-[12px] text-muted-foreground">
+                <p className="mt-2 text-xs text-ink-3">
                   还剩 {sum.newLeft} 个新词，{sum.newLeft ? `预计 ${fmtDate(sum.finish, true)} 学完` : "已经全部学过"}。
                 </p>
               </Panel>
@@ -103,25 +103,25 @@ export function AdvancedBody({ full, onHelp }: { full?: boolean; onHelp: () => v
                 </>
               )}
               <Link to="/test" data-testid="go-test" className="block">
-                <Panel className="flex items-center gap-4 transition hover:border-primary/40">
-                  <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
+                <Panel className="flex items-center gap-4 transition hover:border-ink">
+                  <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
                     <Gauge className="size-6" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[15px] font-bold">词汇量测试</div>
-                    <div className="text-[13px] text-muted-foreground">
+                    <div className="text-[0.9375rem] font-semibold">词汇量测试</div>
+                    <div className="text-[0.8125rem] text-ink-3">
                       {st.test ? `上次估算约 ${st.test.est} 词（${fmtDate(st.test.at)}）` : "3 分钟估算词汇量，跳过已经会的词"}
                     </div>
                   </div>
-                  <ChevronRight className="size-5 text-muted-foreground" />
+                  <ChevronRight className="size-5 text-ink-3" />
                 </Panel>
               </Link>
               {finePointer() && (
                 <Panel>
                   <button type="button" onClick={onHelp} className="flex w-full items-center gap-3 text-left" data-testid="open-shortcuts">
-                    <Keyboard className="size-5 text-muted-foreground" />
-                    <span className="flex-1 text-[15px] font-semibold">键盘快捷键</span>
-                    <ChevronRight className="size-5 text-muted-foreground" />
+                    <Keyboard className="size-5 text-ink-3" />
+                    <span className="flex-1 text-[0.9375rem] font-semibold">键盘快捷键</span>
+                    <ChevronRight className="size-5 text-ink-3" />
                   </button>
                 </Panel>
               )}
@@ -132,15 +132,15 @@ export function AdvancedBody({ full, onHelp }: { full?: boolean; onHelp: () => v
 export function LabLink() {
   return (
     <Link to="/lab" data-testid="go-lab" className="block">
-      <Panel className="flex items-center gap-4 transition hover:border-primary/40">
-        <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-secondary text-muted-foreground">
+      <Panel className="flex items-center gap-4 transition hover:border-ink">
+        <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-paper-2 text-ink-3">
           <SlidersHorizontal className="size-6" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[15px] font-bold">算法实验室</div>
-          <div className="text-[13px] text-muted-foreground">记忆保持目标和几个实验开关，默认就是推荐值</div>
+          <div className="text-[0.9375rem] font-semibold">算法实验室</div>
+          <div className="text-[0.8125rem] text-ink-3">记忆保持目标和几个实验开关，默认就是推荐值</div>
         </div>
-        <ChevronRight className="size-5 text-muted-foreground" />
+        <ChevronRight className="size-5 text-ink-3" />
       </Panel>
     </Link>
   );
@@ -184,8 +184,8 @@ export function RemindRow() {
     <Row label="学习提醒" hint={perm === "denied" ? "通知被禁止了，需在浏览器设置里打开" : "应用开着或在后台时到点发通知"}>
       <div className="flex shrink-0 items-center gap-2">
         {remindOn && (
-          <label className="relative flex items-center gap-1 rounded-xl bg-secondary px-2.5 py-1.5 text-[14px] font-bold tnum">
-            <BellRing className="size-3.5 text-primary" />
+          <label className="relative flex items-center gap-1 rounded-xl bg-paper-2 px-2.5 py-1.5 text-sm font-semibold tnum">
+            <BellRing className="size-3.5 text-ink" />
             {s.remindAt}
             <input
               type="time"
@@ -242,7 +242,7 @@ export function HabitPanel() {
     <Panel data-testid="habit-settings" id="habit">
       <PanelTitle
         right={
-          <span className="flex items-center gap-1 rounded-full bg-vague-soft px-2.5 py-1 text-[12px] font-bold text-vague" data-testid="me-makeup" data-n={st.makeup ?? 0}>
+          <span className="flex items-center gap-1 rounded-lg bg-vague-soft px-2.5 py-1 text-xs font-semibold text-vague" data-testid="me-makeup" data-n={st.makeup ?? 0}>
             <Ticket className="size-3.5" /> 补卡 {st.makeup ?? 0}/{MAKEUP_MAX}
           </span>
         }
@@ -268,8 +268,8 @@ export function HabitPanel() {
               data-testid={`goal-min-${m}`}
               onClick={() => setSettings({ goalMin: m })}
               className={cn(
-                "tnum rounded-xl py-2 text-[14px] font-bold transition",
-                s.goalMin === m ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground",
+                "tnum rounded-xl py-2 text-sm font-semibold transition",
+                s.goalMin === m ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3 hover:text-ink",
               )}
             >
               {m} 分钟
@@ -277,7 +277,7 @@ export function HabitPanel() {
           ))}
         </div>
       )}
-      <p className="mt-2 text-[12px] text-muted-foreground">
+      <p className="mt-2 text-xs text-ink-3">
         {s.goalMode === "time" ? `当天作答累计满 ${s.goalMin} 分钟即可打卡（每题最多计 1 分钟）。` : "当天新词达标、到期复习清零即可打卡。"}
       </p>
 
@@ -291,19 +291,19 @@ export function HabitPanel() {
             aria-pressed={(s.restDay ?? -1) === d}
             onClick={() => setSettings({ restDay: d })}
             className={cn(
-              "rounded-xl py-2 text-[13px] font-bold transition",
-              (s.restDay ?? -1) === d ? (d < 0 ? "bg-foreground text-background" : "bg-know text-white dark:text-[oklch(0.2_0.02_170)]") : "bg-secondary text-muted-foreground hover:text-foreground",
+              "rounded-xl py-2 text-[0.8125rem] font-semibold transition",
+              (s.restDay ?? -1) === d ? (d < 0 ? "bg-foreground text-background" : "bg-know text-white dark:text-[oklch(0.2_0.02_170)]") : "bg-paper-2 text-ink-3 hover:text-ink",
             )}
           >
             {d < 0 ? "无" : WEEKDAY_CN[d]}
           </button>
         ))}
       </div>
-      <p className="mt-2 text-[12px] text-muted-foreground">
+      <p className="mt-2 text-xs text-ink-3">
         休息日不打卡也不断连续；每连续打卡 {MAKEUP_EVERY} 天得 1 张补卡（最多 {MAKEUP_MAX} 张），漏了昨天可以在今日页补上。
       </p>
 
-      <div className="mt-3 border-t border-border/60 pt-1">
+      <div className="mt-3 border-t border-rule pt-1">
         <Row label="图标角标" hint={badgeSupported() ? "桌面图标上显示待复习数" : "这个浏览器不支持角标"}>
           <Switch checked={s.appBadge !== false} disabled={!badgeSupported()} onCheckedChange={(v) => setSettings({ appBadge: v })} aria-label="图标角标" data-testid="app-badge" />
         </Row>
@@ -320,7 +320,7 @@ export function ModesPanel({ compact }: { compact?: boolean }) {
   const recallOnly = REVIEW_MODES.every((m) => m === "recall" || off.includes(m));
   return (
     <Panel data-testid="modes-settings">
-      <PanelTitle right={<span className="tnum text-[12px] font-semibold text-muted-foreground" data-testid="modes-on">已开 {REVIEW_MODES.length - off.length}/{REVIEW_MODES.length}</span>}>复习题型</PanelTitle>
+      <PanelTitle right={<span className="tnum text-xs font-semibold text-ink-3" data-testid="modes-on">已开 {REVIEW_MODES.length - off.length}/{REVIEW_MODES.length}</span>}>复习题型</PanelTitle>
       <Segmented<number>
         value={recallOnly ? 1 : 0}
         onChange={(v) => setSettings({ offModes: v === 1 ? REVIEW_MODES.filter((m) => m !== "recall") : [] })}
@@ -332,7 +332,7 @@ export function ModesPanel({ compact }: { compact?: boolean }) {
       />
       {compact ? (
         <details className="mt-3" data-testid="mode-custom">
-          <summary className="cursor-pointer text-[13px] font-semibold text-muted-foreground">自选题型（{REVIEW_MODES.length - off.length}/{REVIEW_MODES.length}）</summary>
+          <summary className="cursor-pointer text-[0.8125rem] font-semibold text-ink-3">自选题型（{REVIEW_MODES.length - off.length}/{REVIEW_MODES.length}）</summary>
           <div className="mt-2">
       <div className="grid grid-cols-3 gap-1.5" data-testid="mode-chips">
         {REVIEW_MODES.map((m) => {
@@ -352,9 +352,9 @@ export function ModesPanel({ compact }: { compact?: boolean }) {
                 setSettings({ offModes: next });
               }}
               className={cn(
-                "flex h-10 items-center justify-center gap-1 rounded-xl px-1 text-[13px] font-bold transition",
-                on ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground line-through decoration-1 hover:text-foreground",
-                BASE_MODES.includes(m) && on && "ring-2 ring-primary/25 ring-offset-1 ring-offset-card",
+                "flex h-10 items-center justify-center gap-1 rounded-xl px-1 text-[0.8125rem] font-semibold transition",
+                on ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3 line-through decoration-1 hover:text-ink",
+                BASE_MODES.includes(m) && on && "ring-2 ring-ink ring-offset-1 ring-offset-card",
               )}
             >
               {on && <Check className="size-3.5 shrink-0" strokeWidth={3} />}
@@ -363,14 +363,14 @@ export function ModesPanel({ compact }: { compact?: boolean }) {
           );
         })}
       </div>
-      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 text-xs leading-relaxed text-ink-3">
         关掉的题型不再出现。至少保留一种基础题型（回想 / 英选中 / 中选英 / 听音选义）；其余题型只给能出题的词出，例句选词要先在线看过这个词的例句。难度递进：间隔 ≤{TIER_SHORT} 天英选中，{TIER_SHORT + 1}–{TIER_LONG - 1} 天中选英，≥{TIER_LONG} 天听音。
       </p>
           </div>
         </details>
       ) : (
         <>
-      <div className="mb-2 mt-4 text-[12px] font-bold tracking-wider text-muted-foreground">自选题型</div>
+      <div className="mb-2 mt-4 text-xs font-semibold tracking-wider text-ink-3">自选题型</div>
       <div className="grid grid-cols-3 gap-1.5" data-testid="mode-chips">
         {REVIEW_MODES.map((m) => {
           const on = !off.includes(m);
@@ -389,9 +389,9 @@ export function ModesPanel({ compact }: { compact?: boolean }) {
                 setSettings({ offModes: next });
               }}
               className={cn(
-                "flex h-10 items-center justify-center gap-1 rounded-xl px-1 text-[13px] font-bold transition",
-                on ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground line-through decoration-1 hover:text-foreground",
-                BASE_MODES.includes(m) && on && "ring-2 ring-primary/25 ring-offset-1 ring-offset-card",
+                "flex h-10 items-center justify-center gap-1 rounded-xl px-1 text-[0.8125rem] font-semibold transition",
+                on ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3 line-through decoration-1 hover:text-ink",
+                BASE_MODES.includes(m) && on && "ring-2 ring-ink ring-offset-1 ring-offset-card",
               )}
             >
               {on && <Check className="size-3.5 shrink-0" strokeWidth={3} />}
@@ -400,12 +400,12 @@ export function ModesPanel({ compact }: { compact?: boolean }) {
           );
         })}
       </div>
-      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 text-xs leading-relaxed text-ink-3">
         关掉的题型不再出现。至少保留一种基础题型（回想 / 英选中 / 中选英 / 听音选义）；其余题型只给能出题的词出，例句选词要先在线看过这个词的例句。难度递进：间隔 ≤{TIER_SHORT} 天英选中，{TIER_SHORT + 1}–{TIER_LONG - 1} 天中选英，≥{TIER_LONG} 天听音。
       </p>
         </>
       )}
-      <div className="mt-3 border-t border-border/60 pt-1">
+      <div className="mt-3 border-t border-rule pt-1">
         <Row label="难度递进" hint="间隔越长题越难：英选中 → 中选英 → 听音">
           <Switch checked={!!s.progressive} onCheckedChange={(v) => setSettings({ progressive: v })} aria-label="难度递进" data-testid="progressive" />
         </Row>
@@ -439,7 +439,7 @@ export function AlgoPanel() {
     <Panel data-testid="algo-settings">
       <PanelTitle
         right={
-          <Link to="/algo" data-testid="algo-link" className="flex items-center text-[13px] text-muted-foreground hover:text-foreground">
+          <Link to="/algo" data-testid="algo-link" className="flex items-center text-[0.8125rem] text-ink-3 hover:text-ink">
             说明 · 模拟器 <ChevronRight className="size-4" />
           </Link>
         }
@@ -453,14 +453,14 @@ export function AlgoPanel() {
         testid="retention"
         options={RETENTION_OPTIONS.map((v) => ({ value: v, label: `${v}%` }))}
       />
-      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground" data-testid="retention-hint">
+      <p className="mt-2 text-xs leading-relaxed text-ink-3" data-testid="retention-hint">
         {ret === 90
           ? "默认 90%：大约十个词里忘一个"
           : ret > 90
             ? `${ret}%：大约二十个词里忘一个；复习更勤（间隔是默认的 ${Math.round(scale * 100)}%），每天要复习的更多`
             : `${ret}%：大约七个词里忘一个；复习更少（间隔是默认的 ${Math.round(scale * 100)}%），代价是忘得多一些`}
       </p>
-      <div className="mt-3 border-t border-border/60 pt-1">
+      <div className="mt-3 border-t border-rule pt-1">
         <Row label="间隔随机扰动" hint="间隔 ±5%，同一天学的词不会同一天扎堆">
           <Switch checked={!!s.fuzz} onCheckedChange={(v) => setSettings({ fuzz: v })} aria-label="间隔随机扰动" data-testid="fuzz-switch" />
         </Row>
@@ -500,7 +500,7 @@ export function AlgoPanel() {
           type="button"
           data-testid="balance-now"
           onClick={() => doBalance()}
-          className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-[14px] font-semibold hover:bg-accent"
+          className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2"
         >
           <Scale className="size-4" /> 立即均衡未来 30 天
         </button>
@@ -518,16 +518,16 @@ export function A11yPanel() {
   const fs = s.fontSize ?? "md";
   return (
     <Panel data-testid="a11y-settings">
-      <PanelTitle right={<Accessibility className="size-4 text-muted-foreground" />}>体验与无障碍</PanelTitle>
+      <PanelTitle right={<Accessibility className="size-4 text-ink-3" />}>体验与无障碍</PanelTitle>
       <Label>卡片字号</Label>
       <Segmented<FontSize> value={fs} onChange={(v) => setSettings({ fontSize: v })} testid="font-size" options={FONT_SIZES.map((v) => ({ value: v, label: FONT_LABEL[v] }))} />
-      <div className="mt-2 flex items-center gap-3 overflow-hidden rounded-2xl bg-secondary/70 px-4 py-3" data-testid="font-preview">
+      <div className="mt-2 flex items-center gap-3 overflow-hidden rounded-2xl bg-paper-2 px-4 py-3" data-testid="font-preview">
         <div className="fs-card min-w-0">
-          <span className="font-display text-[22px] font-extrabold tracking-tight">abandon</span>
-          <span className="ml-2 text-[15px] text-muted-foreground">v. 放弃；遗弃</span>
+          <span className="font-display text-[1.375rem] font-semibold tracking-[-0.015em]">abandon</span>
+          <span className="ml-2 text-[0.9375rem] text-ink-3">v. 放弃；遗弃</span>
         </div>
       </div>
-      <div className="mt-3 border-t border-border/60 pt-1">
+      <div className="mt-3 border-t border-rule pt-1">
         <Row label="左手模式" hint="评分按钮左右翻转，「认识」靠左手">
           <Switch checked={!!s.leftHand} onCheckedChange={(v) => setSettings({ leftHand: v })} aria-label="左手模式" data-testid="left-hand" />
         </Row>
@@ -549,7 +549,7 @@ export function A11yPanel() {
       </div>
       <Label>减少动画</Label>
       <Segmented<Motion> value={s.motion ?? "system"} onChange={(v) => setSettings({ motion: v })} testid="motion" options={(["system", "reduce", "full"] as Motion[]).map((v) => ({ value: v, label: MOTION_LABEL[v] }))} />
-      <p className="mt-2 text-[12px] text-muted-foreground" data-testid="motion-hint">
+      <p className="mt-2 text-xs text-ink-3" data-testid="motion-hint">
         {(s.motion ?? "system") === "system" ? `系统${sysReduce ? "已开启" : "未开启"}「减少动态效果」` : s.motion === "reduce" ? "关闭翻转、弹出、彩带等动画" : "保留所有动画"}
         {finePointer() ? "；电脑上学习页可按 F 进入专注模式（全屏）。" : "。"}
       </p>
@@ -561,7 +561,7 @@ export function A11yPanel() {
             const r = await promptInstall();
             if (r === "accepted") toast.success("已添加到桌面");
           }}
-          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-[14px] font-semibold hover:bg-accent"
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2"
         >
           <MonitorDown className="size-4" /> 添加到桌面
         </button>
@@ -571,15 +571,15 @@ export function A11yPanel() {
 }
 
 export function Label({ children }: { children: React.ReactNode }) {
-  return <div className="mb-2 mt-4 text-[12px] font-bold tracking-wider text-muted-foreground first:mt-0">{children}</div>;
+  return <div className="mb-2 mt-4 text-xs font-semibold tracking-wider text-ink-3 first:mt-0">{children}</div>;
 }
 
 export function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-border/60 py-3 last:border-0 last:pb-0 first:pt-0">
+    <div className="flex items-center justify-between gap-4 border-b border-rule py-3 last:border-0 last:pb-0 first:pt-0">
       <div className="min-w-0">
-        <div className="text-[15px] font-medium">{label}</div>
-        {hint && <div className="text-[12px] text-muted-foreground">{hint}</div>}
+        <div className="text-[0.9375rem] font-medium">{label}</div>
+        {hint && <div className="text-xs text-ink-3">{hint}</div>}
       </div>
       {children}
     </div>
@@ -588,7 +588,7 @@ export function Row({ label, hint, children }: { label: string; hint?: string; c
 
 export function ActionBtn({ icon, label, onClick, testid }: { icon: React.ReactNode; label: string; onClick: () => void; testid?: string }) {
   return (
-    <button type="button" onClick={onClick} data-testid={testid} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-secondary text-[14px] font-semibold hover:bg-accent">
+    <button type="button" onClick={onClick} data-testid={testid} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2">
       {icon}
       {label}
     </button>
@@ -602,12 +602,12 @@ export function Fold({ title, hint, testid, children }: { title: string; hint: s
   const [open, setOpen] = useState(false);
   return (
     <div data-testid={testid}>
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-3 rounded-3xl border border-border/70 bg-card px-5 py-4 text-left" data-testid={`${testid}-toggle`}>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-3 rounded-2xl border border-rule bg-paper-3 px-5 py-4 text-left" data-testid={`${testid}-toggle`}>
         <span className="min-w-0 flex-1">
-          <b className="block text-[15px]">{title}</b>
-          <span className="block truncate text-[12px] text-muted-foreground">{hint}</span>
+          <b className="block text-[0.9375rem]">{title}</b>
+          <span className="block truncate text-xs text-ink-3">{hint}</span>
         </span>
-        <ChevronDown className={cn("size-5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("size-5 shrink-0 text-ink-3 transition-transform", open && "rotate-180")} />
       </button>
       {open && <div className="mt-2">{children}</div>}
     </div>

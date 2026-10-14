@@ -149,7 +149,7 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
   return (
     <>
       <BottomSheet open={phase.k === "pass"} onOpenChange={(v) => !v && finish()} title="这份备份设了口令" testid="import-pass-sheet">
-        <p className="text-[13px] text-muted-foreground">输入导出时设的口令解开备份（AES-GCM 加密，只在本机解密）。</p>
+        <p className="text-[0.8125rem] text-ink-3">输入导出时设的口令解开备份（AES-GCM 加密，只在本机解密）。</p>
         <form
           className="mt-3"
           onSubmit={(e) => {
@@ -157,8 +157,8 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
             void unlock();
           }}
         >
-          <div className="flex items-center gap-2 rounded-2xl bg-secondary px-3">
-            <Lock className="size-4 shrink-0 text-muted-foreground" />
+          <div className="flex items-center gap-2 rounded-2xl bg-paper-2 px-3">
+            <Lock className="size-4 shrink-0 text-ink-3" />
             <input
               type={show ? "text" : "password"}
               autoFocus
@@ -168,18 +168,18 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
               aria-label="备份口令"
               placeholder="备份口令"
               autoComplete="off"
-              className="h-12 min-w-0 flex-1 bg-transparent text-[16px] outline-none"
+              className="h-12 min-w-0 flex-1 bg-transparent text-base outline-none"
             />
-            <button type="button" onClick={() => setShow(!show)} aria-label={show ? "隐藏口令" : "显示口令"} className="grid size-8 place-items-center text-muted-foreground">
+            <button type="button" onClick={() => setShow(!show)} aria-label={show ? "隐藏口令" : "显示口令"} className="grid size-8 place-items-center text-ink-3">
               {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
           {err && (
-            <p className="mt-2 text-[13px] font-semibold text-forget" data-testid="import-pass-err" role="alert">
+            <p className="mt-2 text-[0.8125rem] font-semibold text-forget" data-testid="import-pass-err" role="alert">
               {err}
             </p>
           )}
-          <button type="submit" disabled={!pass || busy} data-testid="import-pass-go" className="mt-4 h-12 w-full rounded-2xl bg-primary font-bold text-primary-foreground disabled:opacity-50">
+          <button type="submit" disabled={!pass || busy} data-testid="import-pass-go" className="mt-4 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3 disabled:opacity-50">
             {busy ? "解密中…" : "解开备份"}
           </button>
         </form>
@@ -193,7 +193,7 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
               <Side label="这台设备" words={Object.keys(local.cards).length} days={local.checkins.length} sub="当前记录" />
             </div>
             {bad && (
-              <p className="mt-3 flex gap-2 rounded-2xl bg-vague-soft px-3 py-2.5 text-[12px] font-medium text-vague" data-testid="import-dropped" data-n={phase.k === "choose" ? phase.rep.dropped.length : 0} data-salvaged={phase.k === "choose" ? (phase.rep.salvaged ?? "") : ""}>
+              <p className="mt-3 flex gap-2 rounded-2xl bg-vague-soft px-3 py-2.5 text-xs font-medium text-vague" data-testid="import-dropped" data-n={phase.k === "choose" ? phase.rep.dropped.length : 0} data-salvaged={phase.k === "choose" ? (phase.rep.salvaged ?? "") : ""}>
                 <TriangleAlert className="mt-px size-4 shrink-0" />
                 {phase.k === "choose" && phase.rep.salvaged !== undefined ? `${bad}，坏掉的部分丢掉了。` : `备份里有坏数据：${bad}。`}
               </p>
@@ -207,12 +207,12 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
                 await applyMerge(remote);
                 finish();
               }}
-              className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-primary p-4 text-left text-primary-foreground shadow-lg shadow-primary/20"
+              className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-ink p-4 text-left text-paper-3 shadow-primary/20"
             >
               <GitMerge className="size-6 shrink-0" />
               <span className="min-w-0">
-                <b className="block text-[15px]">合并两台设备的记录</b>
-                <span className="block text-[12px] opacity-85">每个词取最近复习的那份；日志、打卡、生词本、词单取并集</span>
+                <b className="block text-[0.9375rem]">合并两台设备的记录</b>
+                <span className="block text-xs opacity-85">每个词取最近复习的那份；日志、打卡、生词本、词单取并集</span>
               </span>
             </button>
             <button
@@ -232,16 +232,16 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
               }}
               className={cn(
                 "mt-2 flex w-full items-center gap-3 rounded-2xl border p-4 text-left",
-                risky ? "border-destructive bg-destructive/10" : "border-border/70",
+                risky ? "border-destructive bg-destructive/10" : "border-rule",
                 risky && sure && "bg-destructive text-destructive-foreground",
               )}
             >
               <Replace className={cn("size-6 shrink-0", risky && sure ? "" : "text-destructive")} />
               <span className="min-w-0">
-                <b className="block text-[15px]" data-testid="import-replace-label">
+                <b className="block text-[0.9375rem]" data-testid="import-replace-label">
                   {risky && sure ? `确认覆盖：${Object.keys(local.cards).length} 词 → ${Object.keys(remote.cards).length} 词` : "覆盖这台设备"}
                 </b>
-                <span className={cn("block text-[12px]", risky && sure ? "opacity-90" : risky ? "font-semibold text-destructive" : "text-muted-foreground")}>
+                <span className={cn("block text-xs", risky && sure ? "opacity-90" : risky ? "font-semibold text-destructive" : "text-ink-3")}>
                   {risky
                     ? Object.keys(remote.cards).length === 0
                       ? "备份里一个学习记录都没有，覆盖 = 清空这台设备"
@@ -250,7 +250,7 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
                 </span>
               </span>
             </button>
-            <p className="mt-3 text-[12px] text-muted-foreground">动手前会给这台设备自动存一份快照，可以在「数据中心 → 自动快照」回滚。</p>
+            <p className="mt-3 text-xs text-ink-3">动手前会给这台设备自动存一份快照，可以在「数据中心 → 自动快照」回滚。</p>
           </>
         )}
       </BottomSheet>
@@ -260,11 +260,11 @@ export function ImportFlow({ text, onDone }: { text: string | null; onDone: () =
 
 function Side({ label, words, days, sub }: { label: string; words: number; days: number; sub: string }) {
   return (
-    <div className="rounded-2xl bg-secondary/70 px-3 py-3">
-      <div className="text-[12px] font-bold text-muted-foreground">{label}</div>
-      <div className="tnum mt-1 text-[22px] font-extrabold leading-none">{words}</div>
-      <div className="text-[12px] text-muted-foreground">词 · 打卡 {days} 天</div>
-      <div className="mt-1 text-[11px] text-muted-foreground">{sub}</div>
+    <div className="rounded-2xl bg-paper-2 px-3 py-3">
+      <div className="text-xs font-semibold text-ink-3">{label}</div>
+      <div className="tnum mt-1 text-[1.375rem] font-semibold leading-none">{words}</div>
+      <div className="text-xs text-ink-3">词 · 打卡 {days} 天</div>
+      <div className="mt-1 text-[0.6875rem] text-ink-3">{sub}</div>
     </div>
   );
 }

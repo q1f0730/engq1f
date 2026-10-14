@@ -60,13 +60,13 @@ export const Route = createFileRoute("/data")({ component: DataPage });
 /** v11 · 数据中心：备份与恢复、自动快照、学习报告图、导入词表、学习档案、数据体检、存储管理 */
 function DataPage() {
   const { index, error } = useWords();
-  if (error) return <div className="p-8 text-center text-sm text-muted-foreground">{error}</div>;
+  if (error) return <div className="p-8 text-center text-sm text-ink-3">{error}</div>;
   if (!index) return <Spinner />;
   const reg = readRegistry();
   const profile = reg.list.find((p) => p.id === ACTIVE_PROFILE);
   return (
     <div data-testid="data-page">
-      <Link to="/me" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground" data-testid="data-back">
+      <Link to="/me" className="-ml-1 mt-4 flex w-fit items-center gap-0.5 text-[0.8125rem] font-semibold text-ink-3 hover:text-ink" data-testid="data-back">
         <ChevronLeft className="size-4" /> 我的
       </Link>
       <PageHeader
@@ -74,7 +74,7 @@ function DataPage() {
         sub="不联网 · 记录只存在这台手机上"
         right={
           profile && (
-            <span className="mb-1 max-w-[40%] truncate rounded-full bg-brand-soft px-3 py-1.5 text-[12px] font-bold text-primary" data-testid="data-profile">
+            <span className="mb-1 max-w-[40%] truncate rounded-lg bg-mark-soft px-3 py-1.5 text-xs font-semibold text-ink" data-testid="data-profile">
               {profile.name}
             </span>
           )
@@ -162,11 +162,11 @@ function BackupPanel() {
   return (
     <Panel data-testid="backup-panel">
       <PanelTitle>备份与恢复</PanelTitle>
-      <label className="mb-1.5 block text-[12px] font-bold tracking-wider text-muted-foreground" htmlFor="enc-pass">
+      <label className="mb-1.5 block text-xs font-semibold tracking-wider text-ink-3" htmlFor="enc-pass">
         备份口令（可选）
       </label>
-      <div className={cn("flex items-center gap-2 rounded-2xl bg-secondary px-3 ring-primary/30 transition focus-within:ring-2", tooShort && "ring-2 ring-forget/50")}>
-        <KeyRound className="size-4 shrink-0 text-muted-foreground" />
+      <div className={cn("flex items-center gap-2 rounded-2xl bg-paper-2 px-3 ring-ink transition focus-within:ring-2", tooShort && "ring-2 ring-forget/50")}>
+        <KeyRound className="size-4 shrink-0 text-ink-3" />
         <input
           id="enc-pass"
           type={show ? "text" : "password"}
@@ -175,13 +175,13 @@ function BackupPanel() {
           placeholder="不填 = 不加密"
           autoComplete="new-password"
           data-testid="enc-pass"
-          className="h-11 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground/70"
+          className="h-11 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-ink-3"
         />
-        <button type="button" onClick={() => setShow(!show)} aria-label={show ? "隐藏口令" : "显示口令"} className="grid size-8 place-items-center text-muted-foreground">
+        <button type="button" onClick={() => setShow(!show)} aria-label={show ? "隐藏口令" : "显示口令"} className="grid size-8 place-items-center text-ink-3">
           {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
       </div>
-      <p className="mt-1.5 text-[12px] text-muted-foreground" data-testid="enc-hint">
+      <p className="mt-1.5 text-xs text-ink-3" data-testid="enc-hint">
         {pass ? (tooShort ? `口令至少 ${PASS_MIN} 位` : "导出和复制都会用 AES-GCM 加密；口令不保存，忘了就打不开") : "设了口令，备份发到聊天或网盘里别人也看不了"}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -190,7 +190,7 @@ function BackupPanel() {
         <Btn testid="restore-file" icon={<FileUp className="size-4" />} label="从文件恢复" onClick={() => file.current?.click()} />
         <Btn testid="paste-backup" icon={<ClipboardPaste className="size-4" />} label="从剪贴板恢复" onClick={paste} />
       </div>
-      <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">恢复时如果这台设备已有记录，可以选「合并」：每个词取最近复习的那份，两台设备的打卡和日志都保留。</p>
+      <p className="mt-2.5 text-xs leading-relaxed text-ink-3">恢复时如果这台设备已有记录，可以选「合并」：每个词取最近复习的那份，两台设备的打卡和日志都保留。</p>
       <input
         ref={file}
         type="file"
@@ -204,14 +204,14 @@ function BackupPanel() {
         }}
       />
       <BottomSheet open={pasting} onOpenChange={setPasting} title="粘贴备份" testid="paste-sheet">
-        <p className="text-[13px] text-muted-foreground">浏览器没让读剪贴板，长按下面的框粘贴备份文本。</p>
+        <p className="text-[0.8125rem] text-ink-3">浏览器没让读剪贴板，长按下面的框粘贴备份文本。</p>
         <textarea
           value={pasteText}
           onChange={(e) => setPasteText(e.target.value)}
           data-testid="paste-text"
           rows={5}
           placeholder='{"app":"cet4-vocab", …}'
-          className="mt-3 w-full resize-none rounded-2xl border border-border/80 bg-background p-3 font-mono text-[12px] outline-none focus:border-primary/60"
+          className="mt-3 w-full resize-none rounded-2xl border border-rule bg-paper p-3 font-mono text-xs outline-none focus:border-ink"
         />
         <button
           type="button"
@@ -221,7 +221,7 @@ function BackupPanel() {
             setPasting(false);
             setPending(pasteText);
           }}
-          className="mt-3 h-12 w-full rounded-2xl bg-primary font-bold text-primary-foreground disabled:opacity-50"
+          className="mt-3 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3 disabled:opacity-50"
         >
           恢复
         </button>
@@ -239,8 +239,8 @@ function Btn({ icon, label, onClick, testid, primary, disabled }: { icon: React.
       disabled={disabled}
       data-testid={testid}
       className={cn(
-        "flex h-12 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 text-[14px] font-semibold transition disabled:opacity-50",
-        primary ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-secondary hover:bg-accent",
+        "flex h-12 min-w-0 items-center justify-center gap-2 rounded-2xl px-2 text-sm font-semibold transition disabled:opacity-50",
+        primary ? "bg-ink text-paper-3 shadow-primary/20" : "bg-paper-2 hover:bg-paper-2",
       )}
     >
       {icon}
@@ -295,34 +295,34 @@ function SnapPanel() {
   };
   return (
     <Panel data-testid="snap-panel">
-      <PanelTitle right={<History className="size-4 text-muted-foreground" />}>自动快照</PanelTitle>
-      <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">每天第一次打开时自动存一份，保留最近 7 份；导入或合并前也会先存一份。误操作了可以回滚。</p>
+      <PanelTitle right={<History className="size-4 text-ink-3" />}>自动快照</PanelTitle>
+      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">每天第一次打开时自动存一份，保留最近 7 份；导入或合并前也会先存一份。误操作了可以回滚。</p>
       {failed ? (
-        <p className="rounded-2xl bg-secondary px-4 py-3 text-[13px] text-muted-foreground">这个浏览器不支持 IndexedDB，无法保存快照。</p>
+        <p className="rounded-2xl bg-paper-2 px-4 py-3 text-[0.8125rem] text-ink-3">这个浏览器不支持 IndexedDB，无法保存快照。</p>
       ) : list === null ? (
-        <div className="h-16 animate-pulse rounded-2xl bg-secondary" />
+        <div className="h-16 animate-pulse rounded-2xl bg-paper-2" />
       ) : list.length === 0 ? (
-        <p className="rounded-2xl bg-secondary px-4 py-3 text-[13px] text-muted-foreground" data-testid="snap-empty">
+        <p className="rounded-2xl bg-paper-2 px-4 py-3 text-[0.8125rem] text-ink-3" data-testid="snap-empty">
           {Object.keys(st.cards).length ? "还没有快照，今天的会在几秒后自动保存。" : "开始学习后，每天会自动保存一份。"}
         </p>
       ) : (
-        <ul className="divide-y divide-border/60 rounded-2xl border border-border/70" data-testid="snap-list">
+        <ul className="divide-y divide-rule rounded-2xl border border-rule" data-testid="snap-list">
           {list.map((s, k) => (
             <li key={s.id} className="flex items-center gap-3 px-3.5 py-2.5" data-testid="snap-item" data-kind={s.kind} data-words={s.words}>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 text-[14px] font-semibold">
+                <div className="flex items-center gap-1.5 text-sm font-semibold">
                   <span className="tnum">
                     {s.day === dayKey() ? "今天" : fmtDate(s.day)} {hm(s.at)}
                   </span>
-                  <span className={cn("rounded-full px-1.5 py-px text-[11px] font-bold", s.kind === "auto" ? "bg-know-soft text-know" : s.kind === "import" ? "bg-vague-soft text-vague" : "bg-secondary text-muted-foreground")}>
+                  <span className={cn("rounded-[3px] px-1.5 py-px text-[0.6875rem] font-semibold", s.kind === "auto" ? "bg-know-soft text-know" : s.kind === "import" ? "bg-vague-soft text-vague" : "bg-paper-2 text-ink-3")}>
                     {SNAP_KIND[s.kind]}
                   </span>
                 </div>
-                <div className="tnum text-[12px] text-muted-foreground">
+                <div className="tnum text-xs text-ink-3">
                   {s.words} 词 · {fmtBytes(s.size)}
                 </div>
               </div>
-              <button type="button" data-testid={`snap-restore-${k}`} onClick={() => setPick(s)} className="h-9 shrink-0 rounded-full bg-secondary px-3.5 text-[13px] font-bold hover:bg-accent">
+              <button type="button" data-testid={`snap-restore-${k}`} onClick={() => setPick(s)} className="h-9 shrink-0 rounded-lg bg-paper-2 px-3.5 text-[0.8125rem] font-semibold hover:bg-paper-2">
                 回滚
               </button>
             </li>
@@ -330,18 +330,18 @@ function SnapPanel() {
         </ul>
       )}
       {!failed && (
-        <button type="button" data-testid="snap-now" onClick={saveNow} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground">
+        <button type="button" data-testid="snap-now" onClick={saveNow} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-ink-3 hover:bg-paper-2 hover:text-ink">
           <Plus className="size-4" /> 现在存一份
         </button>
       )}
       <BottomSheet open={!!pick} onOpenChange={(v) => !v && setPick(null)} title="回滚到这份快照？" testid="snap-confirm">
         {pick && (
           <>
-            <p className="text-[14px] text-muted-foreground">
-              学习记录会回到 <b className="text-foreground">{fmtDate(pick.day)} {hm(pick.at)}</b>（{pick.words} 词），之后的进度会丢失。不放心可以先「现在存一份」。
+            <p className="text-sm text-ink-3">
+              学习记录会回到 <b className="text-ink">{fmtDate(pick.day)} {hm(pick.at)}</b>（{pick.words} 词），之后的进度会丢失。不放心可以先「现在存一份」。
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setPick(null)} className="h-12 rounded-2xl bg-secondary font-semibold">
+              <button type="button" onClick={() => setPick(null)} className="h-12 rounded-2xl bg-paper-2 font-semibold">
                 取消
               </button>
               <button type="button" data-testid="snap-confirm-yes" onClick={() => rollback(pick)} className="h-12 rounded-2xl bg-destructive font-semibold text-destructive-foreground">
@@ -395,18 +395,18 @@ function ReportPanel({ index, profileName }: { index: WordIndex; profileName: st
         type="button"
         data-testid="report-open"
         onClick={() => setOpen(true)}
-        className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-[14px] font-semibold hover:bg-accent"
+        className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2"
       >
         <ImageDown className="size-4" /> 生成长图：总进度 · 掌握分布 · 连续天数
       </button>
       <BottomSheet open={open} onOpenChange={setOpen} title="学习报告" testid="report-sheet">
         {url ? (
-          <img src={url} alt="学习报告长图" data-testid="report-img" className="mx-auto w-full max-w-sm rounded-2xl border border-border/70 shadow-lg" />
+          <img src={url} alt="学习报告长图" data-testid="report-img" className="mx-auto w-full max-w-sm rounded-2xl border border-rule" />
         ) : (
-          <div className="mx-auto aspect-[1/2] w-full max-w-sm animate-pulse rounded-2xl bg-secondary" />
+          <div className="mx-auto aspect-[1/2] w-full max-w-sm animate-pulse rounded-2xl bg-paper-2" />
         )}
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={save} disabled={!url} data-testid="report-save" className={cn("flex h-12 items-center justify-center gap-2 rounded-2xl font-bold", native ? "bg-secondary" : "col-span-2 bg-primary text-primary-foreground")}>
+          <button type="button" onClick={save} disabled={!url} data-testid="report-save" className={cn("flex h-12 items-center justify-center gap-2 rounded-2xl font-semibold", native ? "bg-paper-2" : "col-span-2 bg-ink text-paper-3")}>
             <Download className="size-4" /> 保存图片
           </button>
           {native && (
@@ -417,7 +417,7 @@ function ReportPanel({ index, profileName }: { index: WordIndex; profileName: st
                 const r = await shareImage(blob!, name, save);
                 if (r === "downloaded") toast("已保存图片");
               }}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary font-bold text-primary-foreground"
+              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-ink font-semibold text-paper-3"
             >
               <Share2 className="size-4" /> 分享
             </button>
@@ -430,9 +430,9 @@ function ReportPanel({ index, profileName }: { index: WordIndex; profileName: st
 
 function Mini({ v, k }: { v: number | string; k: string }) {
   return (
-    <div className="rounded-2xl bg-secondary/70 px-2 py-2.5">
-      <div className="tnum text-[20px] font-extrabold leading-none">{v}</div>
-      <div className="mt-1 text-[11px] text-muted-foreground">{k}</div>
+    <div className="rounded-2xl bg-paper-2 px-2 py-2.5">
+      <div className="tnum text-xl font-semibold leading-none">{v}</div>
+      <div className="mt-1 text-[0.6875rem] text-ink-3">{k}</div>
     </div>
   );
 }
@@ -454,8 +454,8 @@ function WordFilePanel({ index }: { index: WordIndex }) {
   };
   return (
     <Panel data-testid="wordfile-panel">
-      <PanelTitle right={<FileText className="size-4 text-muted-foreground" />}>导入词表</PanelTitle>
-      <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">从 CSV / TXT 生成词单：每行一个词，或「单词,释义」的表格（只看第一列）。只保留四级词库里有的词。</p>
+      <PanelTitle right={<FileText className="size-4 text-ink-3" />}>导入词表</PanelTitle>
+      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">从 CSV / TXT 生成词单：每行一个词，或「单词,释义」的表格（只看第一列）。只保留四级词库里有的词。</p>
       <textarea
         value={text}
         onChange={(e) => {
@@ -465,7 +465,7 @@ function WordFilePanel({ index }: { index: WordIndex }) {
         rows={3}
         placeholder={"abandon\nability, n. 能力\nabsorb\tv. 吸收"}
         data-testid="wordfile-text"
-        className="w-full resize-none rounded-2xl border border-border/80 bg-background p-3 text-[14px] outline-none placeholder:text-muted-foreground/60 focus:border-primary/60"
+        className="w-full resize-none rounded-2xl border border-rule bg-paper p-3 text-sm outline-none placeholder:text-ink-3 focus:border-ink"
       />
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Btn testid="wordfile-pick" icon={<FileUp className="size-4" />} label="选择文件" onClick={() => file.current?.click()} />
@@ -487,11 +487,11 @@ function WordFilePanel({ index }: { index: WordIndex }) {
         }}
       />
       {res && res.found.length > 0 && (
-        <div className="mt-3 rounded-2xl bg-secondary/60 p-3" data-testid="wordfile-result" data-found={res.found.length} data-missing={res.missing.length}>
-          <div className="text-[14px] font-bold">
+        <div className="mt-3 rounded-2xl bg-paper-2 p-3" data-testid="wordfile-result" data-found={res.found.length} data-missing={res.missing.length}>
+          <div className="text-sm font-semibold">
             收录 <span className="tnum text-know">{res.found.length}</span> 个
             {res.missing.length > 0 && (
-              <span className="font-medium text-muted-foreground">
+              <span className="font-medium text-ink-3">
                 {" "}
                 · 词库里没有 <span className="tnum">{res.missing.length}</span> 个
               </span>
@@ -499,14 +499,14 @@ function WordFilePanel({ index }: { index: WordIndex }) {
           </div>
           <div className="mt-2 flex max-h-24 flex-wrap gap-1 overflow-hidden" data-testid="wordfile-found">
             {res.found.slice(0, 30).map((w) => (
-              <span key={w} className="rounded-lg bg-card px-2 py-0.5 text-[12px] font-semibold">
+              <span key={w} className="rounded-lg bg-paper-3 px-2 py-0.5 text-xs font-semibold">
                 {w}
               </span>
             ))}
-            {res.found.length > 30 && <span className="px-1 text-[12px] text-muted-foreground">…</span>}
+            {res.found.length > 30 && <span className="px-1 text-xs text-ink-3">…</span>}
           </div>
           {res.missing.length > 0 && (
-            <div className="mt-1.5 truncate text-[12px] text-muted-foreground" data-testid="wordfile-missing">
+            <div className="mt-1.5 truncate text-xs text-ink-3" data-testid="wordfile-missing">
               跳过：{res.missing.slice(0, 8).join("、")}
               {res.missing.length > 8 ? " 等" : ""}
             </div>
@@ -518,7 +518,7 @@ function WordFilePanel({ index }: { index: WordIndex }) {
               maxLength={20}
               placeholder="词单名"
               data-testid="wordfile-name"
-              className="h-11 min-w-0 flex-1 rounded-2xl border border-border/80 bg-background px-3.5 text-[15px] outline-none focus:border-primary/60"
+              className="h-11 min-w-0 flex-1 rounded-2xl border border-rule bg-paper px-3.5 text-[0.9375rem] outline-none focus:border-ink"
             />
             <button
               type="button"
@@ -529,7 +529,7 @@ function WordFilePanel({ index }: { index: WordIndex }) {
                 toast.success(`已生成词单：${res.found.length} 词`);
                 navigate({ to: "/words", search: { tab: "list", list: id } });
               }}
-              className="flex h-11 shrink-0 items-center gap-1.5 rounded-2xl bg-primary px-4 text-[14px] font-bold text-primary-foreground"
+              className="flex h-11 shrink-0 items-center gap-1.5 rounded-2xl bg-ink px-4 text-sm font-semibold text-paper-3"
             >
               <ListPlus className="size-4" /> 生成词单
             </button>
@@ -577,8 +577,8 @@ function ProfilesPanel() {
   const del = reg.list.find((p) => p.id === deleting);
   return (
     <Panel data-testid="profiles-panel">
-      <PanelTitle right={<span className="tnum text-[12px] font-semibold text-muted-foreground">{reg.list.length}/{PROFILE_MAX}</span>}>学习档案</PanelTitle>
-      <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">一台手机给几个人用，或者四级、六级分开背：每个档案的进度、打卡、设置互不影响。</p>
+      <PanelTitle right={<span className="tnum text-xs font-semibold text-ink-3">{reg.list.length}/{PROFILE_MAX}</span>}>学习档案</PanelTitle>
+      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">一台手机给几个人用，或者四级、六级分开背：每个档案的进度、打卡、设置互不影响。</p>
       <ul className="space-y-2" data-testid="profile-list">
         {reg.list.map((p) => {
           const on = p.id === reg.active;
@@ -588,32 +588,32 @@ function ProfilesPanel() {
               data-testid="profile-row"
               data-id={p.id}
               data-active={on ? "1" : "0"}
-              className={cn("flex items-center gap-3 rounded-2xl border px-3.5 py-3", on ? "border-primary/50 bg-brand-soft" : "border-border/70")}
+              className={cn("flex items-center gap-3 rounded-2xl border px-3.5 py-3", on ? "border-ink bg-mark-soft" : "border-rule")}
             >
-              <span className={cn("grid size-9 shrink-0 place-items-center rounded-full text-[15px] font-extrabold", on ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>
+              <span className={cn("grid size-9 shrink-0 place-items-center rounded-full text-[0.9375rem] font-semibold", on ? "bg-ink text-paper-3" : "bg-paper-2 text-ink-3")}>
                 {[...p.name][0]}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="truncate text-[15px] font-bold" data-testid="profile-name">
+                  <span className="truncate text-[0.9375rem] font-semibold" data-testid="profile-name">
                     {p.name}
                   </span>
-                  {on && <span className="shrink-0 rounded-full bg-primary px-1.5 py-px text-[11px] font-bold text-primary-foreground">使用中</span>}
+                  {on && <span className="shrink-0 rounded-[3px] bg-ink px-1.5 py-px text-[0.6875rem] font-semibold text-paper-3">使用中</span>}
                 </div>
-                <div className="tnum text-[12px] text-muted-foreground">
+                <div className="tnum text-xs text-ink-3">
                   {sums[p.id].words} 词 · 打卡 {sums[p.id].days} 天
                 </div>
               </div>
-              <button type="button" aria-label={`重命名 ${p.name}`} data-testid="profile-rename" onClick={() => setRenaming(p.id)} className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground">
+              <button type="button" aria-label={`重命名 ${p.name}`} data-testid="profile-rename" onClick={() => setRenaming(p.id)} className="grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-ink">
                 <Pencil className="size-3.5" />
               </button>
               {!on && p.id !== "main" && (
-                <button type="button" aria-label={`删除 ${p.name}`} data-testid="profile-delete" onClick={() => setDeleting(p.id)} className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-forget">
+                <button type="button" aria-label={`删除 ${p.name}`} data-testid="profile-delete" onClick={() => setDeleting(p.id)} className="grid size-8 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-forget">
                   <Trash2 className="size-3.5" />
                 </button>
               )}
               {!on && (
-                <button type="button" data-testid="profile-switch" onClick={() => switchProfile(reg, p.id)} className="h-9 shrink-0 rounded-full bg-primary px-3.5 text-[13px] font-bold text-primary-foreground">
+                <button type="button" data-testid="profile-switch" onClick={() => switchProfile(reg, p.id)} className="h-9 shrink-0 rounded-lg bg-ink px-3.5 text-[0.8125rem] font-semibold text-paper-3">
                   切换
                 </button>
               )}
@@ -626,12 +626,12 @@ function ProfilesPanel() {
         data-testid="profile-new"
         disabled={reg.list.length >= PROFILE_MAX}
         onClick={() => setCreating(true)}
-        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border text-[14px] font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50"
+        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-rule text-sm font-semibold text-ink-3 hover:text-ink disabled:opacity-50"
       >
         <Users className="size-4" /> {reg.list.length >= PROFILE_MAX ? `最多 ${PROFILE_MAX} 个档案` : "新建档案"}
       </button>
       <BottomSheet open={creating} onOpenChange={setCreating} title="新建学习档案" testid="profile-create">
-        <p className="mb-3 text-[13px] text-muted-foreground">新档案从头开始（重新选词书和每日新词），当前档案的记录原样保留。</p>
+        <p className="mb-3 text-[0.8125rem] text-ink-3">新档案从头开始（重新选词书和每日新词），当前档案的记录原样保留。</p>
         <NameField
           placeholder={`档案名，最多 ${PROFILE_NAME_MAX} 字`}
           action="创建并切换"
@@ -658,9 +658,9 @@ function ProfilesPanel() {
         />
       </BottomSheet>
       <BottomSheet open={!!del} onOpenChange={(v) => !v && setDeleting(null)} title={`删除「${del?.name ?? ""}」？`} testid="profile-delete-sheet">
-        <p className="text-[14px] text-muted-foreground">这个档案的学习记录、打卡和快照都会删掉，无法恢复。</p>
+        <p className="text-sm text-ink-3">这个档案的学习记录、打卡和快照都会删掉，无法恢复。</p>
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setDeleting(null)} className="h-12 rounded-2xl bg-secondary font-semibold">
+          <button type="button" onClick={() => setDeleting(null)} className="h-12 rounded-2xl bg-paper-2 font-semibold">
             取消
           </button>
           <button
@@ -705,22 +705,22 @@ function HealthPanel({ index }: { index: WordIndex }) {
   };
   return (
     <Panel data-testid="health-panel">
-      <PanelTitle right={<Stethoscope className="size-4 text-muted-foreground" />}>数据体检</PanelTitle>
-      <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">检查学习记录、生词本、词单、复习日志和打卡里有没有损坏或词库里不存在的词。</p>
+      <PanelTitle right={<Stethoscope className="size-4 text-ink-3" />}>数据体检</PanelTitle>
+      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">检查学习记录、生词本、词单、复习日志和打卡里有没有损坏或词库里不存在的词。</p>
       {res &&
         (res.total === 0 ? (
-          <div className="mb-3 flex items-center gap-2 rounded-2xl bg-know-soft px-4 py-3 text-[14px] font-bold text-know" data-testid="health-ok">
+          <div className="mb-3 flex items-center gap-2 rounded-2xl bg-know-soft px-4 py-3 text-sm font-semibold text-know" data-testid="health-ok">
             <Check className="size-5" strokeWidth={3} /> 数据健康，没有发现问题
           </div>
         ) : (
           <ul className="mb-3 space-y-2" data-testid="health-issues" data-total={res.total}>
             {res.issues.map((i) => (
               <li key={i.kind} className="rounded-2xl bg-forget-soft/70 px-3.5 py-2.5" data-testid="health-issue" data-kind={i.kind} data-n={i.n}>
-                <div className="flex items-center gap-2 text-[14px] font-bold">
+                <div className="flex items-center gap-2 text-sm font-semibold">
                   <span className="min-w-0 flex-1">{i.label}</span>
                   <span className="tnum shrink-0 text-forget">{i.n}</span>
                 </div>
-                <div className="truncate text-[12px] text-muted-foreground">
+                <div className="truncate text-xs text-ink-3">
                   {i.fix}：{i.sample.join("、")}
                   {i.n > i.sample.length ? " 等" : ""}
                 </div>
@@ -729,11 +729,11 @@ function HealthPanel({ index }: { index: WordIndex }) {
           </ul>
         ))}
       {res && res.total > 0 ? (
-        <button type="button" data-testid="health-fix" onClick={fix} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-md shadow-primary/20">
+        <button type="button" data-testid="health-fix" onClick={fix} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20">
           一键修复 {res.total} 处
         </button>
       ) : (
-        <button type="button" data-testid="health-run" onClick={run} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-secondary text-[14px] font-semibold hover:bg-accent">
+        <button type="button" data-testid="health-run" onClick={run} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-paper-2 text-sm font-semibold hover:bg-paper-2">
           <Stethoscope className="size-4" /> {res ? "再查一次" : "开始体检"}
         </button>
       )}
@@ -782,7 +782,7 @@ function StoragePanel() {
       const others = reg.list.filter((p) => p.id !== ACTIVE_PROFILE).reduce((s, p) => s + ls(stateKeyOf(p.id)) + ls(revKeyOf(p.id)), 0);
       const exN = examplesCount();
       const out: StoreRow[] = [
-        { k: "state", label: "学习记录", bytes: ls(KEY), tone: "bg-primary" },
+        { k: "state", label: "学习记录", bytes: ls(KEY), tone: "bg-ink" },
         { k: "revlog", label: "复习日志", bytes: ls(REV_KEY), tone: "bg-know" },
         ...(reg.list.length > 1 ? [{ k: "profiles", label: "其他档案", bytes: others, sub: `${reg.list.length - 1} 个`, tone: "bg-[#7c5cd6]" }] : []),
         {
@@ -848,35 +848,35 @@ function StoragePanel() {
   const total = rows?.reduce((s, r) => s + r.bytes, 0) ?? 0;
   return (
     <Panel data-testid="storage-panel">
-      <PanelTitle right={<HardDrive className="size-4 text-muted-foreground" />}>存储管理</PanelTitle>
+      <PanelTitle right={<HardDrive className="size-4 text-ink-3" />}>存储管理</PanelTitle>
       {!rows ? (
-        <div className="h-32 animate-pulse rounded-2xl bg-secondary" />
+        <div className="h-32 animate-pulse rounded-2xl bg-paper-2" />
       ) : (
         <>
           <div className="flex items-baseline justify-between gap-2">
-            <span className="tnum text-[24px] font-extrabold" data-testid="storage-total">
+            <span className="tnum text-2xl font-semibold" data-testid="storage-total">
               {fmtBytes(total)}
             </span>
             {est && (
-              <span className="tnum text-[12px] text-muted-foreground" data-testid="storage-quota">
+              <span className="tnum text-xs text-ink-3" data-testid="storage-quota">
                 浏览器分配 {fmtBytes(est.quota)}，已用 {Math.max(0.1, Math.round((est.usage / est.quota) * 1000) / 10)}%
               </span>
             )}
           </div>
-          <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
+          <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-paper-2" aria-hidden>
             {rows.map((r) => (
               <div key={r.k} className={cn("h-full", r.tone)} style={{ width: `${total ? (r.bytes / total) * 100 : 0}%` }} />
             ))}
           </div>
-          <ul className="mt-3 divide-y divide-border/60">
+          <ul className="mt-3 divide-y divide-rule">
             {rows.map((r) => (
               <li key={r.k} className="flex items-center gap-3 py-2.5" data-testid={`storage-row-${r.k}`} data-bytes={r.bytes}>
                 <span className={cn("size-2.5 shrink-0 rounded-full", r.tone)} />
                 <span className="min-w-0 flex-1">
-                  <span className="text-[14px] font-medium">{r.label}</span>
-                  {r.sub && <span className="ml-1.5 text-[12px] text-muted-foreground">{r.sub}</span>}
+                  <span className="text-sm font-medium">{r.label}</span>
+                  {r.sub && <span className="ml-1.5 text-xs text-ink-3">{r.sub}</span>}
                 </span>
-                <span className="tnum shrink-0 text-[13px] font-semibold text-muted-foreground">{fmtBytes(r.bytes)}</span>
+                <span className="tnum shrink-0 text-[0.8125rem] font-semibold text-ink-3">{fmtBytes(r.bytes)}</span>
                 {r.clear && (
                   <button
                     type="button"
@@ -885,7 +885,7 @@ function StoragePanel() {
                       await r.clear!();
                       setTick((t) => t + 1);
                     }}
-                    className="h-8 shrink-0 rounded-full bg-secondary px-3 text-[12px] font-bold hover:bg-accent"
+                    className="h-8 shrink-0 rounded-lg bg-paper-2 px-3 text-xs font-semibold hover:bg-paper-2"
                   >
                     清理
                   </button>
@@ -893,7 +893,7 @@ function StoragePanel() {
               </li>
             ))}
           </ul>
-          <p className="mt-1 text-[12px] text-muted-foreground">学习记录和日志不能在这里删；例句和发音缓存清掉后，联网时会重新获取。</p>
+          <p className="mt-1 text-xs text-ink-3">学习记录和日志不能在这里删；例句和发音缓存清掉后，联网时会重新获取。</p>
         </>
       )}
     </Panel>
@@ -933,7 +933,7 @@ function RescueDumpPanel() {
   return (
     <Panel data-testid="rescue-dump">
       <PanelTitle>救援时另存的原始数据</PanelTitle>
-      <p className="-mt-1 mb-3 text-[13px] text-muted-foreground">
+      <p className="-mt-1 mb-3 text-[0.8125rem] text-ink-3">
         {at ? `${at} 救援时留下的一份。` : "救援时留下的一份。"}
         {restorable
           ? salvaged !== undefined
@@ -942,12 +942,12 @@ function RescueDumpPanel() {
           : "坏得太厉害，一个词都读不出来，只能导出成文件留底（求助时可以发给开发者）。"}
       </p>
       <div className={cn("grid gap-2", restorable ? "grid-cols-3" : "grid-cols-2")}>
-        <button type="button" data-testid="rescue-dump-export" onClick={() => download(`四级单词打卡-救援原始数据-${at || today()}.json`, raw)} className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold">
+        <button type="button" data-testid="rescue-dump-export" onClick={() => download(`四级单词打卡-救援原始数据-${at || today()}.json`, raw)} className="h-11 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold">
           导出
         </button>
         {/* 11.3 · 能恢复才显示「恢复」，不再放一个永远灰着的按钮 */}
         {restorable && (
-          <button type="button" data-testid="rescue-dump-restore" onClick={() => setPending(raw)} className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold">
+          <button type="button" data-testid="rescue-dump-restore" onClick={() => setPending(raw)} className="h-11 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold">
             恢复
           </button>
         )}
@@ -963,7 +963,7 @@ function RescueDumpPanel() {
             setRaw(null);
             toast("已删除救援时另存的数据");
           }}
-          className="h-11 rounded-2xl bg-secondary text-[13px] font-semibold text-destructive"
+          className="h-11 rounded-2xl bg-paper-2 text-[0.8125rem] font-semibold text-destructive"
         >
           删除
         </button>
@@ -979,13 +979,13 @@ function ResetPanel() {
   const [confirm, setConfirm] = useState(false);
   return (
     <Panel data-testid="reset-panel">
-      <button type="button" onClick={() => setConfirm(true)} data-testid="reset" className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-semibold text-destructive hover:bg-destructive/10">
+      <button type="button" onClick={() => setConfirm(true)} data-testid="reset" className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-destructive hover:bg-destructive/10">
         清空所有学习记录
       </button>
       <BottomSheet open={confirm} onOpenChange={setConfirm} title="清空所有学习记录？" testid="reset-confirm">
-        <p className="text-[14px] text-muted-foreground">这台设备上这个档案的学习记录、打卡、词单都会删掉，无法恢复。建议先导出备份。</p>
+        <p className="text-sm text-ink-3">这台设备上这个档案的学习记录、打卡、词单都会删掉，无法恢复。建议先导出备份。</p>
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-2xl bg-secondary font-semibold">
+          <button type="button" onClick={() => setConfirm(false)} className="h-12 rounded-2xl bg-paper-2 font-semibold">
             取消
           </button>
           <button

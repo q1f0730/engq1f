@@ -48,13 +48,13 @@ export function PreviewList({
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe pt-safe" data-testid="preview">
       <div className="flex shrink-0 items-center gap-2 pt-3">
-        <button type="button" onClick={onQuit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+        <button type="button" onClick={onQuit} aria-label="退出" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
           <X className="size-5" />
         </button>
-        <div className="flex-1 text-center text-[15px] font-bold">预习这组新词</div>
-        <span className="tnum w-10 text-center text-[13px] font-semibold text-muted-foreground">{words.length}</span>
+        <div className="flex-1 text-center text-[0.9375rem] font-semibold">预习这组新词</div>
+        <span className="tnum w-10 text-center text-[0.8125rem] font-semibold text-ink-3">{words.length}</span>
       </div>
-      <div className="mt-2 flex shrink-0 items-center gap-2.5 rounded-2xl bg-brand-soft px-3.5 py-2.5 text-[13px] text-primary">
+      <div className="mt-2 flex shrink-0 items-center gap-2.5 rounded-2xl bg-mark-soft px-3.5 py-2.5 text-[0.8125rem] text-ink">
         <Eye className="size-4 shrink-0" />
         <span className="leading-snug">先过一眼：已经认识的点「斩」，不用再学；剩下的进入学习。</span>
       </div>
@@ -69,17 +69,17 @@ export function PreviewList({
               data-testid="preview-row"
               data-w={w}
               data-killed={k ? 1 : 0}
-              className={cn("flex items-center gap-2 rounded-2xl border px-3 py-2.5 transition", k ? "border-transparent bg-know-soft/60" : "border-border/70 bg-card")}
+              className={cn("flex items-center gap-2 rounded-2xl border px-3 py-2.5 transition", k ? "border-transparent bg-know-soft/60" : "border-rule bg-paper-3")}
             >
-              <button type="button" aria-label={`朗读 ${w}`} onClick={() => speak(w, accent)} className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-soft text-primary active:scale-90">
+              <button type="button" aria-label={`朗读 ${w}`} onClick={() => speak(w, accent)} className="grid size-8 shrink-0 place-items-center rounded-full bg-mark-soft text-ink active:scale-90">
                 <Volume2 className="size-4" />
               </button>
               <div className={cn("min-w-0 flex-1", k && "opacity-55")}>
                 <div className="flex items-baseline gap-2">
-                  <span className={cn("font-display truncate text-[17px] font-bold", k && "line-through decoration-2")}>{w}</span>
-                  <Phonetic word={word} accent={accent} className="truncate text-[12px] text-muted-foreground" />
+                  <span className={cn("font-display truncate text-[1.0625rem] font-semibold", k && "line-through decoration-2")}>{w}</span>
+                  <Phonetic word={word} accent={accent} className="truncate text-xs text-ink-3" />
                 </div>
-                <div className="fs-card truncate text-[13px] text-muted-foreground">{shortMeaning(word, 2)}</div>
+                <div className="fs-card truncate text-[0.8125rem] text-ink-3">{shortMeaning(word, 2)}</div>
               </div>
               <button
                 type="button"
@@ -87,8 +87,8 @@ export function PreviewList({
                 aria-pressed={k}
                 onClick={() => toggle(w)}
                 className={cn(
-                  "flex h-9 shrink-0 items-center gap-1 rounded-full px-3 text-[12px] font-bold transition active:scale-95",
-                  k ? "bg-know text-white dark:text-[oklch(0.2_0.02_170)]" : "bg-secondary text-muted-foreground hover:text-know",
+                  "flex h-9 shrink-0 items-center gap-1 rounded-lg px-3 text-xs font-semibold transition active:scale-95",
+                  k ? "bg-know text-white dark:text-[oklch(0.2_0.02_170)]" : "bg-paper-2 text-ink-3 hover:text-know",
                 )}
               >
                 {k ? <Undo2 className="size-3.5" /> : <Swords className="size-3.5" />}
@@ -103,10 +103,10 @@ export function PreviewList({
           type="button"
           onClick={start}
           data-testid="preview-start"
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground shadow-lg shadow-primary/25 transition active:scale-[0.98]"
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-base font-semibold text-paper-3 shadow-primary/25 transition active:scale-[0.98]"
         >
           {left > 0 ? `开始学习 ${left} 词` : "全部认识，换一组"}
-          {killed.size > 0 && <span className="rounded-md bg-white/20 px-1.5 text-[12px] font-semibold" data-testid="preview-killed-n">斩 {killed.size}</span>}
+          {killed.size > 0 && <span className="rounded-md bg-white/20 px-1.5 text-xs font-semibold" data-testid="preview-killed-n">斩 {killed.size}</span>}
         </button>
       </div>
     </div>
@@ -180,20 +180,20 @@ export function PostQuiz({
   return (
     <div className="mx-auto flex h-dvh max-w-xl flex-col px-4 pb-safe pt-safe" data-testid="post-quiz">
       <div className="flex shrink-0 items-center gap-2 pt-3">
-        <button type="button" onClick={onSkip} aria-label="跳过速测" data-testid="post-skip" className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-secondary">
+        <button type="button" onClick={onSkip} aria-label="跳过速测" data-testid="post-skip" className="grid size-10 place-items-center rounded-full text-ink-3 hover:bg-paper-2">
           <X className="size-5" />
         </button>
         <div className="flex-1">
-          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+          <div className="h-2 overflow-hidden rounded-full bg-paper-2">
             <div className="h-full rounded-full bg-know transition-all duration-300" style={{ width: `${((pos + (done ? 1 : 0)) / order.length) * 100}%` }} />
           </div>
         </div>
-        <span className="tnum min-w-11 text-center text-[13px] font-semibold text-muted-foreground" data-testid="post-progress">
+        <span className="tnum min-w-11 text-center text-[0.8125rem] font-semibold text-ink-3" data-testid="post-progress">
           {pos + 1}/{order.length}
         </span>
       </div>
-      <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-[12px] font-medium text-muted-foreground">
-        <span className="rounded-full bg-know-soft px-2 py-px text-know">学后速测</span>
+      <div className="mt-1 flex h-6 shrink-0 items-center justify-center gap-2 text-xs font-medium text-ink-3">
+        <span className="rounded-lg bg-know-soft px-2 py-px text-know">学后速测</span>
         <span>刚学的词马上检验 · 不影响复习计划</span>
       </div>
       <div key={pos} className="card-in flex min-h-0 flex-1 flex-col" data-testid="post-item" data-w={word.w}>
@@ -207,14 +207,14 @@ export function PostQuiz({
             onClick={next}
             data-testid="post-next"
             className={cn(
-              "flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-bold shadow-lg transition active:scale-[0.98]",
-              ok ? "bg-know text-white shadow-know/25" : "bg-primary text-primary-foreground shadow-primary/25",
+              "flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.98]",
+              ok ? "bg-know text-white shadow-know/25" : "bg-ink text-paper-3 shadow-primary/25",
             )}
           >
             {pos + 1 >= order.length ? "看小结" : ok ? "答对了 · 下一个" : "记住它 · 下一个"}
           </button>
         ) : (
-          <button type="button" onClick={() => choose(-1)} data-testid="post-giveup" className="h-11 w-full rounded-2xl text-[14px] font-semibold text-muted-foreground hover:bg-secondary">
+          <button type="button" onClick={() => choose(-1)} data-testid="post-giveup" className="h-11 w-full rounded-2xl text-sm font-semibold text-ink-3 hover:bg-paper-2">
             <CircleHelp className="mr-1.5 inline size-4" />
             忘了，看答案
           </button>

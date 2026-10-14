@@ -59,8 +59,8 @@ export function LoadFailed({ onRetry, message }: { onRetry: () => void; message?
   return (
     <div className="grid min-h-[70dvh] place-items-center p-6" data-testid="load-failed" data-auto={wait ?? 0}>
       <div className="w-full max-w-sm text-center">
-        <h1 className="text-xl font-bold">网络不好，页面没加载出来</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground" data-testid="load-failed-body">
+        <h1 className="text-xl font-semibold">网络不好，页面没加载出来</h1>
+        <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink-3" data-testid="load-failed-body">
           学习记录都在，没有受影响。
           {wait !== undefined ? <span data-testid="load-countdown">{left} 秒后自动重试</span> : "连上网后会自动重试，也可以点下面的重试。"}
         </p>
@@ -75,11 +75,11 @@ export function LoadFailed({ onRetry, message }: { onRetry: () => void; message?
             }
             onRetry();
           }}
-          className="mt-5 h-12 w-full rounded-2xl bg-primary font-semibold text-primary-foreground"
+          className="mt-5 h-12 w-full rounded-2xl bg-ink font-semibold text-paper-3"
         >
           现在重试
         </button>
-        <button type="button" onClick={() => (location.hash = "#/")} className="mt-2 h-11 w-full rounded-2xl text-[14px] font-semibold text-muted-foreground">
+        <button type="button" onClick={() => (location.hash = "#/")} className="mt-2 h-11 w-full rounded-2xl text-sm font-semibold text-ink-3">
           回首页
         </button>
         {message && <TechDetail testid="load-failed-msg" message={message} />}
@@ -100,9 +100,9 @@ export function clearRetry() {
 /** 11.3 · 技术报错收进「详细信息」里，反馈问题时再展开 */
 function TechDetail({ message, testid }: { message: string; testid: string }) {
   return (
-    <details className="mt-3 text-left text-[12px] text-muted-foreground">
+    <details className="mt-3 text-left text-xs text-ink-3">
       <summary className="cursor-pointer select-none text-center font-semibold">详细信息</summary>
-      <p className="mt-1.5 break-all text-[11px] leading-snug text-muted-foreground/80" data-testid={testid}>
+      <p className="mt-1.5 break-all text-[0.6875rem] leading-snug text-ink-3" data-testid={testid}>
         {message}
       </p>
     </details>
@@ -199,8 +199,8 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
   return (
     <div className="grid min-h-dvh place-items-center p-6" data-testid="rescue">
       <div className="w-full max-w-sm">
-        <h1 className="text-xl font-bold">{boot ? "学习记录读不出来" : "出了点问题"}</h1>
-        <p className="mt-2 text-[15px] leading-relaxed" data-testid="rescue-body">
+        <h1 className="text-xl font-semibold">{boot ? "学习记录读不出来" : "出了点问题"}</h1>
+        <p className="mt-2 text-[0.9375rem] leading-relaxed" data-testid="rescue-body">
           {boot ? "存在这台设备上的记录格式坏了，app 读不懂它。" : "有一部分记录 app 读不懂，页面打不开。"}
           {snaps === null
             ? "你的记录没有被删掉。"
@@ -217,13 +217,13 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
               data-testid="rescue-rollback"
               disabled={busy || !newest}
               onClick={() => newest && go(newest.id)}
-              className="w-full rounded-2xl bg-primary px-4 py-3 text-left font-semibold text-primary-foreground disabled:opacity-50"
+              className="w-full rounded-2xl bg-ink px-4 py-3 text-left font-semibold text-paper-3 disabled:opacity-50"
             >
               回滚到最近快照
-              <span className="block text-[12px] font-normal opacity-85">{snaps === null ? "查找快照…" : newest ? fmt(newest) : ""}</span>
+              <span className="block text-xs font-normal opacity-85">{snaps === null ? "查找快照…" : newest ? fmt(newest) : ""}</span>
             </button>
           )}
-          <button type="button" data-testid="rescue-export" onClick={exportRaw} className={snaps !== null && !newest ? "w-full rounded-2xl bg-primary px-4 py-3 font-semibold text-primary-foreground" : "w-full rounded-2xl bg-secondary px-4 py-3 font-semibold"}>
+          <button type="button" data-testid="rescue-export" onClick={exportRaw} className={snaps !== null && !newest ? "w-full rounded-2xl bg-ink px-4 py-3 font-semibold text-paper-3" : "w-full rounded-2xl bg-paper-2 px-4 py-3 font-semibold"}>
             导出原始数据
           </button>
           {boot && (
@@ -241,25 +241,25 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
                 }
                 setTimeout(() => location.reload(), 600);
               }}
-              className="w-full rounded-2xl bg-secondary px-4 py-3 font-semibold"
+              className="w-full rounded-2xl bg-paper-2 px-4 py-3 font-semibold"
             >
               下载原始数据，然后从头开始
             </button>
           )}
-          <button type="button" data-testid="rescue-reload" onClick={() => location.reload()} className="w-full rounded-2xl px-4 py-3 text-[14px] font-semibold text-muted-foreground">
+          <button type="button" data-testid="rescue-reload" onClick={() => location.reload()} className="w-full rounded-2xl px-4 py-3 text-sm font-semibold text-ink-3">
             重新加载
           </button>
         </div>
         {snaps && snaps.length > 1 && (
           <div className="mt-3">
-            <button type="button" onClick={() => setMore(!more)} className="text-[13px] font-semibold text-primary" data-testid="rescue-more">
+            <button type="button" onClick={() => setMore(!more)} className="text-[0.8125rem] font-semibold text-ink" data-testid="rescue-more">
               {more ? "收起" : `更早的快照（${snaps.length - 1}）`}
             </button>
             {more && (
               <ul className="mt-2 space-y-1.5">
                 {snaps.slice(1).map((s) => (
                   <li key={s.id}>
-                    <button type="button" disabled={busy} onClick={() => go(s.id)} className="w-full rounded-xl bg-secondary px-3 py-2 text-left text-[13px]">
+                    <button type="button" disabled={busy} onClick={() => go(s.id)} className="w-full rounded-xl bg-paper-2 px-3 py-2 text-left text-[0.8125rem]">
                       回滚到 {fmt(s)}
                     </button>
                   </li>
@@ -269,7 +269,7 @@ export function Rescue({ message, boot }: { message: string; boot?: boolean }) {
           </div>
         )}
         {err && (
-          <p className="mt-3 text-[13px] font-semibold text-forget" role="alert">
+          <p className="mt-3 text-[0.8125rem] font-semibold text-forget" role="alert">
             {err}
           </p>
         )}

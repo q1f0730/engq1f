@@ -35,16 +35,16 @@ export default function ListLinkSheet({ open, onOpenChange, list }: { open: bool
   const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="分享词单链接" testid="list-link-sheet">
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-[0.8125rem] text-ink-3">
         「{list.name}」的 {Math.min(list.words.length, max || list.words.length)} 个词都编码在链接里，不经过服务器；对方打开链接即可导入为自己的词单（不含学习进度）。
         {max > 0 && list.words.length > max ? `超过 ${max} 词的部分不会放进链接。` : ""}
       </p>
-      <div className="mt-3 max-h-28 overflow-y-auto break-all rounded-2xl bg-secondary px-3.5 py-3 font-mono text-[12px] leading-relaxed select-all" data-testid="list-link-url">
+      <div className="mt-3 max-h-28 overflow-y-auto break-all rounded-2xl bg-paper-2 px-3.5 py-3 font-mono text-xs leading-relaxed select-all" data-testid="list-link-url">
         {url || "生成中…"}
       </div>
-      <div className="tnum mt-1 text-right text-[11px] text-muted-foreground">{url ? `${url.length} 字符` : ""}</div>
+      <div className="tnum mt-1 text-right text-[0.6875rem] text-ink-3">{url ? `${url.length} 字符` : ""}</div>
       <div className={cn("mt-3 grid gap-2", canShare ? "grid-cols-2" : "grid-cols-1")}>
-        <button type="button" disabled={!url} onClick={copy} data-testid="list-link-copy" className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary font-bold text-primary-foreground disabled:opacity-50">
+        <button type="button" disabled={!url} onClick={copy} data-testid="list-link-copy" className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-ink font-semibold text-paper-3 disabled:opacity-50">
           <Copy className="size-4" /> 复制链接
         </button>
         {canShare && (
@@ -53,7 +53,7 @@ export default function ListLinkSheet({ open, onOpenChange, list }: { open: bool
             disabled={!url}
             data-testid="list-link-share"
             onClick={() => navigator.share({ title: `四级词单：${list.name}`, text: `「${list.name}」${list.words.length} 个四级词，打开链接导入`, url }).catch(() => {})}
-            className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-secondary font-bold disabled:opacity-50"
+            className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-paper-2 font-semibold disabled:opacity-50"
           >
             <Share2 className="size-4" /> 系统分享
           </button>

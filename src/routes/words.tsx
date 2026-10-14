@@ -196,7 +196,7 @@ function WordsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  if (error) return <div className="p-8 text-center text-sm text-muted-foreground">{error}</div>;
+  if (error) return <div className="p-8 text-center text-sm text-ink-3">{error}</div>;
   if (!index) return <Spinner />;
 
   const counts = {
@@ -220,16 +220,16 @@ function WordsPage() {
         title="词库"
         sub={`共 ${index.list.length} 词 · 核心 ${index.coreCount}`}
         right={
-          <Link to="/syn" data-testid="syn-entry" className="mb-1 flex shrink-0 items-center gap-1 rounded-full bg-secondary px-3.5 py-2 text-[13px] font-semibold text-muted-foreground transition hover:text-foreground">
+          <Link to="/syn" data-testid="syn-entry" className="mb-1 flex shrink-0 items-center gap-1 rounded-lg bg-paper-2 px-3.5 py-2 text-[0.8125rem] font-semibold text-ink-3 transition hover:text-ink">
             <Shuffle className="size-3.5" /> 同义词组
           </Link>
         }
       />
 
-      <div ref={sticky} className="sticky top-0 z-20 -mx-4 bg-background/90 px-4 pb-3 pt-1 backdrop-blur-xl md:top-16 md:-mx-6 md:px-6">
+      <div ref={sticky} className="sticky top-0 z-20 -mx-4 bg-paper px-4 pb-3 pt-1 md:top-16 md:-mx-6 md:px-6">
         <div className={cn("flex items-center gap-2", tab === "lists" && "hidden")}>
         <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-ink-3" />
           <input
             ref={input}
             value={q}
@@ -237,10 +237,10 @@ function WordsPage() {
             placeholder="搜索英文或中文释义"
             data-testid="search"
             inputMode="search"
-            className="h-12 w-full rounded-2xl border border-border/80 bg-card pl-11 pr-11 text-[15px] outline-none transition placeholder:text-muted-foreground/70 focus:border-primary/60 focus:ring-4 focus:ring-primary/10"
+            className="h-12 w-full rounded-2xl border border-rule bg-paper-3 pl-11 pr-11 text-[0.9375rem] outline-none transition placeholder:text-ink-3 focus:border-ink focus:ring-4 focus:ring-ink"
           />
           {q && (
-            <button type="button" aria-label="清空" onClick={() => setQ("")} className="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-secondary text-muted-foreground">
+            <button type="button" aria-label="清空" onClick={() => setQ("")} className="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-paper-2 text-ink-3">
               <X className="size-4" />
             </button>
           )}
@@ -251,13 +251,13 @@ function WordsPage() {
             aria-expanded={filtersOpen || selecting}
             onClick={() => setFiltersOpen(!filtersOpen)}
             className={cn(
-              "relative flex h-12 shrink-0 items-center gap-1.5 rounded-2xl px-3.5 text-[14px] font-semibold transition",
-              filtersOpen || selecting ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:text-foreground",
+              "relative flex h-12 shrink-0 items-center gap-1.5 rounded-2xl px-3.5 text-sm font-semibold transition",
+              filtersOpen || selecting ? "bg-foreground text-background" : "bg-paper-2 text-ink-3 hover:text-ink",
             )}
           >
             <SlidersHorizontal className="size-4" /> 筛选
             {activeFilters > 0 && (
-              <span className="tnum absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground" data-testid="filter-count">
+              <span className="tnum absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-ink text-[0.6875rem] font-semibold text-paper-3" data-testid="filter-count">
                 {activeFilters}
               </span>
             )}
@@ -281,8 +281,8 @@ function WordsPage() {
               data-testid={`tab-${t}`}
               onClick={() => navigate({ to: "/words", search: t === "all" ? {} : { tab: t }, replace: true })}
               className={cn(
-                "shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition",
-                tab === t || (t === "lists" && tab === "list") ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:text-foreground",
+                "shrink-0 rounded-lg px-4 py-2 text-[0.8125rem] font-semibold transition",
+                tab === t || (t === "lists" && tab === "list") ? "bg-foreground text-background" : "bg-paper-2 text-ink-3 hover:text-ink",
               )}
             >
               {label}
@@ -307,7 +307,7 @@ function WordsPage() {
 
       {tab === "list" && list && (
         <>
-          <Link to="/words" search={{ tab: "lists" }} replace data-testid="list-back" className="-ml-1 mb-2 flex w-fit items-center gap-0.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground">
+          <Link to="/words" search={{ tab: "lists" }} replace data-testid="list-back" className="-ml-1 mb-2 flex w-fit items-center gap-0.5 text-[0.8125rem] font-semibold text-ink-3 hover:text-ink">
             <ChevronLeft className="size-4" /> 全部词单
           </Link>
           <ListPanel index={index} list={list} />
@@ -336,7 +336,7 @@ function WordsPage() {
             to="/study"
             search={{ mode: nbMode }}
             data-testid="nb-review"
-            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20"
+            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20"
           >
             <Play className="size-4 fill-current" />
             {nbMode === "star" ? "复习生词本" : nbMode === "wrong" ? "复习错词本" : nbMode === "hard" ? "顽固词专项" : "回顾已斩的词"}（{Math.min(20, results.length)} 词）
@@ -348,7 +348,7 @@ function WordsPage() {
               data-testid="nb-tape"
               aria-label="磁带模式听这个词本"
               title="磁带模式听这个词本"
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink"
             >
               <Headphones className="size-5" />
             </Link>
@@ -357,19 +357,19 @@ function WordsPage() {
       )}
 
       {tab === "core" && coreCount > 0 && (
-        <div className="mb-3 rounded-3xl border border-border/70 bg-card p-4" data-testid="core-panel">
+        <div className="mb-3 rounded-2xl border border-rule bg-paper-3 p-4" data-testid="core-panel">
           <div className="flex items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-brand-soft text-primary">
+            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink">
               <GraduationCap className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-[15px] font-bold">四级核心词还差 {coreCount} 个</div>
-              <div className="text-[12px] text-muted-foreground" data-testid="core-split">
+              <div className="text-[0.9375rem] font-semibold">四级核心词还差 {coreCount} 个</div>
+              <div className="text-xs text-ink-3" data-testid="core-split">
                 未学 {cu.unlearned.length} · 学习中 {cu.learning.length} · 已掌握 {index.coreCount - coreCount}
               </div>
             </div>
           </div>
-          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-secondary">
+          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-paper-2">
             <div className="h-full bg-know" style={{ width: `${((index.coreCount - coreCount) / index.coreCount) * 100}%` }} />
             <div className="h-full bg-vague" style={{ width: `${(cu.learning.length / index.coreCount) * 100}%` }} />
           </div>
@@ -377,7 +377,7 @@ function WordsPage() {
             to="/study"
             search={{ mode: "core" }}
             data-testid="core-study"
-            className="mt-3 flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20"
+            className="mt-3 flex h-12 items-center justify-center gap-2 rounded-2xl bg-ink text-[0.9375rem] font-semibold text-paper-3 shadow-primary/20"
           >
             <Play className="size-4 fill-current" />
             {cu.unlearned.length ? "学 10 个未学核心词" : "复习 10 个学习中的核心词"}
@@ -387,13 +387,13 @@ function WordsPage() {
 
       {tab !== "lists" && (
         <>
-          <div className="text-[12px] text-muted-foreground" data-testid="result-count">
+          <div className="text-xs text-ink-3" data-testid="result-count">
             {dq ? `找到 ${results.length} 个结果` : `${results.length} 个词`}
-            {selecting && <span className="ml-1 text-primary">· 点单词勾选，长按也能进入多选</span>}
+            {selecting && <span className="ml-1 text-ink">· 点单词勾选，长按也能进入多选</span>}
           </div>
 
           {results.length === 0 ? (
-            <div className="py-16 text-center text-sm text-muted-foreground" data-testid="no-results">
+            <div className="py-16 text-center text-sm text-ink-3" data-testid="no-results">
               {dq
                 ? "没有找到匹配的词"
                 : pos !== "any" || coreOnly
@@ -413,14 +413,14 @@ function WordsPage() {
                               : "没有词"}
             </div>
           ) : (
-            <ul className={cn("mt-2 divide-y divide-border/60 overflow-hidden rounded-3xl border border-border/70 bg-card", showRail && "mr-5 md:mr-0")} data-testid="word-list" data-sort={sort}>
+            <ul className={cn("mt-2 divide-y divide-rule overflow-hidden rounded-2xl border border-rule bg-paper-3", showRail && "mr-5 md:mr-0")} data-testid="word-list" data-sort={sort}>
               {results.slice(0, limit).map((w, k) => {
                 const L = alpha ? letterOf(w.w) : "";
                 const head = alpha && (k === 0 || letterOf(results[k - 1].w) !== L);
                 const on = selected.has(w.w);
                 return [
                   head ? (
-                    <li key={`h-${L}`} data-letter={L} className="bg-secondary/60 px-4 py-1 font-display text-[12px] font-extrabold tracking-wider text-muted-foreground">
+                    <li key={`h-${L}`} data-letter={L} className="bg-paper-2 px-4 py-1 font-display text-xs font-semibold tracking-wider text-ink-3">
                       {L}
                     </li>
                   ) : null,
@@ -457,20 +457,20 @@ function WordsPage() {
                         if (selecting) toggle(w.w);
                         else setOpen(w);
                       }}
-                      className={cn("flex w-full select-none items-center gap-3 px-4 py-3 text-left transition [-webkit-touch-callout:none]", on ? "bg-brand-soft" : "hover:bg-secondary/60")}
+                      className={cn("flex w-full select-none items-center gap-3 px-4 py-3 text-left transition [-webkit-touch-callout:none]", on ? "bg-mark-soft" : "hover:bg-paper-2")}
                     >
                       {selecting && (
-                        <span className={cn("grid size-[22px] shrink-0 place-items-center rounded-full border-2 transition", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
+                        <span className={cn("grid size-[22px] shrink-0 place-items-center rounded-full border-2 transition", on ? "border-ink bg-ink text-paper-3" : "border-rule")}>
                           {on && <Check className="size-3.5" strokeWidth={3} />}
                         </span>
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-display truncate text-[17px] font-bold tracking-tight">{w.w}</span>
-                          {w.c && <span className="shrink-0 rounded bg-brand-soft px-1 text-[10px] font-bold text-primary">核心</span>}
+                          <span className="font-display truncate text-[1.0625rem] font-semibold tracking-[-0.015em]">{w.w}</span>
+                          {w.c && <span className="shrink-0 rounded bg-mark-soft px-1 text-[0.625rem] font-semibold text-ink">核心</span>}
                           {st.star[w.w] && <Star className="size-3.5 shrink-0 fill-vague text-vague" />}
                         </div>
-                        <div className="mt-0.5 truncate text-[13px] text-muted-foreground">{shortMeaning(w, 2)}</div>
+                        <div className="mt-0.5 truncate text-[0.8125rem] text-ink-3">{shortMeaning(w, 2)}</div>
                       </div>
                       <SortMeta sort={sort} card={st.cards[w.w]} day={day} />
                       <StateBadge card={st.cards[w.w]} />
@@ -515,7 +515,7 @@ function SortMeta({ sort, card, day }: { sort: SortKey; card: import("@/lib/srs"
     text = n <= 0 ? "今天" : n === 1 ? "明天" : `${n} 天后`;
   }
   return (
-    <span className="tnum shrink-0 text-[11px] font-semibold text-muted-foreground" data-testid="sort-meta">
+    <span className="tnum shrink-0 text-[0.6875rem] font-semibold text-ink-3" data-testid="sort-meta">
       {text}
     </span>
   );
