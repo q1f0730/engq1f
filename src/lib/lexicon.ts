@@ -15,6 +15,16 @@
 import type { Word, WordIndex } from "./data";
 import type { Card } from "./srs";
 import type { Level } from "./level";
+import { EXTRA_WORDS } from "./lexicon-extra";
+
+/** 补充词的占位词条：只用来拆词；z = 45（常见），b = 1（默认认识） */
+const extraCache = new Map<string, Word>();
+function extraWord(w: string): Word | undefined {
+  if (!EXTRA_WORDS.has(w)) return undefined;
+  let x = extraCache.get(w);
+  if (!x) extraCache.set(w, (x = { w, t: [], z: 45, b: 1 }));
+  return x;
+}
 
 // ---------------------------------------------------------------- 构词
 
@@ -145,7 +155,8 @@ export const NOT_SPLIT = new Set([
   "intense", "intensity", "multiply", "policy", "preface", "preposition", "relativity", "release", "remark", "repair", "resolve",
   "reserve", "reservation", "preserve", "preservation", "refine", "retreat", "retire", "retirement", "storey", "supervision",
   "tender", "transparent", "unless", "tradition", "charter", "classic", "classical", "encounter", "restrain", "counter",
-  "considerable", "considerably", "organism", "organic", "metric",
+  "considerable", "considerably", "organism", "organic", "metric", "canteen", "decline", "replace", "incline", "alphabet",
+  "despair", "donkey", "electron", "minimum", "thorough", "summary", "thinking", "handsome",
 ]);
 
 /** 合成词里太短、太虚的半边（office ≠ off + ice，pirate ≠ pir + ate） */
@@ -197,7 +208,8 @@ const cache = new WeakMap<object, Map<string, Morph | null>>();
  * 结果按 lookup 缓存（同一个索引只算一次）。
  */
 export function decompose(word: string, lookup: Lookup | WordIndex, depth = 0): Morph | null {
-  const look: Lookup = typeof lookup === "function" ? lookup : (w) => lookup.map.get(w);
+  const base: Lookup = typeof lookup === "function" ? lookup : (w) => lookup.map.get(w);
+  const look: Lookup = (w) => base(w) ?? extraWord(w);
   const key = typeof lookup === "function" ? lookup : lookup.map;
   let memo = cache.get(key);
   if (!memo) cache.set(key, (memo = new Map()));
@@ -357,7 +369,7 @@ export function difficulty(word: Word, lookup?: Lookup | WordIndex): Difficulty 
 export function knows(w: string, cards: Record<string, Card>, lookup: Lookup): boolean {
   const c = cards[w];
   if (c) return !!c.k || c.st === "mastered" || (c.st === "review" && c.r >= 1);
-  return !!lookup(w)?.b;
+  return !!lookup(w)?.b || EXTRA_WORDS.has(w);
 }
 
 /** 组成部分认识的比例最多让难度降 45% */
