@@ -2,6 +2,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, ChevronLeft, GraduationCap, Headphones, Play, Search, Shuffle, SlidersHorizontal, Star, X } from "@/components/app/icons";
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Segmented, Spinner } from "@/components/app/shell";
+import { actClass } from "@/components/app/kit";
 import { StateBadge, WordSheet } from "@/components/app/word-bits";
 import { ListPanel, ListsOverview } from "@/components/app/lists";
 import { AlphaRail, ExportSheet, SelectBar, ToolRow } from "@/components/app/word-tools";
@@ -220,16 +221,19 @@ function WordsPage() {
         title="词库"
         sub={`共 ${index.list.length} 词 · 核心 ${index.coreCount}`}
         right={
-          <Link to="/syn" data-testid="syn-entry" className="mb-1 flex shrink-0 items-center gap-1 rounded-lg bg-paper-2 px-3.5 py-2 text-[0.8125rem] font-semibold text-ink-3 transition hover:text-ink">
-            <Shuffle className="size-3.5" /> 同义词组
+          <Link to="/syn" data-testid="syn-entry" className="press group mb-1 flex h-10 shrink-0 items-center gap-1 text-[0.8125rem] font-medium text-ink-2 hover:text-ink">
+            同义词组
+            <span aria-hidden className="font-serif text-[1.25rem] leading-none text-ink-3 transition-transform group-hover:translate-x-0.5">
+              ›
+            </span>
           </Link>
         }
       />
 
-      <div ref={sticky} className="sticky top-0 z-20 -mx-4 bg-paper px-4 pb-3 pt-1 md:top-16 md:-mx-6 md:px-6">
-        <div className={cn("flex items-center gap-2", tab === "lists" && "hidden")}>
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-ink-3" />
+      {/* 吸顶：搜索是一条下划线，来源是一排字（选中的那个下面一道荧光笔），不是药丸 */}
+      <div ref={sticky} className="sticky top-0 z-20 -mx-4 bg-paper/95 px-4 pb-2 pt-1 backdrop-blur-sm md:top-16 md:-mx-6 md:px-6">
+        <div className={cn("flex items-center gap-3 border-b-[1.5px] border-ink", tab === "lists" && "hidden")}>
+          <Search className="size-[18px] shrink-0 text-ink-3" />
           <input
             ref={input}
             value={q}
@@ -237,60 +241,63 @@ function WordsPage() {
             placeholder="搜索英文或中文释义"
             data-testid="search"
             inputMode="search"
-            className="h-12 w-full rounded-xl ring-1 ring-rule ring-inset bg-paper-3 pl-11 pr-11 text-[0.9375rem] outline-none transition placeholder:text-ink-3 focus:border-ink focus:ring-4 focus:ring-ink"
+            className="h-12 min-w-0 flex-1 bg-transparent font-serif text-[1.25rem] outline-none placeholder:font-sans placeholder:text-[0.9375rem] placeholder:text-ink-3"
           />
           {q && (
-            <button type="button" aria-label="清空" onClick={() => setQ("")} className="absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-paper-2 text-ink-3">
+            <button type="button" aria-label="清空" onClick={() => setQ("")} className="press grid size-9 shrink-0 place-items-center rounded-md text-ink-3 hover:text-ink">
               <X className="size-4" />
             </button>
           )}
-        </div>
           <button
             type="button"
             data-testid="filter-toggle"
             aria-expanded={filtersOpen || selecting}
             onClick={() => setFiltersOpen(!filtersOpen)}
             className={cn(
-              "relative flex h-12 shrink-0 items-center gap-1.5 rounded-2xl px-3.5 text-sm font-semibold transition",
-              filtersOpen || selecting ? "bg-foreground text-background" : "bg-paper-2 text-ink-3 hover:text-ink",
+              "press relative -mr-1 flex h-10 shrink-0 items-center gap-1.5 rounded-md px-2 text-[0.8125rem] font-semibold",
+              filtersOpen || selecting ? "bg-ink text-paper-3" : "text-ink-2 hover:bg-paper-2 hover:text-ink",
             )}
           >
             <SlidersHorizontal className="size-4" /> 筛选
             {activeFilters > 0 && (
-              <span className="tnum absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-ink text-[0.6875rem] font-semibold text-paper-3" data-testid="filter-count">
+              <span className={cn("tnum font-serif text-[1rem] leading-none", filtersOpen || selecting ? "text-mark" : "text-ink")} data-testid="filter-count">
                 {activeFilters}
               </span>
             )}
           </button>
         </div>
-        <div className="no-scrollbar fade-x mt-3 flex gap-2 overflow-x-auto">
+        <div className="no-scrollbar fade-x mt-1 flex gap-5 overflow-x-auto" role="tablist">
           {(
             [
-              ["all", "全部"],
-              ["core", `核心未掌握 ${coreCount}`],
-              ["star", `生词本 ${counts.star}`],
-              ["wrong", `错词本 ${counts.wrong}`],
-              ["hard", `顽固词 ${counts.hard}`],
-              ["mastered", `已斩 ${counts.mastered}`],
-              ["lists", `词单 ${listCount}`],
-            ] as [Tab, string][]
-          ).map(([t, label]) => (
-            <button
-              key={t}
-              type="button"
-              data-testid={`tab-${t}`}
-              onClick={() => navigate({ to: "/words", search: t === "all" ? {} : { tab: t }, replace: true })}
-              className={cn(
-                "shrink-0 rounded-lg px-4 py-2 text-[0.8125rem] font-semibold transition",
-                tab === t || (t === "lists" && tab === "list") ? "bg-foreground text-background" : "bg-paper-2 text-ink-3 hover:text-ink",
-              )}
-            >
-              {label}
-            </button>
-          ))}
+              ["all", "全部", null],
+              ["core", "核心未掌握", coreCount],
+              ["star", "生词本", counts.star],
+              ["wrong", "错词本", counts.wrong],
+              ["hard", "顽固词", counts.hard],
+              ["mastered", "已斩", counts.mastered],
+              ["lists", "词单", listCount],
+            ] as [Tab, string, number | null][]
+          ).map(([t, label, n]) => {
+            const on = tab === t || (t === "lists" && tab === "list");
+            return (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                data-testid={`tab-${t}`}
+                onClick={() => navigate({ to: "/words", search: t === "all" ? {} : { tab: t }, replace: true })}
+                className={cn("press h-11 shrink-0 whitespace-nowrap text-[0.875rem]", on ? "font-semibold text-ink" : "text-ink-3 hover:text-ink")}
+              >
+                <span className={cn(on && "hl")}>{label}</span>
+                {n !== null && " "}
+                {n !== null && <span className={cn("tnum font-serif text-[1rem] font-normal", on ? "text-ink-2" : "text-ink-3")}>{n}</span>}
+              </button>
+            );
+          })}
         </div>
         <Segmented<Filter>
-          className={cn("mt-2.5", (tab === "lists" || !(filtersOpen || selecting)) && "hidden")}
+          className={cn("mt-1.5", (tab === "lists" || !(filtersOpen || selecting)) && "hidden")}
           value={filter}
           onChange={setFilter}
           testid="state-filter"
@@ -307,8 +314,11 @@ function WordsPage() {
 
       {tab === "list" && list && (
         <>
-          <Link to="/words" search={{ tab: "lists" }} replace data-testid="list-back" className="-ml-1 mb-2 flex w-fit items-center gap-0.5 text-[0.8125rem] font-semibold text-ink-3 hover:text-ink">
-            <ChevronLeft className="size-4" /> 全部词单
+          <Link to="/words" search={{ tab: "lists" }} replace data-testid="list-back" className="press -ml-1.5 mb-2 mt-2 inline-flex h-10 items-center gap-1 rounded-md px-1.5 text-[0.8125rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-ink">
+            <span aria-hidden className="font-serif text-[1.375rem] leading-none">
+              ‹
+            </span>
+            全部词单
           </Link>
           <ListPanel index={index} list={list} />
         </>
@@ -331,14 +341,8 @@ function WordsPage() {
       )}
 
       {nbMode && results.length > 0 && (
-        <div className="mb-3 flex gap-2">
-          <Link
-            to="/study"
-            search={{ mode: nbMode }}
-            data-testid="nb-review"
-            className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 hover:bg-ink-2"
-          >
-            <Play className="size-4 fill-current" />
+        <div className="mb-2 mt-4 flex gap-2">
+          <Link to="/study" search={{ mode: nbMode }} data-testid="nb-review" className={actClass("primary", true) + " h-12 text-[0.9375rem]"}>
             {nbMode === "star" ? "复习生词本" : nbMode === "wrong" ? "复习错词本" : nbMode === "hard" ? "顽固词专项" : "回顾已斩的词"}（{Math.min(20, results.length)} 词）
           </Link>
           {nbMode !== "mastered" && (
@@ -348,7 +352,7 @@ function WordsPage() {
               data-testid="nb-tape"
               aria-label="磁带模式听这个词本"
               title="磁带模式听这个词本"
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-mark-soft text-ink"
+              className="press grid size-12 shrink-0 place-items-center rounded-lg text-ink ring-1 ring-rule-strong ring-inset hover:bg-paper-2"
             >
               <Headphones className="size-5" />
             </Link>
@@ -357,74 +361,81 @@ function WordsPage() {
       )}
 
       {tab === "core" && coreCount > 0 && (
-        <div className="mb-3 rounded-xl ring-1 ring-rule ring-inset bg-paper-3 p-4" data-testid="core-panel">
-          <div className="flex items-center gap-3">
-            <span className="grid size-8 shrink-0 place-items-center text-ink-2">
-              <GraduationCap className="size-5" />
+        <section className="mb-2 mt-4 border-t border-ink pt-3.5" data-testid="core-panel">
+          <div className="flex items-baseline gap-2">
+            <span className="tnum font-serif text-[2.25rem] leading-none tracking-[-0.02em]">{coreCount}</span>
+            <span className="text-[0.9375rem] font-semibold">个四级核心词还没掌握</span>
+          </div>
+          <span className="sr-only">四级核心词还差 {coreCount} 个</span>
+          {/* 三段细线：已掌握（墨）· 学习中（荧光笔）· 未学（纸） */}
+          <div className="mt-3 flex h-1.5 gap-px overflow-hidden bg-rule" aria-hidden>
+            <div className="h-full bg-ink" style={{ width: `${((index.coreCount - coreCount) / index.coreCount) * 100}%` }} />
+            <div className="h-full bg-mark" style={{ width: `${(cu.learning.length / index.coreCount) * 100}%` }} />
+          </div>
+          <div className="tnum mt-2 flex gap-4 text-[0.75rem] text-ink-3" data-testid="core-split">
+            <span>未学 {cu.unlearned.length}</span>
+            <span>
+              <span className="mr-1 inline-block size-2 rounded-[2px] bg-mark align-middle" aria-hidden />
+              学习中 {cu.learning.length}
             </span>
-            <div className="min-w-0 flex-1">
-              <div className="text-[0.9375rem] font-semibold">四级核心词还差 {coreCount} 个</div>
-              <div className="text-xs text-ink-3" data-testid="core-split">
-                未学 {cu.unlearned.length} · 学习中 {cu.learning.length} · 已掌握 {index.coreCount - coreCount}
-              </div>
-            </div>
+            <span>
+              <span className="mr-1 inline-block size-2 rounded-[2px] bg-ink align-middle" aria-hidden />
+              已掌握 {index.coreCount - coreCount}
+            </span>
           </div>
-          <div className="mt-3 flex h-2 overflow-hidden rounded-[2px] bg-rule">
-            <div className="h-full bg-know" style={{ width: `${((index.coreCount - coreCount) / index.coreCount) * 100}%` }} />
-            <div className="h-full bg-vague" style={{ width: `${(cu.learning.length / index.coreCount) * 100}%` }} />
-          </div>
-          <Link
-            to="/study"
-            search={{ mode: "core" }}
-            data-testid="core-study"
-            className="press mt-3 flex h-12 items-center justify-center gap-2 rounded-lg bg-ink text-[0.9375rem] font-semibold text-paper-3 hover:bg-ink-2"
-          >
-            <Play className="size-4 fill-current" />
+          <Link to="/study" search={{ mode: "core" }} data-testid="core-study" className={actClass("primary") + " mt-4 h-12 w-full text-[0.9375rem]"}>
             {cu.unlearned.length ? "学 10 个未学核心词" : "复习 10 个学习中的核心词"}
           </Link>
-        </div>
+        </section>
       )}
 
       {tab !== "lists" && (
         <>
-          <div className="text-xs text-ink-3" data-testid="result-count">
+          <div className="mt-3 flex items-baseline justify-between text-[0.75rem] text-ink-3" data-testid="result-count">
             {dq ? `找到 ${results.length} 个结果` : `${results.length} 个词`}
             {selecting && <span className="ml-1 text-ink">· 点单词勾选，长按也能进入多选</span>}
           </div>
 
           {results.length === 0 ? (
-            <div className="py-16 text-center text-sm text-ink-3" data-testid="no-results">
-              {dq
-                ? "没有找到匹配的词"
-                : pos !== "any" || coreOnly
-                  ? "没有符合筛选条件的词"
-                  : tab === "star"
-                    ? "生词本还是空的，学习时按 S 收藏"
-                    : tab === "wrong"
-                      ? "错词本是空的，继续保持"
-                      : tab === "hard"
-                        ? "没有顽固词：遗忘 3 次以上的词会出现在这里"
-                        : tab === "mastered"
-                          ? "还没有斩掉的词"
-                          : tab === "core"
-                            ? "核心词全部掌握了 🎉"
-                            : tab === "list"
-                              ? "词单还是空的：去「全部」长按单词多选，加入这个词单"
-                              : "没有词"}
+            <div className="border-t border-rule py-16 text-center" data-testid="no-results">
+              <div className="font-serif text-[2rem] italic leading-none text-rule-strong" aria-hidden>
+                —
+              </div>
+              <p className="mt-3 text-[0.875rem] text-ink-3">
+                {dq
+                  ? "没有找到匹配的词"
+                  : pos !== "any" || coreOnly
+                    ? "没有符合筛选条件的词"
+                    : tab === "star"
+                      ? "生词本还是空的，学习时按 S 收藏"
+                      : tab === "wrong"
+                        ? "错词本是空的，继续保持"
+                        : tab === "hard"
+                          ? "没有顽固词：遗忘 3 次以上的词会出现在这里"
+                          : tab === "mastered"
+                            ? "还没有斩掉的词"
+                            : tab === "core"
+                              ? "核心词全部掌握了 🎉"
+                              : tab === "list"
+                                ? "词单还是空的：去「全部」长按单词多选，加入这个词单"
+                                : "没有词"}
+              </p>
             </div>
           ) : (
-            <ul className={cn("mt-2 divide-y divide-rule overflow-hidden rounded-xl ring-1 ring-rule ring-inset bg-paper-3", showRail && "mr-5 md:mr-0")} data-testid="word-list" data-sort={sort}>
+            /* 词典正文：没有卡片框，词头衬线、释义一行，行间细线；按字母排时每个字母一个大写的栏头 */
+            <ul className={cn("mt-1.5 border-t border-rule", showRail && "mr-5 md:mr-0")} data-testid="word-list" data-sort={sort}>
               {results.slice(0, limit).map((w, k) => {
                 const L = alpha ? letterOf(w.w) : "";
                 const head = alpha && (k === 0 || letterOf(results[k - 1].w) !== L);
                 const on = selected.has(w.w);
                 return [
                   head ? (
-                    <li key={`h-${L}`} data-letter={L} className="bg-paper px-4 pb-1 pt-4 font-serif text-[1.25rem] leading-none text-ink-3">
-                      {L}
+                    <li key={`h-${L}`} data-letter={L} className="flex items-baseline gap-3 border-b border-ink pb-1.5 pt-6">
+                      <span className="font-serif text-[2rem] leading-none">{L}</span>
+                      <span className="text-[0.6875rem] text-ink-3">{L.toLowerCase()}—</span>
                     </li>
                   ) : null,
-                  <li key={w.w} data-idx={k}>
+                  <li key={w.w} data-idx={k} className="border-b border-rule">
                     <button
                       type="button"
                       data-testid="word-row"
@@ -457,20 +468,20 @@ function WordsPage() {
                         if (selecting) toggle(w.w);
                         else setOpen(w);
                       }}
-                      className={cn("flex w-full select-none items-center gap-3 px-4 py-3 text-left transition [-webkit-touch-callout:none]", on ? "bg-mark-soft" : "hover:bg-paper-2")}
+                      className={cn("flex min-h-16 w-full select-none items-center gap-3 py-2.5 text-left transition-colors [-webkit-touch-callout:none]", on ? "-mx-2 bg-mark-soft px-2" : "hover:bg-paper-2/60")}
                     >
                       {selecting && (
-                        <span className={cn("grid size-[22px] shrink-0 place-items-center rounded-full border-2 transition", on ? "border-ink bg-ink text-paper-3" : "border-rule")}>
+                        <span className={cn("grid size-5 shrink-0 place-items-center rounded-[3px] transition", on ? "bg-ink text-paper-3" : "border-[1.5px] border-rule-strong")}>
                           {on && <Check className="size-3.5" strokeWidth={3} />}
                         </span>
                       )}
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="word-head truncate text-[1.375rem] leading-tight">{w.w}</span>
-                          {w.c && <span className="shrink-0 rounded bg-mark-soft px-1 text-[0.625rem] font-semibold text-ink">核心</span>}
-                          {st.star[w.w] && <Star className="size-3.5 shrink-0 fill-vague text-vague" />}
+                        <div className="flex items-baseline gap-2">
+                          <span className="word-head truncate text-[1.5rem] leading-tight">{w.w}</span>
+                          {st.star[w.w] && <Star className="size-3.5 shrink-0 self-center fill-current text-ink" aria-label="生词本" />}
+                          {w.c && <span className="shrink-0 text-[0.6875rem] font-medium text-ink-3">核心</span>}
                         </div>
-                        <div className="mt-0.5 truncate text-[0.8125rem] text-ink-3">{shortMeaning(w, 2)}</div>
+                        <div className="truncate text-[0.8125rem] text-ink-2">{shortMeaning(w, 2)}</div>
                       </div>
                       <SortMeta sort={sort} card={st.cards[w.w]} day={day} />
                       <StateBadge card={st.cards[w.w]} />
@@ -515,7 +526,7 @@ function SortMeta({ sort, card, day }: { sort: SortKey; card: import("@/lib/srs"
     text = n <= 0 ? "今天" : n === 1 ? "明天" : `${n} 天后`;
   }
   return (
-    <span className="tnum shrink-0 text-[0.6875rem] font-semibold text-ink-3" data-testid="sort-meta">
+    <span className="tnum shrink-0 border-r border-rule pr-3 text-right font-serif text-[0.9375rem] italic leading-none text-ink-2" data-testid="sort-meta">
       {text}
     </span>
   );
