@@ -16,9 +16,10 @@ const ROWS: [string, string][] = [
   ["?", "打开这个帮助"],
 ];
 
+/** 12.0 · 键帽：纸色、细线框、底边加粗一像素，像真的键 */
 export function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-flex min-w-6 items-center justify-center rounded-md border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.6875rem] font-semibold text-ink">
+    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded-[4px] bg-paper-3 px-1.5 font-mono text-[0.6875rem] font-semibold text-ink shadow-[inset_0_0_0_1px_var(--rule-strong),inset_0_-2px_0_var(--rule-strong)]">
       {children}
     </kbd>
   );
@@ -30,19 +31,24 @@ export function ShortcutsSheet({ open, onOpenChange }: { open: boolean; onOpenCh
   const rows: [string, string][] = st.fourKey ? [ROWS[0], ["4", "简单（四键模式）"], ...ROWS.slice(1)] : ROWS;
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="键盘快捷键" testid="shortcuts">
-      <div className="divide-y divide-border/70">
-        {rows.map(([k, v]) => (
-          <div key={k} className="flex items-center justify-between py-2.5 text-sm">
-            <span className="text-ink-3">{v}</span>
-            <span className="flex gap-1">
-              {k.split(" / ").map((x) => (
-                <Kbd key={x}>{x}</Kbd>
-              ))}
-            </span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-4 text-[0.8125rem] leading-relaxed text-ink-3">
+      {/* 一张两栏的对照表：左边键位，右边作用 */}
+      <table className="w-full border-t border-ink text-[0.875rem]">
+        <tbody>
+          {rows.map(([k, v]) => (
+            <tr key={k} className="border-b border-rule">
+              <td className="w-[38%] py-2.5 pr-3 align-middle">
+                <span className="flex flex-wrap gap-1">
+                  {k.split(" / ").map((x) => (
+                    <Kbd key={x}>{x}</Kbd>
+                  ))}
+                </span>
+              </td>
+              <td className="py-2.5 text-ink-2">{v}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-4 border-l-2 border-mark pl-3 text-[0.8125rem] leading-relaxed text-ink-2">
         手机上：卡片向右滑 = {swap ? "不认识" : "认识"}，向左滑 = {swap ? "认识" : "不认识"}，向上滑 = 模糊；速刷只有左右滑。磁带模式里空格 = 播放 / 暂停。
       </p>
     </BottomSheet>
