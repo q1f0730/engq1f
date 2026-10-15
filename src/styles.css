@@ -1218,3 +1218,35 @@ html[data-motion="reduce"] .checkin-burst {
   .dash-sum { display: block; grid-area: sum; }
   .dash-more { align-self: start; }
 }
+
+/* 13.1 · 学习卡背面：平时两层包装不占版面；电脑（够宽也够高）时释义在左、例句等在右 */
+.back-main,
+.back-side {
+  display: contents;
+}
+@media (min-width: 75rem) and (min-height: 37.5rem) {
+  [data-testid="card-back"] .back-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    column-gap: 2.75rem;
+    align-items: start;
+  }
+  [data-testid="card-back"] .back-main {
+    display: block;
+    min-width: 0;
+  }
+  [data-testid="card-back"] .back-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+    padding-left: 2.75rem;
+    border-left: 1px solid var(--rule);
+  }
+  [data-testid="card-back"] .back-side > * {
+    margin-top: 0;
+  }
+  [data-testid="card-back"] .back-side:not(:has(> :not(:empty))) {
+    display: none;
+  }
+}

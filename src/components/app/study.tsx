@@ -604,7 +604,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
       : null;
 
   return (
-    <div className="mx-auto flex h-dvh max-w-xl flex-col bg-paper px-4 pb-safe md:py-6" data-testid="study" data-mode={mode}>
+    <div className="mx-auto flex h-dvh max-w-xl flex-col bg-paper px-4 pb-safe md:py-6 desk:max-w-[64rem] desk:bg-transparent desk:px-10 desk:py-8" data-testid="study" data-mode={mode}>
       {/* 顶栏：只留退出和进度（11.1 · 撤销 / 明天再说 / 收藏放到卡片下面，带文字） */}
       <div className="flex shrink-0 items-center gap-1.5 pt-3 pt-safe md:gap-2">
         <button type="button" onClick={() => exitBack(router)} aria-label="退出" data-testid="study-quit" className="press -ml-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-paper-2 hover:text-ink">
@@ -725,7 +725,7 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
             frontIpa={frontIpa}
           />
           <CardTools onUndo={doUndo} canUndo={!!session.history.length || peek} onBury={practice ? undefined : doBury} onStar={star} starred={starred} />
-          <div className="shrink-0 pb-4 pt-2">
+          <div className="shrink-0 pb-4 pt-2 desk:mx-auto desk:w-full desk:max-w-[40rem]">
             {phase === "front" || peek ? (
               <div className={cn("grid gap-2.5", fourKey ? "grid-cols-4 gap-2" : "grid-cols-3")} data-testid="rate-buttons" data-order={rateOrder4(leftHand, fourKey).join(",")}>
                 {rateOrder4(leftHand, fourKey).map((r) => (
@@ -757,6 +757,27 @@ export function Study({ index, mode, words = [], listId, listName }: { index: Wo
                   下一个 {fine && <span className="rounded-[4px] bg-paper-3/15 px-1.5 py-px text-[0.6875rem] font-medium" data-testid="kbd-hint">空格</span>}
                 </button>
               </div>
+            )}
+            {/* 13.1 · 电脑：按钮下面一行快捷键提示（有鼠标、窗口够大才显示） */}
+            {fine && (
+              <p className="mt-3 hidden flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[0.75rem] text-ink-3 desk:flex" data-testid="kbd-bar">
+                {phase === "front" || peek ? (
+                  <>
+                    <span><span className="kbd">空格</span> 翻面</span>
+                    <span><span className="kbd">1</span> 认识</span>
+                    <span><span className="kbd">2</span> 模糊</span>
+                    <span><span className="kbd">3</span> 不认识</span>
+                    {fourKey && <span><span className="kbd">4</span> 简单</span>}
+                  </>
+                ) : (
+                  <span><span className="kbd">空格</span> / <span className="kbd">1</span>–<span className="kbd">3</span> 下一个</span>
+                )}
+                <span><span className="kbd">R</span> 发音</span>
+                <span><span className="kbd">Z</span> 撤销</span>
+                <button type="button" onClick={() => setHelp(true)} className="press rounded-[3px] underline decoration-rule-strong underline-offset-4 hover:text-ink">
+                  <span className="kbd">?</span> 全部快捷键
+                </button>
+              </p>
             )}
           </div>
         </>
@@ -1084,7 +1105,11 @@ function FlipCard({
     const ro = typeof ResizeObserver !== "undefined" && el ? new ResizeObserver(() => checkMore()) : null;
     if (ro && el) {
       ro.observe(el);
-      for (const c of Array.from(el.children)) ro.observe(c);
+      for (const c of Array.from(el.children)) {
+        ro.observe(c);
+        // 13.1 · back-main / back-side 是 display: contents，自己没有尺寸：盯住里面的每一块
+        for (const g of Array.from(c.children)) ro.observe(g);
+      }
     }
     window.addEventListener("resize", checkMore);
     const t = setTimeout(checkMore, 700);
@@ -1119,7 +1144,7 @@ function FlipCard({
 
   // 12.0 · 正面是一张索引卡：词头（衬线、左对齐）占上半，下面一条短墨线，再下面是读音；提示语贴在卡片底部
   const front = (
-    <div className="flex h-full flex-col justify-center px-7 pb-8 text-left" data-testid="card-front">
+    <div className="flex h-full flex-col justify-center px-7 pb-8 text-left desk:px-16" data-testid="card-front">
       {cnFirst ? (
         <div className="fs-card w-full max-w-md text-left">
           <div className="mb-4 text-[0.75rem] text-ink-3">中 → 英</div>
@@ -1168,7 +1193,7 @@ function FlipCard({
 
   // 12.0 · 背面是词典的一个条目：词头 + 读音，下面一道粗墨线，再下面释义、短语、形近词、例句
   const back = (
-    <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-5 text-left" data-testid="card-back">
+    <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-5 text-left desk:px-12 desk:pb-8 desk:pt-8" data-testid="card-back">
       {/* 12.0 · 内容少时在卡片里上下居中（my-auto），多到要滚动时自然顶格 */}
       <div className="fs-card back-grid my-auto">
         <div className="back-head flex items-start justify-between gap-3" data-testid="back-head">
@@ -1195,8 +1220,12 @@ function FlipCard({
         <div className="back-rule my-4 h-[2px] bg-ink" />
         {/* 11.6 · 横屏（高度 < 500）：单词在左、释义在右，释义第一行不用滚动就看得见；右栏放不下时底部渐隐 + 「上滑看更多」 */}
         <div className="back-body" data-testid="back-body" ref={bodyRef} onScroll={checkMore} data-more={more ? 1 : 0}>
+          {/* 13.1 · 两层包装平时是 display: contents（版面和以前一样）；电脑宽屏时变成左右两栏：释义在左，例句 / 短语 / 同义词在右 */}
+          <div className="back-main">
           <Meanings word={word} size="lg" />
           <MorphLine index={index} word={word} className="mt-3" />
+          </div>
+          <div className="back-side">
           <div className="mt-6 empty:hidden">
             <Examples word={word} enabled={flipped} />
           </div>
@@ -1208,6 +1237,7 @@ function FlipCard({
           </div>
           <div className="mt-6 empty:hidden">
             <Confusables index={index} word={word} accent={accent} />
+          </div>
           </div>
         </div>
         {more && (
@@ -1225,7 +1255,7 @@ function FlipCard({
   const HINT_CN = { know: "认识", vague: "模糊", forget: "不认识" } as const;
 
   return (
-    <div className="paper-stack relative min-h-0 flex-1 card-in">
+    <div className="paper-stack relative min-h-0 flex-1 card-in desk:mx-auto desk:my-2 desk:max-h-[40rem] desk:w-full desk:max-w-[56rem]">
       <div
         className="flip-scene h-full touch-pan-y select-none"
         style={style}
