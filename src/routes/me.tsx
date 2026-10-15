@@ -364,7 +364,7 @@ function MePage() {
                 {backupLine ? `上次备份：${backupLine}` : "还没备份过"}
               </span>
               <span data-testid="persist-status" data-state={persist ?? "pending"}>
-                {persist === "persisted" ? " · 存储已锁定，系统不会自动清理。" : persist === null ? " · 正在检查存储…" : " · 记录只存在这台手机上，浏览器空间紧张时可能被清理，建议定期备份。"}
+                {persist === "persisted" ? " · 存储已锁定，系统不会自动清理。" : persist === null ? " · 正在检查存储…" : " · 记录只存在这台设备上，浏览器空间紧张时可能被清理，建议定期备份。"}
               </span>
             </p>
             <div className="flex gap-2">
@@ -384,7 +384,7 @@ function MePage() {
             <div className="mt-4 border-t border-rule">
               <Entry to="/data" data-testid="go-data" title="数据中心" sub="快照回滚 · 合并两台设备 · 加密备份 · 学习档案" />
               <div data-testid="account-sec">
-                <Entry to="/account" title={!cloudConfig() ? "账号（云同步还没开通）" : hasSession() ? "已登录 · 账号与同步" : "登录 / 注册"} sub={cloudConfig() ? "邮箱登录后，换手机进度也在" : "现在记录只存在这台手机上"} data-testid="me-account" />
+                <Entry to="/account" title={!cloudConfig() ? "账号（云同步还没开通）" : hasSession() ? "已登录 · 账号与同步" : "登录 / 注册"} sub={cloudConfig() ? "邮箱登录后，换设备进度也在" : "现在记录只存在这台设备上"} data-testid="me-account" />
               </div>
             </div>
           </Sec>

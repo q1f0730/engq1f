@@ -70,7 +70,7 @@ function DataPage() {
       <SubHead
         back={{ to: "/me", label: "我的", testid: "data-back" }}
         title="数据中心"
-        sub="不联网 · 记录只存在这台手机上"
+        sub="不联网 · 记录只存在这台设备上"
         right={
           profile && (
             <Tag tone="mark" className="mb-1 max-w-[40%] truncate" data-testid="data-profile">
@@ -585,7 +585,7 @@ function ProfilesPanel() {
           {reg.list.length}/{PROFILE_MAX}
         </span>
       }
-      intro="一台手机给几个人用，或者四级、六级分开背：每个档案的进度、打卡、设置互不影响。"
+      intro="一台设备给几个人用，或者四级、六级分开背：每个档案的进度、打卡、设置互不影响。"
     >
       <ul className="border-t border-rule" data-testid="profile-list">
         {reg.list.map((p) => {

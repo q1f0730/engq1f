@@ -854,7 +854,7 @@ function AdviceCard({
             </>
           }
         >
-          记录只存在这台手机上：删掉图标、卸载或清理浏览器，记录就全没了
+          记录只存在这台设备上：删掉图标、卸载或清理浏览器，记录就全没了
         </Note>
       );
     case "install":
@@ -1550,7 +1550,7 @@ function InstallCard({ day, installed, snooze }: { day: string; installed?: bool
         </Act>
       }
     >
-      <p data-testid="install-warn">从桌面图标全屏打开，没网也能背。记录只存在这台手机上，删掉图标会连记录一起删，记得定期导出备份</p>
+      <p data-testid="install-warn">从桌面图标全屏打开，没网也能背。记录只存在这台设备上，删掉图标会连记录一起删，记得定期导出备份</p>
     </Note>
   );
 }

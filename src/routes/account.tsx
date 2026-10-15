@@ -43,10 +43,10 @@ function AccountPage() {
   }, []);
   return (
     <div data-testid="account" className="mx-auto max-w-md xl:mt-10 xl:max-w-[30rem] xl:rounded-[4px] xl:bg-paper-3 xl:px-10 xl:pb-10 xl:shadow-md xl:ring-1 xl:ring-rule xl:ring-inset">
-      <PageHeader title="账号与同步" sub="登录后，学习进度在你的手机之间同步" />
+      <PageHeader title="账号与同步" sub="登录后，学习进度在你的各台设备之间同步" />
       {!cfg ? <NoCloud /> : status.email && status.phase !== "signed-out" ? <SignedIn /> : <AuthForms />}
       <p className="mt-10 text-[0.75rem] leading-relaxed text-ink-3">
-        不登录也能一直用：记录存在这台手机上，离线可用。登录后第一次同步会把这台手机上的进度并进账号，两边都不丢；之后同一个词以最后一次作答的那台设备为准。
+        不登录也能一直用：记录存在这台设备上，离线可用。登录后第一次同步会把这台设备上的进度并进账号，两边都不丢；之后同一个词以最后一次作答的那台设备为准。
       </p>
     </div>
   );
@@ -56,7 +56,7 @@ function NoCloud() {
   return (
     <section className="border-y border-rule py-5" data-testid="account-off">
       <h2 className="song text-[1.25rem]">云同步还没开通</h2>
-      <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-2">这一版只在本机保存记录。换手机前请在「我的 → 数据与备份」里导出备份，到新手机上导入。</p>
+      <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-2">这一版只在本机保存记录。换设备前请在「我的 → 数据与备份」里导出备份，到新设备上导入。</p>
       <Link to="/me" className="press mt-4 inline-flex h-11 items-center rounded-[4px] px-4 text-[0.875rem] font-semibold ring-1 ring-inset ring-rule-strong hover:bg-paper-2">
         去备份
       </Link>
@@ -115,7 +115,7 @@ function SignedIn() {
         <button
           type="button"
           data-testid="sign-out"
-          onClick={() => void signOut().then(() => toast.success("已退出登录", { description: "这台手机上的记录还在" }))}
+          onClick={() => void signOut().then(() => toast.success("已退出登录", { description: "这台设备上的记录还在" }))}
           className="press h-12 rounded-[4px] text-[0.9375rem] font-semibold ring-1 ring-inset ring-rule-strong hover:bg-paper-2"
         >
           退出登录

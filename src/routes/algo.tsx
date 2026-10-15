@@ -32,7 +32,7 @@ function AlgoPage() {
   if (!index) return <Spinner />;
   return (
     <div data-testid="algo" data-tab={tab}>
-      <SubHead back={{ to: "/me", label: "我的", testid: "algo-back" }} title="记忆算法" sub="全部在这台手机上计算，不联网" />
+      <SubHead back={{ to: "/me", label: "我的", testid: "algo-back" }} title="记忆算法" sub="全部在这台设备上计算，不联网" />
       <TabLine<Tab>
         value={tab}
         onChange={(v) => navigate({ to: "/algo", search: v === "sim" ? { tab: "sim" } : {}, replace: true })}
