@@ -29,6 +29,18 @@ export function loadSyn(): Promise<SynData> {
 
 export const SYN_MAX = 5;
 
+const activeCache = new WeakMap<WordIndex, Set<string>>();
+
+/** 缓存当前词库中的活跃单词集合，避免重复遍历 index.list 构建 Set */
+function getActiveSet(index: WordIndex): Set<string> {
+  let active = activeCache.get(index);
+  if (!active) {
+    active = new Set(index.list.map((w) => w.w));
+    activeCache.set(index, active);
+  }
+  return active;
+}
+
 /** 纯函数：给定 syn.json 和索引，算出这个词的同义词（测试直接调用） */
 export function synonymsFor(index: WordIndex, word: Word, d: SynData | null, max = SYN_MAX): Word[] {
   const out: Word[] = [];
@@ -41,7 +53,7 @@ export function synonymsFor(index: WordIndex, word: Word, d: SynData | null, max
   };
   for (const w of d?.[word.w] ?? []) add(w);
   for (const g of synonymsOf(index, word)) for (const w of g.words) add(w);
-  const active = new Set(index.list.map((w) => w.w));
+  const active = getActiveSet(index);
   // 词库里的在前（稳定排序：各自保持原来的先后）
   return out
     .map((w, i) => [w, i] as const)
