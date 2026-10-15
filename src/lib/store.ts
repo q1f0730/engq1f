@@ -645,6 +645,8 @@ export function syncFromStorage(): boolean {
   const replaced = (next.epoch ?? "") !== (state.epoch ?? "");
   state = next;
   savedRev = null;
+  // 13.1 · 别的窗口开 / 关了「包含基础词」：这个窗口的词库索引也要跟着换（以前漏了，词书个数会和设置对不上）
+  setBasicMode(!!state.settings.basic);
   applyTheme(state.settings.theme);
   applyLook(state.settings);
   listeners.forEach((l) => l());
