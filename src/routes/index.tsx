@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   AlarmClock,
   BookMarked,
@@ -33,6 +33,8 @@ import { Act, Note, Tag, actClass } from "@/components/app/kit";
 import { isStandalone, promptInstall, useInstallPrompt } from "@/lib/install";
 import { INSTALL_SNOOZE_DAYS, installVisible } from "@/lib/ux";
 // 11.3 · 分享图 / 单词详情只在点开时才加载（首屏 JS 预算）
+// 13.1 · 电脑首页的月历（和统计页同一个组件，只在电脑版加载）
+const MonthCalendar = lazy(() => import("@/components/app/review-charts").then((m) => ({ default: m.MonthCalendar })));
 const ShareSheet = lazy(() => import("@/components/app/share-sheet").then((m) => ({ default: m.ShareSheet })));
 const WordSheet = lazy(() => import("@/components/app/word-bits").then((m) => ({ default: m.WordSheet })));
 import { speak } from "@/lib/audio";
@@ -74,6 +76,7 @@ import { NEW_CARD_SEC, REVIEW_CARD_SEC } from "@/lib/ux";
 import { backupDue } from "@/lib/persist";
 import { useShareInfo } from "@/lib/use-share";
 import { cn } from "@/lib/utils";
+import { useDesk } from "@/lib/media";
 import { fmtDate } from "@/lib/format";
 import { showWeekReport, weekReport } from "@/lib/stats";
 
@@ -96,6 +99,7 @@ function greeting() {
 function Today() {
   const { index, error } = useWords();
   const st = useApp();
+  const desk = useDesk();
   const [share, setShare] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [justChecked, setJustChecked] = useState(false);
@@ -275,13 +279,13 @@ function Today() {
         </div>
       </header>
 
-      <div className="grid gap-8">
-        <div className="min-w-0 space-y-8">
+      {/* 13.1 · 一张网格：手机就是原来的一列（间距和以前的两段 space-y-8 一样）；平板两栏、电脑三栏（styles.css · .dash） */}
+      <div className="dash grid gap-8" data-adv={advice && (!urgent || !overFirst) ? 1 : 0} data-testid="dash">
           {/* 主卡片：现在该干嘛（11.2 · 第一屏只有这一张；断签提醒并进主卡，不再是单独的红色横幅） */}
           {overFirst ? (
-            <ExamOverCard advice={overFirst} index={index} st={st} day={day} streak={s} />
+            <div className="dash-hero min-w-0"><ExamOverCard advice={overFirst} index={index} st={st} day={day} streak={s} /></div>
           ) : (
-          <section className="hero-gradient relative overflow-hidden rounded-2xl pb-5 pl-7 pr-5 pt-4" data-testid="hero" data-mode={sum.recovering ? "recover" : sum.paused ? "pause" : sum.examMode ? "exam" : "normal"}>
+          <section className="dash-hero hero-gradient relative overflow-hidden rounded-2xl pb-5 pl-7 pr-5 pt-4" data-testid="hero" data-mode={sum.recovering ? "recover" : sum.paused ? "pause" : sum.examMode ? "exam" : "normal"}>
             {lateOn && <LateStrip sum={sum} streak={s} />}
             <div className="flex items-end justify-between gap-4">
               <div className="min-w-0">
@@ -460,10 +464,10 @@ function Today() {
           </section>
           )}
 
-          {advice && urgent && !overFirst && <AdviceCard advice={advice} day={day} st={st} index={index} onPatch={doPatch} patchedStreak={patchable ? patchedStreak(st, day) : 0} logs={st.log} />}
+          {advice && urgent && !overFirst && <div className="dash-adv min-w-0"><AdviceCard advice={advice} day={day} st={st} index={index} onPatch={doPatch} patchedStreak={patchable ? patchedStreak(st, day) : 0} logs={st.log} /></div>}
 
           {/* 打卡（11.2 · 打卡按钮只在主卡上，这里只显示进度和日历）。12.0 · 一节「本周」：标题 + 七天方格 + 今天还差什么 */}
-          <section data-testid="checkin-panel">
+          <section className="dash-cal min-w-0" data-testid="checkin-panel">
             <div className="mb-4 flex items-end justify-between gap-3 border-b border-ink pb-2">
               <h2 className="text-[1.0625rem] font-semibold tracking-[-0.01em]">每日打卡</h2>
               <Link to="/stats" className="press -my-2 flex h-10 items-center gap-0.5 text-[0.8125rem] text-ink-3 underline decoration-rule-strong underline-offset-4 hover:text-ink">
@@ -550,10 +554,11 @@ function Today() {
               </div>
             )}
           </section>
-        </div>
 
-        <div className="min-w-0 space-y-8">
+          {desk && <DeskOverview sum={sum} st={st} day={day} etaMin={etaMin} />}
+
           {!examOver && (
+            <div className="dash-exam min-w-0">
             <ExamCard
               day={day}
               exam={exam.day}
@@ -570,14 +575,15 @@ function Today() {
               st={st}
               quiet={paceQuiet ? "pace" : advice?.kind === "sprint" ? "sprint" : null}
             />
+            </div>
           )}
 
           {/* 11.2 · 不急的建议（备份、冲刺、顽固词…）排在第一屏以下，同一时间最多一张 */}
-          {advice && !urgent && <AdviceCard advice={advice} day={day} st={st} index={index} onPatch={doPatch} patchedStreak={patchable ? patchedStreak(st, day) : 0} logs={st.log} />}
+          {advice && !urgent && <div className="dash-adv min-w-0"><AdviceCard advice={advice} day={day} st={st} index={index} onPatch={doPatch} patchedStreak={patchable ? patchedStreak(st, day) : 0} logs={st.log} /></div>}
 
 
           {/* 更多练习：碎片时间、小游戏、今日一词（11.1 · 从首页主体收进来） */}
-          <section data-testid="more-practice" className="border-t border-rule pt-5">
+          <section data-testid="more-practice" className="dash-more min-w-0 border-t border-rule pt-5">
             {/* 今日一词：一个词典词条，衬线词头 */}
             <button
               type="button"
@@ -616,7 +622,6 @@ function Today() {
               {quizOpen && advice?.kind !== "quiz" && <SnackTile to="/quiz" testid="quiz-entry" no={snackSpeed ? 5 : 4} title="今日小测" sub="20 题 · 限时 5 分钟" />}
             </div>
           </section>
-        </div>
       </div>
 
       <Suspense fallback={null}>
@@ -625,6 +630,68 @@ function Today() {
       </Suspense>
     </div>
   );
+}
+
+/**
+ * 13.1 · 电脑首页才有的一栏「今日概览」：新词 / 复习 / 明天到期 / 预计用时四个读数，下面是本月打卡月历。
+ * 手机不渲染（主卡和打卡已经说了这些）。
+ */
+function DeskOverview({ sum, st, day, etaMin }: { sum: ReturnType<typeof summarize>; st: AppState; day: string; etaMin: number }) {
+  const [ym, setYm] = useState(() => day.slice(0, 7));
+  const navigate = useNavigate();
+  const cells: [string, string, string?][] = sum.timeMode
+    ? [
+        ["今日学习", `${Math.floor(sum.ms / 60000)}`, `/ ${sum.goalMin} 分钟`],
+        ["待复习", String(sum.due)],
+        ["已复习", String(sum.reviewed)],
+        ["明天到期", String(sum.aheadCount)],
+      ]
+    : [
+        ["新词", String(sum.learned), sum.goal ? `/ ${sum.goal}` : undefined],
+        ["待复习", String(sum.due), sum.deferred ? `+${sum.deferred} 顺延` : undefined],
+        ["已复习", String(sum.reviewed)],
+        [sum.ready || (!sum.due && !sum.remainingGoal) ? "明天到期" : "预计还要", sum.ready || (!sum.due && !sum.remainingGoal) ? String(sum.aheadCount) : String(etaMin), sum.ready || (!sum.due && !sum.remainingGoal) ? undefined : "分钟"],
+      ];
+  return (
+    <section className="dash-sum min-w-0" data-testid="desk-overview">
+      <div className="mb-4 flex items-end justify-between gap-3 border-b border-ink pb-2">
+        <h2 className="text-[1.0625rem] font-semibold tracking-[-0.01em]">今日概览</h2>
+        <span className="tnum text-[0.8125rem] text-ink-3">已学 {sum.started} / {sum.bookTotal}</span>
+      </div>
+      <dl className="grid grid-cols-2 border-t border-rule">
+        {cells.map(([k, v, u], i) => (
+          <div key={k} className={cn("border-b border-rule py-3", i % 2 === 0 ? "border-r pr-3" : "pl-4")} data-testid={`desk-ov-${i}`}>
+            <dt className="text-[0.75rem] text-ink-3">{k}</dt>
+            <dd className="mt-1 flex items-baseline gap-1">
+              <span className="tnum font-serif text-[2rem] leading-none">{v}</span>
+              {u && <span className="text-[0.75rem] text-ink-3">{u}</span>}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <div className="mt-6" data-testid="desk-month">
+        <Suspense fallback={<div className="h-64" />}>
+          <MonthCalendar
+            ym={ym}
+            logs={st.log}
+            checkins={st.checkins}
+            today={day}
+            onShift={(n) => setYm((v) => shiftYm(v, n))}
+            canNext={ym < day.slice(0, 7)}
+            onPick={() => navigate({ to: "/stats" })}
+            rest={restOf(st)}
+            patched={st.patched}
+          />
+        </Suspense>
+      </div>
+    </section>
+  );
+}
+
+function shiftYm(ym: string, n: number) {
+  const [y, m] = ym.split("-").map(Number);
+  const t = y * 12 + (m - 1) + n;
+  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
 }
 
 /** 11.3 · 词库还在下载：先给首页的骨架（不是空白 + 转圈） */

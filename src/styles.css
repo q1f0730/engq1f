@@ -1172,3 +1172,49 @@ html[data-motion="reduce"] .checkin-burst {
     }
   }
 }
+
+/* 13.1 · 首页网格（routes/index.tsx）。手机：一列，和原来一样；包了一层的卡片里什么都没渲染时整格不占位 */
+.dash > :empty {
+  display: none;
+}
+@media (min-width: 48rem) {
+  .dash {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+    column-gap: 2.5rem;
+    align-items: start;
+    grid-template-areas:
+      "hero cal"
+      "adv adv"
+      "exam more";
+  }
+  .dash[data-adv="0"] {
+    grid-template-areas:
+      "hero cal"
+      "exam more";
+  }
+  .dash-hero { grid-area: hero; }
+  .dash-adv { grid-area: adv; }
+  .dash-cal { grid-area: cal; }
+  .dash-exam { grid-area: exam; }
+  .dash-more { grid-area: more; }
+  .dash-sum { display: none; }
+}
+/* 电脑：三栏——主卡占两栏、右边打卡；下面一排：今日概览（+ 月历）· 考试倒计时 · 更多练习 */
+@media (min-width: 75rem) {
+  .dash {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 2.75rem;
+    row-gap: 2.75rem;
+    grid-template-areas:
+      "hero hero cal"
+      "adv adv more"
+      "sum exam more";
+  }
+  .dash[data-adv="0"] {
+    grid-template-areas:
+      "hero hero cal"
+      "sum exam more";
+  }
+  .dash-sum { display: block; grid-area: sum; }
+  .dash-more { align-self: start; }
+}
