@@ -6,6 +6,8 @@
 import { useSyncExternalStore } from "react";
 
 export const DESK_QUERY = "(min-width: 75rem)";
+/** 学习卡的电脑版（styles.css 的 desk 变体）：够宽也够高 */
+export const DESK_CARD_QUERY = "(min-width: 75rem) and (min-height: 37.5rem)";
 
 function matches(q: string): boolean {
   if (typeof window === "undefined" || !window.matchMedia) return false;

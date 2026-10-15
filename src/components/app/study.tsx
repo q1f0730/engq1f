@@ -49,6 +49,7 @@ import { postQuizWords, postSummary, retryWords } from "@/lib/learnflow";
 import { curStreak } from "@/lib/habit";
 import { celebrate } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
+import { DESK_CARD_QUERY, useMedia } from "@/lib/media";
 import { pickByLevel } from "@/lib/lexicon";
 import { Confusables, Examples, Meanings, MorphLine, Phonetic, Phrases, Synonyms, WordSheet } from "./word-bits";
 import { ShortcutsSheet } from "./shortcuts";
@@ -1077,6 +1078,7 @@ function FlipCard({
   canKill: boolean;
 }) {
   const [drag, setDragState] = useState<{ x: number; y: number } | null>(null);
+  const deskCard = useMedia(DESK_CARD_QUERY);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const setDrag = (d: { x: number; y: number } | null) => {
     dragRef.current = d;
@@ -1224,14 +1226,22 @@ function FlipCard({
           <div className="back-main">
           <Meanings word={word} size="lg" />
           <MorphLine index={index} word={word} className="mt-3" />
+          {/* 13.1 · 电脑两栏：短语放到左栏释义下面，两栏高度差不多 */}
+          {deskCard && (
+            <div className="mt-8 empty:hidden">
+              <Phrases word={word} />
+            </div>
+          )}
           </div>
           <div className="back-side">
           <div className="mt-6 empty:hidden">
             <Examples word={word} enabled={flipped} />
           </div>
-          <div className="mt-6 empty:hidden">
-            <Phrases word={word} />
-          </div>
+          {!deskCard && (
+            <div className="mt-6 empty:hidden">
+              <Phrases word={word} />
+            </div>
+          )}
           <div className="mt-6 empty:hidden">
             <Synonyms index={index} word={word} enabled={flipped} onOpen={setPeek} />
           </div>
