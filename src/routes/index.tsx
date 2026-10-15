@@ -280,7 +280,7 @@ function Today() {
       </header>
 
       {/* 13.1 · 一张网格：手机就是原来的一列（间距和以前的两段 space-y-8 一样）；平板两栏、电脑三栏（styles.css · .dash） */}
-      <div className="dash grid gap-8" data-adv={advice && (!urgent || !overFirst) ? 1 : 0} data-testid="dash">
+      <div className="dash grid gap-8" data-adv={advice && (!urgent || !overFirst) ? 1 : 0}>
           {/* 主卡片：现在该干嘛（11.2 · 第一屏只有这一张；断签提醒并进主卡，不再是单独的红色横幅） */}
           {overFirst ? (
             <div className="dash-hero min-w-0"><ExamOverCard advice={overFirst} index={index} st={st} day={day} streak={s} /></div>
