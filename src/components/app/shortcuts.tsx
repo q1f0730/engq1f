@@ -73,6 +73,18 @@ function KeyGroup({ g }: { g: Group }) {
   );
 }
 
+/** 13.1 · 「我的」电脑版里直接列出来的快捷键表（同一份分组） */
+export function ShortcutList() {
+  const st = useApp().settings;
+  return (
+    <div className="space-y-5" data-testid="shortcut-list">
+      {groups(!!st.fourKey).map((g) => (
+        <KeyGroup key={g.name} g={g} />
+      ))}
+    </div>
+  );
+}
+
 export function ShortcutsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const st = useApp().settings;
   const swap = !!st.swapSwipe;

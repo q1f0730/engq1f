@@ -5,7 +5,9 @@ import { useRef, useState } from "react";
 import { toast } from "@/lib/toast";
 import { Logo, PageHeader, Segmented, Spinner } from "@/components/app/shell";
 import { BottomSheet } from "@/components/app/sheet";
-import { ShortcutsSheet } from "@/components/app/shortcuts";
+import { ShortcutList, ShortcutsSheet } from "@/components/app/shortcuts";
+import { useDesk } from "@/lib/media";
+import { useFinePointer } from "@/lib/pointer";
 import { Switch } from "@/components/ui/switch";
 import { today } from "@/lib/clock";
 import { useWords } from "@/lib/data";
@@ -53,6 +55,9 @@ export const Route = createFileRoute("/me")({ component: MePage });
 function MePage() {
   const navigate = useNavigate();
   const { index } = useWords();
+  const desk = useDesk();
+  const finePtr = useFinePointer();
+  const deskKeys = desk && finePtr;
   const st = useApp();
   const [help, setHelp] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -94,8 +99,9 @@ function MePage() {
   return (
     <div data-testid="me">
       <PageHeader title="我的" sub="设置与数据" />
-      <div className="grid gap-10 md:grid-cols-2 md:gap-x-10">
-        <div className="min-w-0 space-y-10">
+      {/* 13.1 · 电脑三栏：考试与计划 · 提醒与外观 · 数据 / 高级 / 关于（左边一段在电脑上拆成两格） */}
+      <div className="grid gap-10 md:grid-cols-2 md:gap-x-10 xl:grid-cols-3 xl:items-start xl:gap-x-12">
+        <div className="min-w-0 space-y-10 xl:contents">
           {/* 11.1 · 顶层只留最常用的 8 项：考试日期、每日新词、复习上限、提醒、发音、外观、数据与备份、关于 */}
           <Sec
             title="考试与计划"
@@ -299,6 +305,7 @@ function MePage() {
             </div>
           </Sec>
 
+          <div className="min-w-0 space-y-10">
           <Sec title="提醒与外观">
             <div className="border-t border-rule">
               <RemindRow />
@@ -329,6 +336,13 @@ function MePage() {
               </Field>
             </div>
           </Sec>
+          {/* 13.1 · 电脑（有键盘）：第二栏下面直接列出快捷键，不用另开 */}
+          {deskKeys && (
+            <Sec title="键盘快捷键" testid="me-shortcuts">
+              <ShortcutList />
+            </Sec>
+          )}
+          </div>
         </div>
 
         <div className="min-w-0 space-y-10">

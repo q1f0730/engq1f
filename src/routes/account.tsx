@@ -42,7 +42,7 @@ function AccountPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <div data-testid="account" className="mx-auto max-w-md">
+    <div data-testid="account" className="mx-auto max-w-md xl:mt-10 xl:max-w-[30rem] xl:rounded-[4px] xl:bg-paper-3 xl:px-10 xl:pb-10 xl:shadow-md xl:ring-1 xl:ring-rule xl:ring-inset">
       <PageHeader title="账号与同步" sub="登录后，学习进度在你的手机之间同步" />
       {!cfg ? <NoCloud /> : status.email && status.phase !== "signed-out" ? <SignedIn /> : <AuthForms />}
       <p className="mt-10 text-[0.75rem] leading-relaxed text-ink-3">
