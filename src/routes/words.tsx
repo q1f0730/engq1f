@@ -3,7 +3,8 @@ import { Check, ChevronLeft, GraduationCap, Headphones, Play, Search, Shuffle, S
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Spinner } from "@/components/app/shell";
 import { TabLine, Tag, actClass } from "@/components/app/kit";
-import { StateBadge, WordSheet } from "@/components/app/word-bits";
+import { StateBadge, WordEntry, WordSheet } from "@/components/app/word-bits";
+import { useDesk } from "@/lib/media";
 import { ListPanel, ListsOverview } from "@/components/app/lists";
 import { AlphaRail, ExportSheet, SelectBar, ToolRow } from "@/components/app/word-tools";
 import { shortMeaning, useWords, type Word } from "@/lib/data";
@@ -62,6 +63,9 @@ function WordsPage() {
   const [jumpIdx, setJumpIdx] = useState<number | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [open, setOpen] = useState<Word | null>(null);
+  // 13.1 · 电脑版：点一行在右侧详情栏里看（不弹层）
+  const desk = useDesk();
+  const [detail, setDetail] = useState<Word | null>(null);
   // 11.1 · 默认只有搜索框 + 一行来源；状态、排序、词性、多选、导出收进「筛选」
   const [filtersOpen, setFiltersOpenState] = useState(filtersRemember);
   const setFiltersOpen = (v: boolean) => {
@@ -197,6 +201,28 @@ function WordsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // 13.1 · 电脑版：↑ / ↓ 在列表里换右侧详情的词（输入框里不管）
+  const paneRef = useRef<{ list: Word[]; cur: string | null }>({ list: [], cur: null });
+  useEffect(() => {
+    if (!desk) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      const { list: L, cur } = paneRef.current;
+      if (!L.length) return;
+      e.preventDefault();
+      const i = Math.max(0, L.findIndex((x) => x.w === cur));
+      const n = Math.min(L.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1)));
+      setDetail(L[n]);
+      if (n >= limit - 5) setLimit((l) => l + PAGE);
+      requestAnimationFrame(() => document.querySelector(`[data-testid="word-row"][data-w="${CSS.escape(L[n].w)}"]`)?.scrollIntoView({ block: "nearest" }));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [desk, limit]);
+
   if (error) return <div className="p-8 text-center text-sm text-ink-3">{error}</div>;
   // 一行单词的按压：点 = 打开详情（多选时勾选）；长按 = 进入多选；按住移动超过 10px 就不算长按
   const pressProps = (w: Word) => ({
@@ -225,6 +251,7 @@ function WordsPage() {
         return;
       }
       if (selecting) toggle(w.w);
+      else if (desk) setDetail(w);
       else setOpen(w);
     },
   });
@@ -244,10 +271,15 @@ function WordsPage() {
   const day = today();
   const TAB_TITLE: Record<Tab, string> = { all: "全部", core: "核心未掌握", star: "生词本", wrong: "错词本", hard: "顽固词", mastered: "已斩", lists: "词单", list: list?.name ?? "词单" };
   const activeFilters = (filter !== "any" ? 1 : 0) + (sort !== "default" ? 1 : 0) + (pos !== "any" ? 1 : 0) + (coreOnly ? 1 : 0);
-  const showRail = !dq && !selecting && tab !== "lists" && results.length > 40;
+  // 13.1 · 电脑版右侧是详情栏，不放贴边的字母索引（按字母排序 + 搜索代替）
+  const showRail = !dq && !selecting && tab !== "lists" && results.length > 40 && !desk;
+
+  const pane = desk && tab !== "lists" ? (detail && results.some((x) => x.w === detail.w) ? detail : results[0] ?? null) : null;
+  paneRef.current = { list: results, cur: pane?.w ?? null };
 
   return (
-    <div data-testid="words">
+    <div data-testid="words" className={cn(desk && tab !== "lists" && "xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(20rem,25rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)] xl:gap-x-12")}>
+      <div className="min-w-0">
       <PageHeader
         title="词库"
         sub={`共 ${index.list.length} 词 · 核心 ${index.coreCount}`}
@@ -400,12 +432,16 @@ function WordsPage() {
                       data-testid="word-row"
                       data-w={w.w}
                       data-selected={on ? "1" : "0"}
+                      data-current={pane?.w === w.w ? 1 : undefined}
                       {...pressProps(w)}
-                      className={cn("flex min-h-16 w-full select-none items-center gap-3 py-2.5 text-left transition-colors [-webkit-touch-callout:none]", on ? "-mx-2 bg-mark-soft px-2" : "hover:bg-paper-2/60")}
+                      className={cn(
+                        "flex min-h-16 w-full select-none items-center gap-3 py-2.5 text-left transition-colors [-webkit-touch-callout:none] xl:min-h-13 xl:px-2",
+                        on ? "-mx-2 bg-mark-soft px-2" : pane?.w === w.w ? "bg-paper-2" : "hover:bg-paper-2/60",
+                      )}
                     >
                       {selecting && <Tick on={on} />}
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline gap-2">
+                      <span className="min-w-0 flex-1 xl:grid xl:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] xl:items-baseline xl:gap-x-5">
+                        <span className="flex min-w-0 items-baseline gap-2">
                           <span className="word-head truncate text-[1.5rem] leading-tight">{w.w}</span>
                           {st.star[w.w] && <Star className="size-3.5 shrink-0 self-center fill-current text-ink" aria-label="生词本" />}
                           {w.c && <Tag className="self-center">核心</Tag>}
@@ -423,6 +459,18 @@ function WordsPage() {
         </>
       )}
       <div ref={sentinel} className={cn("h-8", selecting && "h-40")} />
+      </div>
+      {desk && tab !== "lists" && (
+        <aside className="sticky top-0 hidden max-h-dvh overflow-y-auto overscroll-contain pb-10 pt-10 xl:block" data-testid="word-detail" aria-label="单词详情">
+          {pane ? (
+            <div className="border-t-2 border-ink pt-5">
+              <WordEntry key={pane.w} word={pane} />
+            </div>
+          ) : (
+            <p className="border-t border-rule pt-5 text-[0.875rem] text-ink-3">没有选中的词</p>
+          )}
+        </aside>
+      )}
       {showRail && <AlphaRail have={new Set(alpha ? letters.keys() : results.map((w) => letterOf(w.w)))} onJump={jump} />}
       {selecting && (
         <SelectBar

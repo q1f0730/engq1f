@@ -342,7 +342,17 @@ function fmtDay(d: string) {
   return d.replace(/-/g, "/");
 }
 
-export function WordSheet({ word: base, open, onOpenChange }: { word: Word | null; open: boolean; onOpenChange: (v: boolean) => void }) {
+export function WordSheet({ word, open, onOpenChange }: { word: Word | null; open: boolean; onOpenChange: (v: boolean) => void }) {
+  if (!word) return null;
+  return (
+    <BottomSheet open={open} onOpenChange={onOpenChange} title="单词详情" testid="word-sheet" hideTitle>
+      <WordEntry word={word} open={open} />
+    </BottomSheet>
+  );
+}
+
+/** 13.1 · 单词详情的正文（弹层和电脑版词库右侧的详情栏共用） */
+export function WordEntry({ word: base, open = true }: { word: Word | null; open?: boolean }) {
   const st = useApp();
   // 从形近词跳转过来的词（可以返回）
   const [trail, setTrail] = useState<Word[]>([]);
@@ -355,7 +365,6 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
   const accent = st.settings.accent;
   const inLists = (st.lists ?? []).filter((l) => l.words.includes(word.w)).length;
   return (
-    <BottomSheet open={open} onOpenChange={onOpenChange} title="单词详情" testid="word-sheet" hideTitle>
       <div className="pt-1">
         {trail.length > 0 && (
           <button
@@ -496,7 +505,6 @@ export function WordSheet({ word: base, open, onOpenChange }: { word: Word | nul
         </div>
         <ListPicker open={picker} onOpenChange={setPicker} words={[word.w]} />
       </div>
-    </BottomSheet>
   );
 }
 
