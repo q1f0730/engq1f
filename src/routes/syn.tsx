@@ -44,7 +44,7 @@ function SynPage() {
   return (
     <div data-testid="syn">
       <SubHead back={{ to: "/words", label: "词库", testid: "syn-back" }} title="同义词组" sub={<span data-testid="syn-count">{groups.length} 组 · 涉及 {wordCount} 词</span>} />
-      <div className="sticky top-0 z-20 -mx-4 bg-paper/95 px-4 pb-2 pt-1 backdrop-blur-sm md:top-16 md:-mx-6 md:px-6">
+      <div className="sticky top-0 z-20 -mx-4 bg-paper/95 px-4 pb-2 pt-1 backdrop-blur-sm md:top-16 md:-mx-6 md:px-6 xl:top-0 xl:-mx-10 xl:px-10">
         <div className="flex items-center gap-3 border-b-[1.5px] border-ink">
           <Search className="size-[18px] shrink-0 text-ink-3" />
           <input

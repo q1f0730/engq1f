@@ -1,7 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BarChart3, BookOpen, Sun, UserRound } from "@/components/app/icons";
+import { BarChart3, BookOpen, Flame, Sun, UserRound } from "@/components/app/icons";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useDesk } from "@/lib/media";
+import { useApp } from "@/lib/store";
+import { getWordsSync, useWords } from "@/lib/data";
+import { summarize } from "@/lib/plan";
+import { curStreak } from "@/lib/habit";
+import { today } from "@/lib/clock";
+import { useMemo } from "react";
 
 export const TABS = [
   { to: "/", label: "今日", icon: Sun },
@@ -32,19 +39,22 @@ function isActive(path: string, to: string) {
 /**
  * 12.0 · 外壳。
  * 手机：页面就是一张纸，底部一条安静的标签栏（细线 + 纸色，没有毛玻璃药丸）；选中项文字下面一道荧光笔。
- * 桌面：顶部一行字标 + 四个纯文字链接，内容收在 36rem 的「放大的手机」里。
+ * 13.1 · 平板（768–1199）：顶部一行字标 + 四个纯文字链接，内容放宽到 48 / 60rem。
+ * 电脑（≥ 1200）：同一个 <header> 变成左侧栏——字标、四个栏目（图标 + 字）、底下是连续天数和今天的进度；
+ * 内容区用满剩下的宽度（最多 80rem，居中）。同一套 data-testid，手机版面一像素不动。
  */
 export function AppShell({ children, sub = false }: { children: ReactNode; sub?: boolean }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const desk = useDesk();
   return (
-    <div className="min-h-dvh bg-paper text-ink">
-      <header className="sticky top-0 z-30 hidden border-b border-rule bg-paper md:block">
-        <div className="mx-auto flex h-16 max-w-[36rem] items-center gap-6 px-6 lg:max-w-[40rem]">
-          <Link to="/" className="press flex items-center gap-2.5 rounded-md">
+    <div className="min-h-dvh bg-paper text-ink xl:pl-60">
+      <header className="sticky top-0 z-30 hidden border-b border-rule bg-paper md:block xl:fixed xl:inset-y-0 xl:left-0 xl:w-60 xl:overflow-y-auto xl:border-r xl:border-b-0" data-testid="app-nav">
+        <div className="mx-auto flex h-16 max-w-[36rem] items-center gap-6 px-6 md:max-w-[48rem] lg:max-w-[60rem] xl:h-auto xl:min-h-full xl:max-w-none xl:flex-col xl:items-stretch xl:gap-0 xl:px-4 xl:py-6">
+          <Link to="/" className="press flex items-center gap-2.5 rounded-md xl:px-2 xl:py-1">
             <Logo className="size-7" />
             <span className="text-[1rem] font-semibold tracking-[-0.01em]">四级单词打卡</span>
           </Link>
-          <nav className="ml-auto flex items-center gap-1" aria-label="主导航">
+          <nav className="ml-auto flex items-center gap-1 xl:ml-0 xl:mt-8 xl:flex-col xl:items-stretch xl:gap-0.5" aria-label="主导航">
             {TABS.map((t) => {
               const active = isActive(path, t.to);
               return (
@@ -54,21 +64,24 @@ export function AppShell({ children, sub = false }: { children: ReactNode; sub?:
                   data-testid={`nav-${t.label}`}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "press relative rounded-md px-3 py-2 text-[0.9375rem] font-medium",
-                    active ? "text-ink" : "text-ink-3 hover:text-ink",
+                    "press relative rounded-md px-3 py-2 text-[0.9375rem] font-medium xl:flex xl:min-h-11 xl:items-center xl:gap-3 xl:py-2.5 xl:text-[1rem]",
+                    active ? "text-ink xl:bg-paper-2" : "text-ink-3 hover:text-ink xl:hover:bg-paper-2/70",
                   )}
                 >
+                  {active && <span className="absolute inset-y-2 left-0 hidden w-[3px] rounded-[1px] bg-ink xl:block" aria-hidden />}
+                  <t.icon className="hidden size-[19px] shrink-0 xl:block" strokeWidth={active ? 1.9 : 1.5} />
                   <span className={cn("relative", active && "hl hl-low")}>{t.label}</span>
                 </Link>
               );
             })}
           </nav>
+          {desk && <SideProgress />}
         </div>
       </header>
 
       <main
         className={cn(
-          "mx-auto w-full max-w-[36rem] px-5 pt-safe max-[380px]:px-4 md:px-6 md:pb-20 lg:max-w-[40rem]",
+          "mx-auto w-full max-w-[36rem] px-5 pt-safe max-[380px]:px-4 md:max-w-[48rem] md:px-6 md:pb-20 lg:max-w-[60rem] xl:max-w-[80rem] xl:px-10 xl:pb-16",
           sub ? "pb-[calc(env(safe-area-inset-bottom)+2.5rem)]" : "pb-[calc(4rem+env(safe-area-inset-bottom)+2.5rem)]",
         )}
         data-testid="shell-main"
@@ -76,7 +89,6 @@ export function AppShell({ children, sub = false }: { children: ReactNode; sub?:
       >
         {children}
       </main>
-
       {/* 手机底部标签栏（二级页不显示，只用左上角返回） */}
       {!sub && (
         <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-paper pb-safe md:hidden" aria-label="底部导航">
@@ -105,6 +117,53 @@ export function AppShell({ children, sub = false }: { children: ReactNode; sub?:
           </div>
         </nav>
       )}
+    </div>
+  );
+}
+
+/**
+ * 13.1 · 电脑侧栏底部：连续天数 + 今天的进度（新词 / 复习 / 打卡），一条细墨线做进度条。
+ * 只在电脑版渲染（手机不算这一份）。
+ */
+function SideProgress() {
+  const st = useApp();
+  const { index } = useWords();
+  const day = today();
+  const sum = useMemo(() => {
+    const idx = index ?? getWordsSync();
+    return idx && st.onboarded ? summarize(idx, st, day) : null;
+  }, [index, st, day]);
+  const s = curStreak(st, day);
+  if (!sum) return null;
+  const parts = sum.timeMode
+    ? [{ label: "今日学习", v: `${Math.floor(sum.ms / 60000)}/${sum.goalMin} 分钟`, p: Math.min(1, sum.ms / Math.max(1, sum.goalMin * 60000)) }]
+    : [
+        { label: "新词", v: sum.goal ? `${Math.min(sum.learned, sum.goal)}/${sum.goal}` : "—", p: sum.goal ? Math.min(1, sum.learned / sum.goal) : 1 },
+        { label: "复习", v: sum.due + sum.reviewed ? `${sum.reviewed}/${sum.reviewed + sum.due}` : "—", p: sum.due + sum.reviewed ? sum.reviewed / (sum.reviewed + sum.due) : 1 },
+      ];
+  return (
+    <div className="mt-auto border-t border-rule px-2 pt-5" data-testid="side-progress">
+      <div className="flex items-baseline gap-1.5" data-testid="side-streak" data-streak={s}>
+        <Flame className={cn("size-4 translate-y-[2px] text-ink-2", s > 0 && "fill-mark")} />
+        <span className="tnum font-serif text-[2rem] leading-none">{s}</span>
+        <span className="text-[0.8125rem] text-ink-3">天连续打卡</span>
+      </div>
+      <div className="mt-4 space-y-3" data-testid="side-today">
+        {parts.map((x) => (
+          <div key={x.label}>
+            <div className="flex items-baseline justify-between text-[0.8125rem]">
+              <span className="text-ink-2">{x.label}</span>
+              <span className="tnum font-serif text-[1rem] text-ink">{x.v}</span>
+            </div>
+            <div className="mt-1.5 h-[3px] overflow-hidden rounded-[1px] bg-rule" aria-hidden>
+              <div className="h-full bg-ink" style={{ width: `${Math.round(x.p * 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-[0.75rem] text-ink-3" data-testid="side-checkin">
+        {sum.checked ? <span className="hl font-medium text-ink">今日已打卡</span> : sum.ready ? "任务完成了，去首页打卡" : "今天还没打卡"}
+      </p>
     </div>
   );
 }

@@ -48,6 +48,14 @@
   src: url("/fonts/noto-serif-sc-heading-600.woff2") format("woff2");
 }
 
+/* 13.1 · 断点：手机 < 768（md）· 平板 768–1199 · 电脑 ≥ 1200（xl）· 宽屏 ≥ 1440（2xl）。原来没有用到 xl / 2xl */
+@theme {
+  --breakpoint-xl: 75rem;
+  --breakpoint-2xl: 90rem;
+}
+/* 13.1 · 学习页的电脑版：够宽、也够高（横屏手机 / 矮窗口不算） */
+@custom-variant desk (@media (min-width: 75rem) and (min-height: 37.5rem));
+
 @theme inline {
   --font-sans: "HarmonyOS Sans SC", "MiSans", "vivo Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
     "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
@@ -1127,5 +1135,40 @@ html[data-motion="reduce"] .checkin-burst {
   .field:focus {
     outline: none;
     box-shadow: inset 0 0 0 1.5px var(--ink);
+  }
+}
+
+/* ---------------------------------------------------------------- 13.1 · 电脑端 */
+@layer base {
+  /* 有鼠标的设备：能点的东西显示手形；禁用的显示禁止 */
+  @media (hover: hover) {
+    a[href],
+    button:not(:disabled),
+    [role="button"],
+    [role="radio"],
+    [role="tab"],
+    [role="switch"],
+    summary,
+    select,
+    label:has(> input),
+    input[type="checkbox"],
+    input[type="radio"],
+    input[type="date"] {
+      cursor: pointer;
+    }
+    button:disabled {
+      cursor: not-allowed;
+    }
+  }
+  /* 电脑看屏幕离得远：整体字号放大一点（rem 跟着放大，版面比例不变） */
+  @media (min-width: 75rem) {
+    html {
+      font-size: 106.25%;
+    }
+  }
+  @media (min-width: 90rem) {
+    html {
+      font-size: 112.5%;
+    }
   }
 }

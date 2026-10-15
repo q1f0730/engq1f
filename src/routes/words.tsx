@@ -262,7 +262,7 @@ function WordsPage() {
       />
 
       {/* 吸顶：搜索是一条下划线，来源是一排字（选中的那个下面一道荧光笔），不是药丸 */}
-      <div ref={sticky} className="sticky top-0 z-20 -mx-4 bg-paper/95 px-4 pb-2 pt-1 backdrop-blur-sm md:top-16 md:-mx-6 md:px-6">
+      <div ref={sticky} className="sticky top-0 z-20 -mx-4 bg-paper/95 px-4 pb-2 pt-1 backdrop-blur-sm md:top-16 md:-mx-6 md:px-6 xl:top-0 xl:-mx-10 xl:px-10">
         <SearchLine hidden={tab === "lists"} inputRef={input} q={q} setQ={setQ} filterOn={filtersOpen || selecting} filters={activeFilters} onFilter={() => setFiltersOpen(!filtersOpen)} />
         {/* 来源：一排字，选中的那个划荧光笔，数字是衬线小号 */}
         <nav className="no-scrollbar fade-x mt-1 flex gap-5 overflow-x-auto" role="tablist" aria-label="词的来源">
