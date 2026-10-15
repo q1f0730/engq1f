@@ -155,7 +155,7 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
         </div>
       </section>
 
-      <div className="mt-12 grid gap-12 md:grid-cols-2 md:gap-x-10">
+      <div className="mt-12 grid gap-12 md:grid-cols-2 md:gap-x-10 xl:grid-flow-dense xl:grid-cols-3 xl:gap-x-12">
         <Sec title="掌握程度" aside={`共 ${total} 词 · 当前词书 ${book}`} testid="mastery">
           {/* 一条三段的尺子：已掌握（墨）· 学习中（荧光笔）· 未学（纸） */}
           <div className="flex h-2.5 gap-px overflow-hidden bg-paper-2">
@@ -246,7 +246,7 @@ function Overview({ index, st, header, onOpen }: { index: WordIndex; st: AppStat
         <QuizPanel quizzes={st.quizzes ?? []} />
         <DaySheet day={pick} index={index} st={st} onOpenChange={(v) => !v && setPick(null)} onOpenWord={onOpen} />
 
-        <Sec title="30 天学习曲线" className="md:col-span-2" aside={`累计用时 ${fmtMinutes(all.ms)}`}>
+        <Sec title="30 天学习曲线" className="md:col-span-2 xl:col-span-1" aside={`累计用时 ${fmtMinutes(all.ms)}`}>
           <Curve logs={st.log} firstDays={firstDays} today={day} />
         </Sec>
       </div>
@@ -291,7 +291,7 @@ function ReviewTab({ index, st, onOpen }: { index: WordIndex; st: AppState; onOp
   const [more, setMore] = useState(30);
   const recent = log.slice(-more).reverse();
   return (
-    <div className="grid gap-12 pt-2 md:grid-cols-2 md:gap-x-10">
+    <div className="grid gap-12 pt-2 md:grid-cols-2 md:gap-x-10 xl:grid-flow-dense xl:grid-cols-3 xl:gap-x-12">
       <Sec title="近 30 天保持率" aside="复习首答 · 不含新词与重学" className="md:col-span-2" testid="retention">
         {ret.n === 0 ? (
           <Empty testid="retention-empty">还没有复习记录。从 v6 起每次作答都会记录，复习几天后这里会出现保持率曲线。</Empty>
@@ -398,7 +398,7 @@ function ReviewTab({ index, st, onOpen }: { index: WordIndex; st: AppState; onOp
             </span>
           </>
         }
-        className="md:col-span-2"
+        className="md:col-span-2 xl:col-span-3"
         testid="revlog"
         aside={
           log.length > 0 && (
@@ -467,7 +467,7 @@ function QuizPanel({ quizzes }: { quizzes: import("@/lib/exam").QuizRecord[] }) 
   return (
     <Sec
       title="模拟小测成绩"
-      className="md:col-span-2"
+      className="md:col-span-2 xl:col-span-1"
       testid="quiz-history"
       aside={
         <Link to="/quiz" className={actClass("secondary") + " h-9 px-3 text-[0.8125rem]"} data-testid="stats-quiz-start">
