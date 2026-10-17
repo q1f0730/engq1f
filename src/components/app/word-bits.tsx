@@ -479,6 +479,7 @@ export function WordEntry({ word: base, open = true }: { word: Word | null; open
           <button
             onClick={() => resetWord(word.w)}
             disabled={!card}
+            title={!card ? "尚未学习此词，暂无法重新学" : "清除学习记录，重新学习"}
             data-testid="sheet-reset"
             className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2 disabled:opacity-40"
           >

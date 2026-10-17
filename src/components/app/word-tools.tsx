@@ -100,7 +100,7 @@ export function ToolRow({
         <button
           type="button"
           aria-label="导出 / 打印"
-          title="导出 CSV、Anki 或打印"
+          title={!canExport ? "当前列表中没有单词可导出" : "导出 CSV、Anki 或打印"}
           data-testid="export-open"
           disabled={!canExport}
           onClick={onExport}
@@ -230,6 +230,7 @@ export function SelectBar({ selected, total, onAll, onClear, onExit, listId }: {
               type="button"
               data-testid={`bulk-${a.key}`}
               disabled={!n}
+              title={!n ? "请先勾选单词" : undefined}
               onClick={a.on}
               className={cn(
                 "press flex h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[0.8125rem] font-semibold disabled:opacity-35",
