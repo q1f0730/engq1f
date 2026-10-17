@@ -1,0 +1,3 @@
+## 2026-10-14 - Cache Set creation on WordIndex instances
+**Learning:** In `synonymsFor`, allocating a `new Set(index.list.map(w => w.w))` for every word lookup caused `O(N * M)` allocations (4,000+ strings and Sets per call), significantly slowing down vocabulary iterations. JavaScript engines since ES2019 provide guaranteed stable sorting for `Array.prototype.sort()`, eliminating the need for tuple mapping `[w, i]` during element sorting.
+**Action:** Use a `WeakMap<WordIndex, Set<string>>` to cache set projections for immutable or long-lived index instances, and rely on native stable `Array.prototype.sort()` to preserve order without temporary wrapper allocations.
