@@ -29,6 +29,18 @@ export function loadSyn(): Promise<SynData> {
 
 export const SYN_MAX = 5;
 
+// Cache active word set per WordIndex instance to avoid rebuilding a 4000+ element Set on every synonymsFor call.
+const activeSetCache = new WeakMap<WordIndex, Set<string>>();
+
+function getActiveSet(index: WordIndex): Set<string> {
+  let set = activeSetCache.get(index);
+  if (!set) {
+    set = new Set(index.list.map((w) => w.w));
+    activeSetCache.set(index, set);
+  }
+  return set;
+}
+
 /** 纯函数：给定 syn.json 和索引，算出这个词的同义词（测试直接调用） */
 export function synonymsFor(index: WordIndex, word: Word, d: SynData | null, max = SYN_MAX): Word[] {
   const out: Word[] = [];
@@ -41,12 +53,10 @@ export function synonymsFor(index: WordIndex, word: Word, d: SynData | null, max
   };
   for (const w of d?.[word.w] ?? []) add(w);
   for (const g of synonymsOf(index, word)) for (const w of g.words) add(w);
-  const active = new Set(index.list.map((w) => w.w));
-  // 词库里的在前（稳定排序：各自保持原来的先后）
+  const active = getActiveSet(index);
+  // 词库里的在前（ES2019+ Array.prototype.sort 原生稳定排序，各自保持原来的先后）
   return out
-    .map((w, i) => [w, i] as const)
-    .sort((a, b) => Number(!active.has(a[0].w)) - Number(!active.has(b[0].w)) || a[1] - b[1])
-    .map(([w]) => w)
+    .sort((a, b) => Number(!active.has(a.w)) - Number(!active.has(b.w)))
     .slice(0, max);
 }
 
