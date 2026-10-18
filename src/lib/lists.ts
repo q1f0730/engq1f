@@ -156,14 +156,8 @@ export type PosKey = "any" | "n" | "v" | "adj" | "adv";
 export const POS_KEYS: PosKey[] = ["any", "n", "v", "adj", "adv"];
 export const POS_LABEL: Record<PosKey, string> = { any: "全部词性", n: "n. 名词", v: "v. 动词", adj: "adj. 形容词", adv: "adv. 副词" };
 
-// ⚡ Bolt performance optimization: Memoize computed posSet for Word objects to avoid repeated string splitting/regex during list filtering
-const posSetCache = new WeakMap<Word, Set<string>>();
-
 /** 一个词所有释义行的词性（vt/vi → v，n&v 拆开） */
 export function posSet(word: Word): Set<string> {
-  const cached = posSetCache.get(word);
-  if (cached) return cached;
-
   const out = new Set<string>();
   for (const [pos] of word.t) {
     for (const raw of pos.toLowerCase().split(/[&/,\s]+/)) {
@@ -172,7 +166,6 @@ export function posSet(word: Word): Set<string> {
       out.add(p === "vt" || p === "vi" ? "v" : p);
     }
   }
-  posSetCache.set(word, out);
   return out;
 }
 
