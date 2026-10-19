@@ -41,7 +41,8 @@ export function synonymsFor(index: WordIndex, word: Word, d: SynData | null, max
   };
   for (const w of d?.[word.w] ?? []) add(w);
   for (const g of synonymsOf(index, word)) for (const w of g.words) add(w);
-  const active = new Set(index.list.map((w) => w.w));
+  // 性能优化：优先使用 WordIndex 预计算的 activeSet，避免每次调用重复映射和构造 Set
+  const active = index.activeSet ?? new Set(index.list.map((w) => w.w));
   // 词库里的在前（稳定排序：各自保持原来的先后）
   return out
     .map((w, i) => [w, i] as const)
