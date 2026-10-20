@@ -5,23 +5,44 @@ import type { Word, WordIndex } from "./data";
  * 纯本地计算：长度差 ≤1，编辑距离 ≤ 阈值；排除只差词尾变化的同族词（use / used）。
  */
 
+// ⚡ Bolt Optimization: Shared TypedArray buffers for editDistance calculation to avoid GC pressure.
+// Avoids allocating 2D array matrix per call (saves ~10 array allocations per word comparison x 4000 words).
+let buf0 = new Int32Array(64);
+let buf1 = new Int32Array(64);
+let buf2 = new Int32Array(64);
+
 /** 带上限的编辑距离（相邻字母对调算 1 步，quiet / quite）：超过 max 返回 max+1 */
 export function editDistance(a: string, b: string, max = 2): number {
-  if (Math.abs(a.length - b.length) > max) return max + 1;
-  const rows: number[][] = [Array.from({ length: b.length + 1 }, (_, j) => j)];
-  for (let i = 1; i <= a.length; i++) {
-    const cur = [i];
+  const al = a.length;
+  const bl = b.length;
+  if (Math.abs(al - bl) > max) return max + 1;
+  if (bl + 1 > buf0.length) {
+    const sz = Math.max(bl + 1, buf0.length * 2);
+    buf0 = new Int32Array(sz);
+    buf1 = new Int32Array(sz);
+    buf2 = new Int32Array(sz);
+  }
+  let r0 = buf0, r1 = buf1, r2 = buf2;
+  for (let j = 0; j <= bl; j++) r1[j] = j;
+
+  for (let i = 1; i <= al; i++) {
+    r2[0] = i;
     let rowMin = i;
-    for (let j = 1; j <= b.length; j++) {
-      let v = Math.min(rows[i - 1][j] + 1, cur[j - 1] + 1, rows[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, rows[i - 2][j - 2] + 1);
-      cur.push(v);
+    const ai1 = a.charCodeAt(i - 1);
+    const ai2 = i > 1 ? a.charCodeAt(i - 2) : 0;
+    for (let j = 1; j <= bl; j++) {
+      const bj1 = b.charCodeAt(j - 1);
+      let v = Math.min(r1[j] + 1, r2[j - 1] + 1, r1[j - 1] + (ai1 === bj1 ? 0 : 1));
+      if (i > 1 && j > 1 && ai1 === b.charCodeAt(j - 2) && ai2 === bj1) {
+        v = Math.min(v, r0[j - 2] + 1);
+      }
+      r2[j] = v;
       if (v < rowMin) rowMin = v;
     }
     if (rowMin > max) return max + 1;
-    rows.push(cur);
+    const tmp = r0; r0 = r1; r1 = r2; r2 = tmp;
   }
-  return rows[a.length][b.length];
+  return r1[bl];
 }
 
 /** 只差常见词尾（-s/-es/-d/-ed/-ly/-r/-er）的同族词，不算形近 */
