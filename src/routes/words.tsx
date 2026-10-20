@@ -575,7 +575,7 @@ function SearchLine({ hidden, inputRef, q, setQ, filterOn, filters, onFilter }: 
         className="h-12 min-w-0 flex-1 bg-transparent font-serif text-[1.25rem] outline-none placeholder:font-sans placeholder:text-[0.9375rem] placeholder:text-ink-3"
       />
       {q && (
-        <button type="button" aria-label="清空" onClick={() => setQ("")} className="press grid size-9 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-ink">
+        <button type="button" aria-label="清空搜索内容" onClick={() => setQ("")} className="press grid size-9 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-paper-2 hover:text-ink">
           <X className="size-4" />
         </button>
       )}
