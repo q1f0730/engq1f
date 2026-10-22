@@ -171,7 +171,7 @@ export function Examples({ word, enabled = true }: { word: Word; enabled?: boole
           <li key={ex.en} className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-2">
             <button
               type="button"
-              aria-label="朗读例句"
+              aria-label={`朗读例句: ${ex.en}`}
               title="朗读例句"
               data-testid="example-play"
               onClick={(e) => say(e, ex.en)}
@@ -391,20 +391,20 @@ export function WordEntry({ word: base, open = true }: { word: Word | null; open
               // 11.2 · 美音、英音音标一样（或美音退回英音）：音标只写一次，两种发音照样能点
               <span className="flex items-center gap-1.5" data-testid="sheet-ipa-one">
                 <span className="font-ipa">/{ipaOf(word, "us")}/</span>
-                <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "us")} aria-label="美音">
+                <button type="button" className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "us")} aria-label={`美音发音 ${word.w}`}>
                   美 <Volume2 className="size-3.5" />
                 </button>
-                <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label="英音">
+                <button type="button" className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label={`英音发音 ${word.w}`}>
                   英 <Volume2 className="size-3.5" />
                 </button>
               </span>
             )}
             {word.p && ipaOf(word, "us") !== ipaOf(word, "uk") && (
               <>
-                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "us")}>
+                <button type="button" className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "us")} aria-label={`美音发音 ${word.w}`}>
                   <span className="text-[0.75rem] text-ink-3">美</span> <span className="font-ipa">/{ipaOf(word, "us")}/</span> <Volume2 className="size-3.5" />
                 </button>
-                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "uk")}>
+                <button type="button" className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label={`英音发音 ${word.w}`}>
                   <span className="text-[0.75rem] text-ink-3">英</span> <span className="font-ipa">/{ipaOf(word, "uk")}/</span> <Volume2 className="size-3.5" />
                 </button>
               </>
@@ -455,6 +455,7 @@ export function WordEntry({ word: base, open = true }: { word: Word | null; open
         {/* 动作：一排四个，细线框；收藏后是荧光笔底 */}
         <div className="mt-7 grid grid-cols-4 gap-1.5">
           <button
+            type="button"
             onClick={() => {
               toggleStar(word.w);
               // 11.1 · 弹层里也给个回执（toast 此时在顶部，不挡弹层按钮）
@@ -462,24 +463,27 @@ export function WordEntry({ word: base, open = true }: { word: Word | null; open
             }}
             data-testid="sheet-star"
             aria-pressed={starred}
+            aria-label={starred ? "移出生词本" : "加入生词本"}
             className={cn("press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium", starred ? "bg-mark text-mark-ink" : "ring-1 ring-rule-strong ring-inset hover:bg-paper-2")}
           >
             <Star className={cn("size-4", starred && "fill-current")} />
             {starred ? "已收藏" : "生词本"}
           </button>
           {card?.k ? (
-            <button onClick={() => unkillWord(word.w)} className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2">
+            <button type="button" onClick={() => unkillWord(word.w)} aria-label="取消斩（恢复复习）" className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2">
               <Undo2 className="size-4" /> 取消斩
             </button>
           ) : (
-            <button onClick={() => killWord(word.w)} data-testid="sheet-kill" className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium text-know ring-1 ring-rule-strong ring-inset hover:bg-know-soft">
+            <button type="button" onClick={() => killWord(word.w)} data-testid="sheet-kill" aria-label="斩（标注为已掌握，不再出现）" className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium text-know ring-1 ring-rule-strong ring-inset hover:bg-know-soft">
               <Swords className="size-4" /> 斩
             </button>
           )}
           <button
+            type="button"
             onClick={() => resetWord(word.w)}
             disabled={!card}
             data-testid="sheet-reset"
+            aria-label="重新学（重置该词的学习记录）"
             className="press flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.75rem] font-medium ring-1 ring-rule-strong ring-inset hover:bg-paper-2 disabled:opacity-40"
           >
             <span className="font-serif text-[1rem] leading-4" aria-hidden>
