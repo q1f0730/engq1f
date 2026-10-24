@@ -585,31 +585,29 @@ function Today() {
           {/* 更多练习：碎片时间、小游戏、今日一词（11.1 · 从首页主体收进来） */}
           <section data-testid="more-practice" className="dash-more min-w-0 border-t border-rule pt-5">
             {/* 今日一词：一个词典词条，衬线词头 */}
-            <button
-              type="button"
-              onClick={() => setSheet(true)}
+            <div
               data-testid="wod"
               data-wide={wodWide ? 1 : 0}
-              className="press group mb-6 flex w-full min-w-0 items-end gap-3 text-left"
+              className="mb-6 flex w-full min-w-0 items-end gap-3 text-left"
             >
-              <span className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => setSheet(true)}
+                className="press group min-w-0 flex-1 text-left"
+              >
                 <span className="block text-[0.8125rem] text-ink-3">今日一词</span>
                 <span className="word-head mt-1 block truncate text-[2.375rem] leading-[1.05]" data-testid="wod-word">{wod.w}</span>
                 <span className="mt-1 block truncate text-[0.875rem] text-ink-2">{shortMeaning(wod, 1)}</span>
-              </span>
-              <span
-                role="button"
-                tabIndex={0}
-                aria-label="播放发音"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  speak(wod.w, st.settings.accent);
-                }}
+              </button>
+              <button
+                type="button"
+                aria-label={`播放 ${wod.w} 的发音`}
+                onClick={() => speak(wod.w, st.settings.accent)}
                 className="press mb-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 ring-1 ring-rule-strong ring-inset hover:bg-paper-2 hover:text-ink"
               >
                 <Volume2 className="size-[18px]" />
-              </span>
-            </button>
+              </button>
+            </div>
             <h2 className="section-rule mb-1 text-[1.0625rem] font-semibold tracking-[-0.01em]">更多练习</h2>
             <div className="flex flex-col" data-testid="snack">
               <SnackTile to="/tape" testid="tape-entry" no={1} title="磁带模式" sub="通勤免手听" />
