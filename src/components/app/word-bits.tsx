@@ -401,10 +401,10 @@ export function WordEntry({ word: base, open = true }: { word: Word | null; open
             )}
             {word.p && ipaOf(word, "us") !== ipaOf(word, "uk") && (
               <>
-                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "us")}>
+                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "us")} aria-label={`美音发音: /${ipaOf(word, "us")}/`}>
                   <span className="text-[0.75rem] text-ink-3">美</span> <span className="font-ipa">/{ipaOf(word, "us")}/</span> <Volume2 className="size-3.5" />
                 </button>
-                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "uk")}>
+                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label={`英音发音: /${ipaOf(word, "uk")}/`}>
                   <span className="text-[0.75rem] text-ink-3">英</span> <span className="font-ipa">/{ipaOf(word, "uk")}/</span> <Volume2 className="size-3.5" />
                 </button>
               </>
