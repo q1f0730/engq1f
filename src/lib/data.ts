@@ -26,6 +26,8 @@ export interface WordIndex {
   basicCount?: number;
   /** 这份索引含不含基础词 */
   basic?: boolean;
+  /** 当前词库（list）中单词名称的集合，缓存用于高效 O(1) 存在性判断 */
+  activeSet?: Set<string>;
 }
 
 let promise: Promise<WordIndex> | null = null;
@@ -81,6 +83,7 @@ export function optionMeaning(word: Word): string {
 export function build(all: Word[], basic = false): WordIndex {
   const map = new Map<string, Word>();
   const byPos = new Map<string, Word[]>();
+  const activeSet = new Set<string>();
   let coreCount = 0;
   let basicCount = 0;
   const list: Word[] = [];
@@ -89,12 +92,13 @@ export function build(all: Word[], basic = false): WordIndex {
     if (w.b) basicCount++;
     if (w.b && !basic) continue;
     list.push(w);
+    activeSet.add(w.w);
     const p = posOf(w);
     if (!byPos.has(p)) byPos.set(p, []);
     byPos.get(p)!.push(w);
     if (w.c) coreCount++;
   }
-  return { list, map, byPos, coreCount, basicCount, basic };
+  return { list, map, byPos, coreCount, basicCount, basic, activeSet };
 }
 
 export function loadWords(): Promise<WordIndex> {

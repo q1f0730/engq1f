@@ -41,11 +41,12 @@ export function synonymsFor(index: WordIndex, word: Word, d: SynData | null, max
   };
   for (const w of d?.[word.w] ?? []) add(w);
   for (const g of synonymsOf(index, word)) for (const w of g.words) add(w);
-  const active = new Set(index.list.map((w) => w.w));
+  // Optimization: use cached activeSet from WordIndex to avoid constructing a new Set on every call
+  const activeHas = (wName: string) => index.activeSet ? index.activeSet.has(wName) : (!index.map.get(wName)?.b || index.basic);
   // 词库里的在前（稳定排序：各自保持原来的先后）
   return out
     .map((w, i) => [w, i] as const)
-    .sort((a, b) => Number(!active.has(a[0].w)) - Number(!active.has(b[0].w)) || a[1] - b[1])
+    .sort((a, b) => Number(!activeHas(a[0].w)) - Number(!activeHas(b[0].w)) || a[1] - b[1])
     .map(([w]) => w)
     .slice(0, max);
 }
