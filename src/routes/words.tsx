@@ -570,6 +570,7 @@ function SearchLine({ hidden, inputRef, q, setQ, filterOn, filters, onFilter }: 
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="搜索英文或中文释义"
+        aria-label="搜索英文或中文释义"
         data-testid="search"
         inputMode="search"
         className="h-12 min-w-0 flex-1 bg-transparent font-serif text-[1.25rem] outline-none placeholder:font-sans placeholder:text-[0.9375rem] placeholder:text-ink-3"
