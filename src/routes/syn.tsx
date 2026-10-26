@@ -55,6 +55,7 @@ function SynPage() {
               navigate({ to: "/syn", search: e.target.value ? { q: e.target.value } : {}, replace: true });
             }}
             placeholder="搜中文意思，如「放弃」，或英文单词"
+            aria-label="搜中文意思，如「放弃」，或英文单词"
             data-testid="syn-search"
             inputMode="search"
             className="h-12 min-w-0 flex-1 bg-transparent text-[1rem] outline-none placeholder:text-[0.9375rem] placeholder:text-ink-3"
