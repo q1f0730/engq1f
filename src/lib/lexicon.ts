@@ -298,17 +298,31 @@ export function morphLabel(m: Morph | null): string {
 
 const IPA_VOWEL = /(aɪ|aʊ|eɪ|oʊ|əʊ|ɔɪ|ɪə|eə|ʊə|aɪə|aʊə|[aeiouyæɑɒɔəɚɝɜɛɪʊʌɐ])[ːˑ]?/g;
 
+// WeakMap caches for expensive syllable and spelling irregularity computations
+const sylCache = new WeakMap<object, number>();
+const spellCache = new WeakMap<Word, number>();
+
 /** 音节数：有音标按元音核数，没有按拼写的元音组（词尾不发音的 e 不算） */
 export function syllables(word: Word | string): number {
-  const ipa = typeof word === "string" ? "" : (word.p?.[0] || word.p?.[1] || "").replace(/[ˈˌ'.\/()\s]/g, "");
-  if (ipa) {
-    const n = (ipa.match(IPA_VOWEL) ?? []).length;
-    if (n) return n;
+  if (typeof word === "object" && word !== null) {
+    const cached = sylCache.get(word);
+    if (cached !== undefined) return cached;
   }
-  const w = (typeof word === "string" ? word : word.w).toLowerCase().replace(/[^a-z]/g, "");
-  let n = (w.match(/[aeiouy]+/g) ?? []).length;
-  if (/[^aeiouy]e$/.test(w) && !/[^aeiouy]le$/.test(w) && n > 1) n--;
-  return Math.max(1, n);
+  const ipa = typeof word === "string" ? "" : (word.p?.[0] || word.p?.[1] || "").replace(/[ˈˌ'.\/()\s]/g, "");
+  let n = 0;
+  if (ipa) {
+    n = (ipa.match(IPA_VOWEL) ?? []).length;
+  }
+  if (!n) {
+    const w = (typeof word === "string" ? word : word.w).toLowerCase().replace(/[^a-z]/g, "");
+    n = (w.match(/[aeiouy]+/g) ?? []).length;
+    if (/[^aeiouy]e$/.test(w) && !/[^aeiouy]le$/.test(w) && n > 1) n--;
+  }
+  const res = Math.max(1, n);
+  if (typeof word === "object" && word !== null) {
+    sylCache.set(word, res);
+  }
+  return res;
 }
 
 /** 读音和拼写对不上的字母组合（silent letters、多种读法） */
@@ -316,6 +330,9 @@ const IRREGULAR = ["ough", "augh", "eigh", "gh", "kn", "wr", "mb", "ps", "pn", "
 
 /** 0–1：不规则组合个数 + 字母数比音素数多出来的部分 */
 export function spellIrregularity(word: Word): number {
+  const cached = spellCache.get(word);
+  if (cached !== undefined) return cached;
+
   const w = word.w.toLowerCase().replace(/[^a-z]/g, "");
   let hits = 0;
   for (const g of IRREGULAR) {
@@ -332,7 +349,9 @@ export function spellIrregularity(word: Word): number {
     const phonemes = [...ipa.replace(/(aɪ|aʊ|eɪ|oʊ|əʊ|ɔɪ|tʃ|dʒ)/g, "X")].length;
     extra = Math.max(0, w.length / Math.max(1, phonemes) - 1.15);
   }
-  return clamp01(hits * 0.18 + extra * 0.8);
+  const res = clamp01(hits * 0.18 + extra * 0.8);
+  spellCache.set(word, res);
+  return res;
 }
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
