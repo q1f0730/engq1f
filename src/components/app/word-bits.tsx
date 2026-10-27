@@ -391,20 +391,20 @@ export function WordEntry({ word: base, open = true }: { word: Word | null; open
               // 11.2 · 美音、英音音标一样（或美音退回英音）：音标只写一次，两种发音照样能点
               <span className="flex items-center gap-1.5" data-testid="sheet-ipa-one">
                 <span className="font-ipa">/{ipaOf(word, "us")}/</span>
-                <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "us")} aria-label={`${word.w} 美音`}>
+                <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "us")} aria-label="美音">
                   美 <Volume2 className="size-3.5" />
                 </button>
-                <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label={`${word.w} 英音`}>
+                <button className="press flex h-9 items-center gap-1 rounded-md px-1.5 ring-1 ring-rule ring-inset hover:bg-mark hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label="英音">
                   英 <Volume2 className="size-3.5" />
                 </button>
               </span>
             )}
             {word.p && ipaOf(word, "us") !== ipaOf(word, "uk") && (
               <>
-                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "us")} aria-label={`${word.w} 美音`}>
+                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "us")}>
                   <span className="text-[0.75rem] text-ink-3">美</span> <span className="font-ipa">/{ipaOf(word, "us")}/</span> <Volume2 className="size-3.5" />
                 </button>
-                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "uk")} aria-label={`${word.w} 英音`}>
+                <button className="press flex h-9 items-center gap-1.5 rounded-md px-1 hover:bg-paper-2 hover:text-ink" onClick={() => speak(word.w, "uk")}>
                   <span className="text-[0.75rem] text-ink-3">英</span> <span className="font-ipa">/{ipaOf(word, "uk")}/</span> <Volume2 className="size-3.5" />
                 </button>
               </>
